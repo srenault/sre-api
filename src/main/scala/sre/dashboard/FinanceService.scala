@@ -2,33 +2,15 @@ package sre.dashboard
 
 import java.time.LocalDate
 import io.circe.syntax._
-import cats.data.OptionT
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect._
 import cats.implicits._
 import org.http4s._
 import finance._
 
-class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], settings: Settings) extends FinanceServiceDsl[F] {
+class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CMClient[F], settings: Settings) extends FinanceServiceDsl[F] {
 
-  def computeExpensesByCategory(date: LocalDate): OptionT[F, Map[String, Option[Float]]] = {
-    OfxStmTrn.load(settings.finance.ofxDirectory, date).flatMap { transactions =>
-      OptionT.liftF(icomptaClient.selectAll().map { records =>
-        val rulesAst = RulesAst.build(records)
-        settings.finance.categories.mapValues { path =>
-          rulesAst.traverse(path) map { ruleAst =>
-            transactions.foldLeft(0F) { (acc, transaction) =>
-              if (ruleAst.test(transaction)) {
-                acc + scala.math.abs(transaction.amount)
-              } else {
-                acc
-              }
-            }
-          }
-        }
-      })
-    }
-  }
+  val financeApi = FinanceApi(icomptaClient, settings: Settings)
 
   val service: HttpService[F] = {
     HttpService[F] {
@@ -49,10 +31,19 @@ class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], settings: Se
             BadRequest()
 
           case Right(date) =>
-            computeExpensesByCategory(date).value.flatMap {
-              case Some(res) => Ok(res.asJson.noSpaces)
-              case None => NotFound()
-            }
+            for {
+              transactions <- cmClient.exportAsOfx(settings.finance.icompta.accountId)
+              maybeAmount <- financeApi.computeExpensesByCategory(transactions, date).value
+              res <- maybeAmount match {
+                case Some(res) => Ok(res.asJson.noSpaces)
+                case None => NotFound()
+              }
+            } yield res
+        }
+
+      case GET -> Root / "accounts" =>
+        cmClient.fetchAccounts().flatMap { accounts =>
+          Ok(accounts)
         }
     }
   }

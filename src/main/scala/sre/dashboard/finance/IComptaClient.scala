@@ -29,7 +29,7 @@ case class IComptaClient[F[_]: Effect](implicit connection: Connection) {
       rules <- selectRules()
       conditions <- selectConditions()
       parameters <- selectParameters()
-    } yield {    
+    } yield {
       Records(rules, conditions, parameters)
     }
 }
@@ -38,7 +38,7 @@ object IComptaClient {
 
   def stream[F[_]: ConcurrentEffect](settings: Settings)(implicit F: Effect[F]): Stream[F, IComptaClient[F]] = {
     Class.forName("org.sqlite.JDBC")
-    implicit val connection = DriverManager.getConnection(settings.finance.db)
+    implicit val connection = DriverManager.getConnection(settings.finance.icompta.db)
     Stream.eval(F.pure(IComptaClient()))
   }
 }

@@ -24,7 +24,6 @@ class EnergyService[F[_]: Effect](domoticzClient: DomoticzClient[F], settings: S
         val defaultDateFrom = LocalDate.now().withDayOfMonth(1)
         val defaultDateTo = LocalDate.now()
 
-        
         val maybePeriod = Apply[ValidatedNel[ParseFailure, ?]].map2(
           maybeDateFrom.getOrElse(defaultDateFrom.validNel),
           maybeDateTo.getOrElse(defaultDateTo.validNel)) {

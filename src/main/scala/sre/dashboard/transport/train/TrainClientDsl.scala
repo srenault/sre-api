@@ -39,7 +39,7 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
         "password": "59f2c132-cb07-425f-b105-9ca391929080"
       }"""
 
-    val request = POST(endpoint / "authenticate", body)
+    val request = POST(body, endpoint / "authenticate")
     httpClient.expect[AuthResponse](request)
   }
 
@@ -61,7 +61,7 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
         case None => refreshAuthInfo()
       }
       res <- f(authInfo).recoverWith {
-        case UnexpectedStatus(status) if status == 401 =>
+        case UnexpectedStatus(Status.Unauthorized) =>
           refreshAuthInfo().flatMap(f)
       }
     } yield res)
@@ -70,7 +70,7 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
   def AuthenticatedPOST[A](uri: Uri, body: A, authInfo: AuthResponse, headers: Header*)(implicit F: Monad[F], jsonEncoder: Encoder[A], w: EntityEncoder[F, A]): F[Request[F]] = {
     val bodyAsString = body.asJson.noSpaces
     val authHeader = buildAuthHeader(uri, POST, Some(bodyAsString), authInfo)
-    POST(uri, body, authHeader +: DEFAULT_HEADERS ++: headers:_*)
+    POST(body, uri, authHeader +: DEFAULT_HEADERS ++: headers:_*)
   }
 
   def AuthenticatedGET(uri: Uri, authInfo: AuthResponse, headers: Header*)(implicit F: Monad[F]): F[Request[F]] = {

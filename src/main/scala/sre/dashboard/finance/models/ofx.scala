@@ -6,7 +6,7 @@ import cats.implicits._
 import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
 import java.time.temporal.ChronoField
 import java.time.LocalDate
-import java.io.File
+import java.io.{ File, InputStream, ByteArrayInputStream, FileInputStream }
 
 sealed trait OfxStrTrnType {
   def value: String
@@ -69,20 +69,25 @@ object OfxStmTrn {
     }
 
     maybeOfxFile match {
-      case Some(ofxFile) => OptionT.liftF(loadFile(ofxFile))
+      case Some(ofxFile) =>
+        val is = new FileInputStream(ofxFile)
+        OptionT.liftF(load(is))
       case None => OptionT.none
     }
   }
 
-  def loadFile[F[_]](f: File)(implicit F: Effect[F]): F[List[OfxStmTrn]] =
+  def load[F[_]: Effect](s: String): F[List[OfxStmTrn]] = {
+    val is: InputStream = new ByteArrayInputStream(s.getBytes())
+    load(is)
+  }
+
+  def load[F[_]](is: InputStream)(implicit F: Effect[F]): F[List[OfxStmTrn]] =
     F.pure {
       import com.webcohesion.ofx4j.io.DefaultHandler
       import com.webcohesion.ofx4j.io.nanoxml.NanoXMLOFXReader
-      import java.io.FileInputStream
       import scala.collection.mutable.Stack
 
       val ofxReader = new NanoXMLOFXReader()
-      val file = new FileInputStream(f)
       val stack = Stack.empty[List[String]]
 
       ofxReader.setContentHandler(new DefaultHandler() {
@@ -101,7 +106,7 @@ object OfxStmTrn {
         }
       })
 
-      ofxReader.parse(file)
+      ofxReader.parse(is)
 
       stack.map {
         case typStr :: postedStr :: userStr :: amountStr :: name :: Nil =>
