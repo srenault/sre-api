@@ -33,8 +33,8 @@ case class CMClient[F[_]](
 
   def fetchBalance(accountId: String): F[Float] = {
     balancesCache.cached(accountId) {
-      exportAsCSV(accountId).map { lines =>
-        lines.lastOption.map(_.balance).getOrElse {
+      fetchStatements(accountId).map { statements =>
+        statements.lastOption.map(_.balance).getOrElse {
           sys.error(s"Unable to get balance for $accountId")
         }
       }
@@ -48,6 +48,13 @@ case class CMClient[F[_]](
           CMAccount(input, balance)
         }
       }.sequence
+    }
+  }
+
+
+  def fetchStatements(accountId: String, maybeStartDate: Option[LocalDate] = None, maybeEndDate: Option[LocalDate] = None): F[List[CMStatement]] = {
+    exportAsCSV(accountId, maybeStartDate, maybeEndDate).map { csvRecords =>
+      csvRecords.map(_.toStatement)
     }
   }
 

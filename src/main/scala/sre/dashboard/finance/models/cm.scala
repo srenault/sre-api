@@ -119,15 +119,31 @@ object CMAccount {
   implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[CMAccount]] = jsonEncoderOf[F, List[CMAccount]]
 }
 
-case class CMCsvRecord(
+case class CMStatement(
   date: LocalDate,
-  dateValue: LocalDate,
   amount: Float,
   label: String,
   balance: Float
 )
 
-object CMcsvLine {
+object CMStatement {
+  implicit val encoder: Encoder[CMStatement] = deriveEncoder[CMStatement]
+  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, CMStatement] = jsonEncoderOf[F, CMStatement]
+  implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[CMStatement]] = jsonEncoderOf[F, List[CMStatement]]
+}
+
+case class CMCsvRecord(
+  date: String,
+  dateValue: String,
+  amount: String,
+  label: String,
+  balance: String
+) {
+  def toStatement: CMStatement =
+    CMCsvRecord.toStatement(this)
+}
+
+object CMCsvRecord {
   import java.time.format.DateTimeFormatterBuilder
 
   private val format = new DateTimeFormatterBuilder()
@@ -137,12 +153,18 @@ object CMcsvLine {
   private def parseDateOrFail(s: String): LocalDate =
     LocalDate.parse(s, format)
 
+  def toStatement(csvRecord: CMCsvRecord): CMStatement = {
+    val date = parseDateOrFail(csvRecord.date)
+    CMStatement(date, csvRecord.amount.toFloat, csvRecord.label, csvRecord.balance.toFloat)
+  }
+}
+
+object CMcsvLine {
+
   def parseOrFail(line: String): CMCsvRecord = {
     line.split(";").toList match {
-      case dateStr :: valueDateStr :: amount :: label :: balance :: Nil =>
-        val date = parseDateOrFail(dateStr)
-        val valueDate = parseDateOrFail(valueDateStr)
-        CMCsvRecord(date, valueDate, amount.toFloat, label, balance.toFloat)
+      case date :: valueDate :: amount :: label :: balance :: Nil =>
+        CMCsvRecord(date, valueDate, amount, label, balance)
 
       case _ =>
         sys.error(s"Unable to parse $line as CMCsvLine")

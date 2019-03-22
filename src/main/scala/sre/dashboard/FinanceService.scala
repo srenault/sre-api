@@ -21,9 +21,23 @@ class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CM
 
           case Some(Valid(date)) =>
             Right(date)
+      case GET -> Root / "accounts" =>
+        cmClient.fetchAccounts().flatMap { accounts =>
+          Ok(accounts)
+        }
 
           case None => // fallback
             Right(LocalDate.now)
+      case GET -> Root / "accounts" / AccountIdVar(accountId) / "statements" =>
+        cmClient.fetchStatements(accountId).flatMap { statements =>
+          Ok(statements)
+        }
+
+      case GET -> Root / "accounts" / AccountIdVar(accountId) / "expenses" :? DateQueryParamMatcher(maybeValidatedDate) =>
+        val date = maybeValidatedDate match {
+          case Some(Invalid(e)) => Left(e)
+          case Some(Valid(date)) => Right(date)
+          case None => Right(LocalDate.now.withDayOfMonth(1))
         }
 
         date match {
@@ -39,11 +53,6 @@ class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CM
                 case None => NotFound()
               }
             } yield res
-        }
-
-      case GET -> Root / "accounts" =>
-        cmClient.fetchAccounts().flatMap { accounts =>
-          Ok(accounts)
         }
     }
   }
