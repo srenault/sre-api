@@ -1,8 +1,7 @@
 package sre.dashboard
 
 import java.time.LocalDate
-import io.circe.syntax._
-import cats.data.Validated.{Invalid, Valid}
+import cats.data.Validated.{ Invalid, Valid }
 import cats.effect._
 import cats.implicits._
 import org.http4s._
@@ -10,24 +9,18 @@ import finance._
 
 class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CMClient[F], settings: Settings) extends FinanceServiceDsl[F] {
 
-  val financeApi = FinanceApi(icomptaClient, settings: Settings)
+  implicit val s: Settings = settings
+
+  val financeApi = FinanceApi(icomptaClient, settings)
 
   val service: HttpService[F] = {
     HttpService[F] {
-      case GET -> Root / "expenses" :? DateQueryParamMatcher(maybeValidatedDate) =>
-        val date = maybeValidatedDate match {
-          case Some(Invalid(e)) =>
-            Left(e)
 
-          case Some(Valid(date)) =>
-            Right(date)
       case GET -> Root / "accounts" =>
         cmClient.fetchAccounts().flatMap { accounts =>
           Ok(accounts)
         }
 
-          case None => // fallback
-            Right(LocalDate.now)
       case GET -> Root / "accounts" / AccountIdVar(accountId) / "statements" =>
         cmClient.fetchStatements(accountId).flatMap { statements =>
           Ok(statements)
@@ -41,15 +34,17 @@ class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CM
         }
 
         date match {
-          case Left(_) =>
-            BadRequest()
+          case Left(e) => BadRequest(s"Invalid date: $e")
 
           case Right(date) =>
             for {
-              transactions <- cmClient.exportAsOfx(settings.finance.icompta.accountId)
+              transactions <- cmClient.exportAsOfx(accountId, maybeStartDate = Some(date))
               maybeAmount <- financeApi.computeExpensesByCategory(transactions, date).value
+              (credit, debit) = financeApi.computeCreditAndDebit(transactions)
               res <- maybeAmount match {
-                case Some(res) => Ok(res.asJson.noSpaces)
+                case Some(result) =>
+                  Ok(result)
+
                 case None => NotFound()
               }
             } yield res

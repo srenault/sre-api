@@ -45,7 +45,14 @@ case class CMClient[F[_]](
     fetchDownloadForm().flatMap { downloadForm =>
       downloadForm.inputs.map { input =>
         fetchBalance(input.id).map { balance =>
-          CMAccount(input, balance)
+          settings.accounts.find(_.id == input.id) match {
+            case Some(accountSettings) =>
+              CMAccount(input.id, accountSettings.`type`, input.label, Some(accountSettings.label), balance)
+
+            case None =>
+              CMAccount(input.id, CMAccountType.Unknown, input.label, None, balance)
+          }
+
         }
       }.sequence
     }

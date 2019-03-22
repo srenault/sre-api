@@ -12,7 +12,9 @@ case class TrainSettings(endpoint: Uri)
 
 case class TransportSettings(train: TrainSettings)
 
-case class IComptaSettings(db: String, accountId: String, categories: Map[String, List[String]])
+case class IComptaCategorySettings(label: String, path: List[String], threshold: Int)
+
+case class IComptaSettings(db: String, categories: Map[String, IComptaCategorySettings])
 
 case class CMTasksSettings(balances: CronExpr, expenses: CronExpr)
 
@@ -25,12 +27,19 @@ case class CMCachesSettings(
   csv: CMCacheSettings
 )
 
+case class CMAccountSettings(
+  id: String,
+  `type`: finance.CMAccountType,
+  label: String
+)
+
 case class CMSettings(
   baseUri: Uri,
   authenticationPath: String,
   downloadPath: String,
   username: String,
   password: String,
+  accounts: List[CMAccountSettings],
   tasks: CMTasksSettings,
   cache: CMCachesSettings
 ) {
@@ -117,6 +126,20 @@ object Settings {
         cron4s.Cron(s).left.map { e =>
           DecodingFailure(s"$s isn't a valid cron expression: $e", c.history)
         }
+      }
+  }
+
+  implicit val CMAccountTypeDecoder: Decoder[finance.CMAccountType] = new Decoder[finance.CMAccountType] {
+    final def apply(c: HCursor): Decoder.Result[finance.CMAccountType] =
+      c.as[String].right.flatMap {
+        case id if id == finance.CMAccountType.Saving.id =>
+          Right(finance.CMAccountType.Saving)
+
+        case id if id == finance.CMAccountType.Current.id =>
+          Right(finance.CMAccountType.Current)
+
+        case id =>
+          Left(DecodingFailure(s"Can't parse $id as CMAccountType", c.history))
       }
   }
 }

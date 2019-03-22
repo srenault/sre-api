@@ -8,7 +8,7 @@ import org.http4s._
 import org.http4s.EntityEncoder
 import org.http4s.headers._
 import org.http4s.circe._
-import io.circe.Encoder
+import io.circe.{ Json, Encoder }
 import io.circe.generic.semiauto._
 
 case class CMSession(cookie: ResponseCookie) {
@@ -107,13 +107,38 @@ object CMAccountInput {
     }
 }
 
-case class CMAccount(id: String, label: String, balance: Float)
+case class CMAccount(
+  id: String,
+  `type`: CMAccountType,
+  label: String,
+  displayName: Option[String],
+  balance: Float
+)
+
+sealed trait CMAccountType {
+  def id: String
+}
+
+object CMAccountType {
+
+  implicit val encoder: Encoder[CMAccountType] = new Encoder[CMAccountType] {
+    final def apply(a: CMAccountType): Json = Json.fromString(a.id)
+  }
+
+  case object Saving extends CMAccountType {
+    def id = "saving_account"
+  }
+
+  case object Current extends CMAccountType {
+    def id = "current_account"
+  }
+
+  case object Unknown extends CMAccountType {
+    def id = "n/a"
+  }
+}
 
 object CMAccount {
-
-  def apply(input: CMAccountInput, balance: Float): CMAccount =
-    CMAccount(input.id, input.label, balance)
-
   implicit val encoder: Encoder[CMAccount] = deriveEncoder[CMAccount]
   implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, CMAccount] = jsonEncoderOf[F, CMAccount]
   implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[CMAccount]] = jsonEncoderOf[F, List[CMAccount]]
