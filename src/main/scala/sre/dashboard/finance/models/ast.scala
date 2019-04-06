@@ -2,12 +2,12 @@ package sre.dashboard.finance
 
 sealed trait Rule {
   def name: String
-  def test(transaction: OfxStmTrn): Boolean
+  def test(transaction: CMStatement): Boolean
 }
 
 case class RulesGroup(id: String, name: String, rules: List[Rule]) extends Rule {
 
-  def test(transaction: OfxStmTrn): Boolean = {
+  def test(transaction: CMStatement): Boolean = {
 
     @annotation.tailrec
     def step(rules: Seq[Rule]): Boolean =
@@ -27,7 +27,7 @@ case class RulesGroup(id: String, name: String, rules: List[Rule]) extends Rule 
 
 case class SingleRule(id: String, name: String, condition: Condition) extends Rule {
 
-  def test(transaction: OfxStmTrn): Boolean =
+  def test(transaction: CMStatement): Boolean =
     condition.test(transaction)
 }
 
@@ -101,7 +101,7 @@ object CompoundType {
 
 sealed trait Condition {
 
-  def test(transaction: OfxStmTrn): Boolean
+  def test(transaction: CMStatement): Boolean
 }
 
 case class CompoundCondition(
@@ -110,7 +110,7 @@ case class CompoundCondition(
   conditions: List[Condition]
 ) extends Condition {
 
-  def test(transaction: OfxStmTrn): Boolean = {
+  def test(transaction: CMStatement): Boolean = {
     `type` match {
       case CompoundType.None =>
         conditions.forall { condition =>
@@ -136,18 +136,18 @@ case class ComparisonCondition(
   parameter: Parameter
 ) extends Condition {
 
-  def test(transaction: OfxStmTrn): Boolean = {
+  def test(transaction: CMStatement): Boolean = {
     parameter match {
       case StringParameter(_, value) =>
         op match {
           case ComparisonOp.Contains =>
-            transaction.name.contains(value)
+            transaction.label.contains(value)
 
           case ComparisonOp.BeginWith =>
-            transaction.name.startsWith(value)
+            transaction.label.startsWith(value)
 
           case ComparisonOp.Equals =>
-            transaction.name == value
+            transaction.label == value
 
           case x => sys.error(s"Unable to apply comparison $x for transaction $transaction ")
         }

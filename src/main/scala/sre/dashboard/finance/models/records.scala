@@ -1,5 +1,7 @@
 package sre.dashboard.finance
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import anorm._
 
 case class Records(rules: List[RuleRecord], conditions: List[ConditionRecord], parameters: List[ParameterRecord]) {
@@ -105,5 +107,31 @@ object ParameterRecord {
     case d => RowParser.failed[ParameterRecord](Error(SqlMappingError(
       "unexpected row type \'%s\'; expected: %s".format(d, "LAStringParameter, LANumberParameter"))
     ))
+  }
+}
+
+
+case class CategoryRecord(ID: String, name: String)
+object CategoryRecord {
+  implicit lazy val parser = Macro.namedParser[CategoryRecord]
+}
+
+case class ScheduledTransactionRecord(ID: String, date: String, name: String)
+object ScheduledTransactionRecord {
+  implicit lazy val parser = Macro.namedParser[ScheduledTransactionRecord]
+}
+
+case class ScheduledTransactionSplitRecord(ID: String, transaction: String, category: String, amount: Option[String])
+object ScheduledTransactionSplitRecord {
+  implicit lazy val parser = Macro.namedParser[ScheduledTransactionSplitRecord]
+}
+
+case class ScheduledTransaction(name: String, amount: Option[Float], date: LocalDate)
+
+object ScheduledTransaction {
+
+  def apply(name: String, amount: Option[String], date: String): ScheduledTransaction = {
+    val d = LocalDate.parse(date, DateTimeFormatter.ISO_LOCAL_DATE)
+    ScheduledTransaction(name, amount.map(_.toFloat), d)
   }
 }

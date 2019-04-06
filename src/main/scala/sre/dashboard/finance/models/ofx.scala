@@ -34,7 +34,7 @@ object OfxStrTrnType {
 }
 
 case class OfxStmTrn(
-  typ: OfxStrTrnType,
+  `type`: OfxStrTrnType,
   posted: LocalDate,
   user: LocalDate,
   amount: Float,
@@ -110,10 +110,10 @@ object OfxStmTrn {
 
       stack.map {
         case typStr :: postedStr :: userStr :: amountStr :: name :: Nil =>
-          val typ = OfxStrTrnType(typStr)
+          val `type` = OfxStrTrnType(typStr)
           val posted = LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
           val user = LocalDate.parse(userStr, DateTimeFormatter.BASIC_ISO_DATE)
-          OfxStmTrn(typ, posted, user, amountStr.toFloat, name)
+          OfxStmTrn(`type`, posted, user, amountStr.toFloat, name)
 
         case x =>
           sys.error(s"Unable to parse OfxStmTrn from $x")

@@ -133,6 +133,10 @@ object CMAccountType {
     def id = "current_account"
   }
 
+  case object Joint extends CMAccountType {
+    def id = "joint_account"
+  }
+
   case object Unknown extends CMAccountType {
     def id = "n/a"
   }
@@ -184,7 +188,7 @@ object CMCsvRecord {
   }
 }
 
-object CMcsvLine {
+object CMCsvLine {
 
   def parseOrFail(line: String): CMCsvRecord = {
     line.split(";").toList match {
@@ -196,3 +200,5 @@ object CMcsvLine {
     }
   }
 }
+
+case class CMPeriod(startDate: LocalDate, endDate: LocalDate, statements: List[CMStatement])

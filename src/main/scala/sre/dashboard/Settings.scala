@@ -14,7 +14,7 @@ case class TransportSettings(train: TrainSettings)
 
 case class IComptaCategorySettings(label: String, path: List[String], threshold: Int)
 
-case class IComptaSettings(db: String, categories: Map[String, IComptaCategorySettings])
+case class IComptaSettings(db: String, wageCategory: String)
 
 case class CMTasksSettings(balances: CronExpr, expenses: CronExpr)
 
@@ -30,7 +30,8 @@ case class CMCachesSettings(
 case class CMAccountSettings(
   id: String,
   `type`: finance.CMAccountType,
-  label: String
+  label: String,
+  categories: Map[String, IComptaCategorySettings]
 )
 
 case class CMSettings(
@@ -137,6 +138,9 @@ object Settings {
 
         case id if id == finance.CMAccountType.Current.id =>
           Right(finance.CMAccountType.Current)
+
+        case id if id == finance.CMAccountType.Joint.id =>
+          Right(finance.CMAccountType.Joint)
 
         case id =>
           Left(DecodingFailure(s"Can't parse $id as CMAccountType", c.history))

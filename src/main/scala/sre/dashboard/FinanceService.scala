@@ -5,21 +5,30 @@ import cats.data.Validated.{ Invalid, Valid }
 import cats.effect._
 import cats.implicits._
 import org.http4s._
+import org.http4s.circe._
+import io.circe.literal._
 import finance._
 
 class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CMClient[F], settings: Settings) extends FinanceServiceDsl[F] {
 
-  implicit val s: Settings = settings
-
-  val financeApi = FinanceApi(icomptaClient, settings)
+  val financeApi = FinanceApi(icomptaClient, cmClient, settings)
 
   val service: HttpService[F] = {
     HttpService[F] {
 
       case GET -> Root / "accounts" =>
-        cmClient.fetchAccounts().flatMap { accounts =>
-          Ok(accounts)
-        }
+
+        for {
+          accounts <- cmClient.fetchAccounts()
+
+          statements <- financeApi.fetchStatementsForPeriod(accounts, LocalDate.now)
+
+          (credit, debit) = financeApi.computeCreditAndDebit(statements)
+
+          startPeriod = statements.headOption.map(_.date)
+
+          res <- Ok(json"""{ "startPeriod": $startPeriod, "credit": $credit, "debit": $debit, "accounts": $accounts }""")
+        } yield res
 
       case GET -> Root / "accounts" / AccountIdVar(accountId) / "statements" =>
         cmClient.fetchStatements(accountId).flatMap { statements =>
@@ -38,8 +47,8 @@ class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CM
 
           case Right(date) =>
             for {
-              transactions <- cmClient.exportAsOfx(accountId, maybeStartDate = Some(date))
-              maybeAmount <- financeApi.computeExpensesByCategory(transactions, date).value
+              transactions <- cmClient.fetchStatements(accountId, maybeStartDate = Some(date))
+              maybeAmount <- financeApi.computeExpensesByCategory(accountId, transactions, date).value
               (credit, debit) = financeApi.computeCreditAndDebit(transactions)
               res <- maybeAmount match {
                 case Some(result) =>

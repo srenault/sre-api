@@ -114,8 +114,8 @@ case class CMClient[F[_]](
           sys.error(s"Unknown account $accountId")
         }
 
-        val startDate = maybeStartDate.map(_.format(FORMATTER)) getOrElse ""
-        val endDate = maybeEndDate.map(_.format(FORMATTER)) getOrElse ""
+        val startDate = maybeStartDate map(_.format(FORMATTER)) getOrElse ""
+        val endDate = maybeEndDate map(_.format(FORMATTER)) getOrElse ""
 
         val data = UrlForm(
           "data_formats_selected" -> "csv",
@@ -124,6 +124,7 @@ case class CMClient[F[_]](
           "data_formats_options_csv_fieldseparator" -> "0",
           "data_formats_options_csv_amountcolnumber" -> "0",
           "data_formats_options_csv_decimalseparator" -> "1",
+          "data_daterange_value" -> "1",
           "[t:dbt%3adate;]data_daterange_startdate_value" -> startDate,
           "[t:dbt%3adate;]data_daterange_enddate_value"-> endDate,
           input.checkName -> "on",
@@ -136,7 +137,7 @@ case class CMClient[F[_]](
             CMDownloadForm.parse(body) match {
               case Left(_) =>
                 val lines = body.split("\n").toList
-                F.pure { lines.tail.map(CMcsvLine.parseOrFail) }
+                F.pure { lines.tail.map(CMCsvLine.parseOrFail) }
 
               case Right(form) =>
                 formCache.set(form).flatMap { _ =>

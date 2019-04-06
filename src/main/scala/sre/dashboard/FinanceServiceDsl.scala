@@ -27,7 +27,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
   object DateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[LocalDate]("date")
 
   object AccountIdVar {
-    def unapply(str: String)(implicit settings: Settings): Option[String] = {
+    def unapply(str: String): Option[String] = {
       if (!str.isEmpty) Some(str) else None
     }
   }
