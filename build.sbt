@@ -1,11 +1,10 @@
-val Http4sVersion = "0.20.0-M6"
+val Http4sVersion = "0.20.0"
 val Specs2Version = "4.1.0"
 val LogbackVersion = "1.2.3"
 val CirceVersion = "0.11.1"
 val CirceConfigVersion = "0.5.0"
 val AnormVersion = "2.6.2"
 val SqliteJdbcVersion = "3.23.1"
-val ScalaXmlVersion = "1.1.1"
 val Ofx4jVersion = "1.14"
 val JsoupVersion = "1.11.3"
 val CronVersion =  "0.0.12"
@@ -31,7 +30,6 @@ lazy val root = (project in file("."))
       "io.circe"                  %% "circe-config"           % CirceConfigVersion,
       "org.xerial"                % "sqlite-jdbc"             % SqliteJdbcVersion,
       "org.playframework.anorm"   %% "anorm"                  % AnormVersion,
-      "org.scala-lang.modules"    %% "scala-xml"              % ScalaXmlVersion,
       "com.webcohesion.ofx4j"     % "ofx4j"                   % Ofx4jVersion,
       "org.jsoup"                 % "jsoup"                   % JsoupVersion,
       "eu.timepit"                %% "fs2-cron-core"          % CronVersion,

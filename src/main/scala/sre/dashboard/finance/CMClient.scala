@@ -31,30 +31,33 @@ case class CMClient[F[_]](
       }
     }
 
-  def fetchBalance(accountId: String): F[Float] = {
-    balancesCache.cached(accountId) {
-      fetchStatements(accountId).map { statements =>
-        statements.lastOption.map(_.balance).getOrElse {
-          sys.error(s"Unable to get balance for $accountId")
-        }
+  def fetchAccountByInput(input: CMAccountInput): F[CMAccount] = {
+    fetchStatements(input.id).map { statements =>
+      val balance = statements.lastOption.map(_.balance).getOrElse {
+        sys.error(s"Unable to get balance for ${input.id}")
+      }
+      settings.accounts.find(_.id == input.id) match {
+        case Some(accountSettings) =>
+          CMAccount(input.id, accountSettings.`type`, input.label, Some(accountSettings.label), balance, statements)
+
+        case None =>
+          CMAccount(input.id, CMAccountType.Unknown, input.label, None, balance, statements)
+      }
+    }
+  }
+
+  def fetchAccount(accountId: String): F[Option[CMAccount]] = {
+    fetchDownloadForm().flatMap { downloadForm =>
+      downloadForm.inputs.find(_.id == accountId) match {
+        case Some(input) => fetchAccountByInput(input).map(Some(_))
+        case None => F.pure(None)
       }
     }
   }
 
   def fetchAccounts(): F[List[CMAccount]] = {
     fetchDownloadForm().flatMap { downloadForm =>
-      downloadForm.inputs.map { input =>
-        fetchBalance(input.id).map { balance =>
-          settings.accounts.find(_.id == input.id) match {
-            case Some(accountSettings) =>
-              CMAccount(input.id, accountSettings.`type`, input.label, Some(accountSettings.label), balance)
-
-            case None =>
-              CMAccount(input.id, CMAccountType.Unknown, input.label, None, balance)
-          }
-
-        }
-      }.sequence
+      downloadForm.inputs.map(fetchAccountByInput).sequence
     }
   }
 

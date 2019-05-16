@@ -1,6 +1,5 @@
 package sre.dashboard.finance
 
-import java.time.LocalDate
 import cats.effect._
 import cats.data.OptionT
 import cats.implicits._
@@ -15,19 +14,19 @@ case class FinanceApi[F[_]](icomptaClient: IComptaClient[F], cmClient: CMClient[
     }
   }
 
-  def computeExpensesByCategory(accountId: String, statements: List[CMStatement], date: LocalDate): OptionT[F, List[ExpensesByCategory]] = {
+  def computeExpensesByCategory(account: CMAccount): OptionT[F, List[ExpensesByCategory]] = {
     OptionT.liftF(withRecordsAst { rulesAst =>
       val categories = settings.finance.cm.accounts
-        .find(_.id == accountId)
+        .find(_.id == account.id)
         .map(_.categories)
         .getOrElse(Map.empty)
 
       categories.flatMap {
         case (categoryId, category) =>
           rulesAst.traverse(category.path) map { ruleAst =>
-            val amount = statements.foldLeft(0F) { (acc, transaction) =>
-              if (ruleAst.test(transaction)) {
-                acc + scala.math.abs(transaction.amount)
+            val amount = account.statements.foldLeft(0F) { (acc, statement) =>
+              if (ruleAst.test(statement)) {
+                acc + scala.math.abs(statement.amount)
               } else {
                 acc
               }
@@ -38,37 +37,26 @@ case class FinanceApi[F[_]](icomptaClient: IComptaClient[F], cmClient: CMClient[
     })
   }
 
-  def fetchStatementsForPeriod(accounts: List[CMAccount], date: LocalDate): F[List[CMStatement]] = {
+  def filterStatementsForPeriod(accounts: List[CMAccount]): F[List[CMStatement]] = {
     val categoryLabel = settings.finance.icompta.wageCategory
-    val startDate = date.minusMonths(1).withDayOfMonth(15)
+    icomptaClient.selectScheduledTransactionsByCategoryLabel(categoryLabel).map { wageTransactions =>
+      val statements = accounts.flatMap(_.statements)
+      val maybeWageStatement = statements.sortBy(_.date.toEpochDay).find { statement =>
+        wageTransactions.exists(wageTransaction => statement.label.startsWith(wageTransaction.name))
+      }
+      maybeWageStatement match {
+        case Some(wageStatement) =>
+          statements.sortBy(-_.date.toEpochDay).takeWhile { statement =>
+            statement.date.equals(wageStatement.date) || statement.date.isAfter(wageStatement.date)
+          }.reverse
 
-    icomptaClient.selectScheduledTransactionsByCategoryLabel(categoryLabel).flatMap[List[CMStatement]] { scheduledTransactions =>
-      val sortedScheduledTransactions = scheduledTransactions.sortBy(_.date.toEpochDay)
-      sortedScheduledTransactions.headOption match {
-        case None =>
-          F.pure(Nil)
-
-        case Some(wageTransaction) =>
-          accounts.map { account =>
-            cmClient.fetchStatements(account.id, maybeStartDate = Some(startDate))
-          }.sequence.map(_.flatten).map { statements =>
-            val sortedStatements = statements.sortBy(-_.date.toEpochDay)
-            sortedStatements.find(_.label.startsWith(wageTransaction.name)) match {
-              case Some(wageStatement) =>
-                sortedStatements.takeWhile { statement =>
-                  statement.date.equals(wageStatement.date) || statement.date.isAfter(wageStatement.date)
-                }.reverse
-
-              case None => Nil
-
-            }
-          }
+        case _ => Nil
       }
     }
   }
 
-  def computeCreditAndDebit(transactions: List[CMStatement]): (Float, Float) = {
-    val (credits, debits) = transactions.map(_.amount).partition(_ > 0)
-    credits.foldLeft(0F)(_ + _) -> debits.foldLeft(0F)(_ + _)
+  def computeCreditAndDebit(statements: List[CMStatement]): (Float, Float) = {
+    val (credit, debit) = statements.map(_.amount).partition(_ > 0)
+    credit.foldLeft(0F)(_ + _) -> debit.foldLeft(0F)(_ + _)
   }
 }

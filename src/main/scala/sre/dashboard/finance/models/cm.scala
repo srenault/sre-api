@@ -112,8 +112,13 @@ case class CMAccount(
   `type`: CMAccountType,
   label: String,
   displayName: Option[String],
-  balance: Float
-)
+  balance: Float,
+  statements: List[CMStatement]
+) {
+  def since(date: LocalDate): CMAccount = {
+    this.copy(statements = statements.dropWhile(!_.date.equals(date)))
+  }
+}
 
 sealed trait CMAccountType {
   def id: String
