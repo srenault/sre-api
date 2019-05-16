@@ -12,7 +12,7 @@ case class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClien
 
   val financeApi = FinanceApi(icomptaClient, cmClient, settings)
 
-  val service: HttpService[F] = {
+  val service: HttpService[F] = CorsMiddleware {
     HttpService[F] {
 
       case GET -> Root / "accounts" =>
