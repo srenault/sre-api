@@ -86,7 +86,7 @@ object Settings {
   val CONFIG_FILE_NAME = "app.conf"
 
   lazy val AppConfig: com.typesafe.config.Config =
-    com.typesafe.config.ConfigFactory.parseResources(CONFIG_FILE_NAME)
+    com.typesafe.config.ConfigFactory.load(CONFIG_FILE_NAME)
 
   def load(): Either[Error, Settings] = {
     val httpPort = AppConfig.getInt("httpPort")

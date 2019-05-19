@@ -1,0 +1,3 @@
+#!/bin/bash
+
+docker run -it -p 8080:8080 -v /Users/sre/hub/srenault/docker/db/:/db --env-file ./app.env dashboard-server
