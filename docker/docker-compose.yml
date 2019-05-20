@@ -1,0 +1,21 @@
+version: '3.7'
+
+services:
+  dashboard-server:
+    container_name: dashboard-server
+    env_file:
+      - app.env
+    build:
+      args:
+        JAR_FILE: dashboard-assembly-0.0.1-SNAPSHOT.jar
+      context: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - $PWD/db/:/db
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 768M
+    restart: always
