@@ -1,3 +1,5 @@
+val projectName = "dashboard"
+
 val Http4sVersion = "0.20.0"
 val Specs2Version = "4.1.0"
 val LogbackVersion = "1.2.3"
@@ -11,10 +13,19 @@ val CronVersion =  "0.0.12"
 val ScalaCacheVersion = "0.27.0"
 val ScalaCacheCatsVersion = "0.27.0"
 
+val gitVersion = {
+  import scala.sys.process._
+  val GitShortVersion = """^.*([0-9abcdef]{7})$""".r
+  Option("git describe --abbrev=7 --always" !!).map(_.trim.toLowerCase).map {
+    case GitShortVersion(gitVersion) => gitVersion
+    case other                       => other
+  }.filterNot(_.isEmpty).getOrElse("x-SNAPSHOT")
+}
+
 lazy val root = (project in file("."))
   .settings(
     organization := "sre",
-    name := "dashboard",
+    name := projectName,
     version := "0.0.1-SNAPSHOT",
     scalaVersion := "2.12.6",
     libraryDependencies ++= Seq(
@@ -44,7 +55,8 @@ lazy val root = (project in file("."))
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x => MergeStrategy.first
-    }
+    },
+    assemblyJarName in assembly := s"$projectName-$gitVersion.jar",
   )
 
 scalacOptions ++= Seq(
