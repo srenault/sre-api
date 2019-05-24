@@ -164,6 +164,11 @@ object CMStatement {
   implicit val encoder: Encoder[CMStatement] = deriveEncoder[CMStatement]
   implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, CMStatement] = jsonEncoderOf[F, CMStatement]
   implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[CMStatement]] = jsonEncoderOf[F, List[CMStatement]]
+
+  def computeCreditAndDebit(statements: List[CMStatement]): (Float, Float) = {
+    val (credit, debit) = statements.map(_.amount).partition(_ > 0)
+    credit.foldLeft(0F)(_ + _) -> debit.foldLeft(0F)(_ + _)
+  }
 }
 
 case class CMCsvRecord(

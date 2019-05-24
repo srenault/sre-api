@@ -22,7 +22,7 @@ case class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClien
 
           statements <- financeApi.filterStatementsForPeriod(accounts)
 
-          (credit, debit) = financeApi.computeCreditAndDebit(statements)
+          (credit, debit) = CMStatement.computeCreditAndDebit(statements)
 
           startPeriod = statements.headOption.map(_.date)
 

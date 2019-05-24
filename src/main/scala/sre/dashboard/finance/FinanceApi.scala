@@ -7,7 +7,7 @@ import sre.dashboard.Settings
 
 case class FinanceApi[F[_]](icomptaClient: IComptaClient[F], cmClient: CMClient[F], settings: Settings)(implicit F: Effect[F]) {
 
-  def withRecordsAst[A](f: RuleAst => A): F[A] = {
+  private def withRecordsAst[A](f: RuleAst => A): F[A] = {
     icomptaClient.selectAll().map { records =>
       val rulesAst = RulesAst.build(records)
       f(rulesAst)
@@ -41,9 +41,9 @@ case class FinanceApi[F[_]](icomptaClient: IComptaClient[F], cmClient: CMClient[
     val categoryLabel = settings.finance.icompta.wageCategory
     icomptaClient.selectScheduledTransactionsByCategoryLabel(categoryLabel).map { wageTransactions =>
       val statements = accounts.flatMap(_.statements)
-      val maybeWageStatement = statements.sortBy(_.date.toEpochDay).find { statement =>
+      val maybeWageStatement = statements.sortBy(-_.date.toEpochDay).filter { statement =>
         wageTransactions.exists(wageTransaction => statement.label.startsWith(wageTransaction.name))
-      }
+      }.take(2).lastOption
       maybeWageStatement match {
         case Some(wageStatement) =>
           statements.sortBy(-_.date.toEpochDay).takeWhile { statement =>
@@ -55,8 +55,7 @@ case class FinanceApi[F[_]](icomptaClient: IComptaClient[F], cmClient: CMClient[
     }
   }
 
-  def computeCreditAndDebit(statements: List[CMStatement]): (Float, Float) = {
-    val (credit, debit) = statements.map(_.amount).partition(_ > 0)
-    credit.foldLeft(0F)(_ + _) -> debit.foldLeft(0F)(_ + _)
+  def f() = {
+
   }
 }
