@@ -1,4 +1,4 @@
-val projectName = "dashboard"
+val projectName = "sre-api"
 
 val Http4sVersion = "0.20.0"
 val Specs2Version = "4.1.0"
@@ -51,7 +51,7 @@ lazy val root = (project in file("."))
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.2.4")
   ).
   settings(
-    mainClass in assembly := Some("sre.dashboard.DashboardServer"),
+    mainClass in assembly := Some("sre.api.Server"),
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x => MergeStrategy.first

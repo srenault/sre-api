@@ -1,13 +1,13 @@
 version: '3.7'
 
 services:
-  dashboard-server:
-    container_name: dashboard-server
+  sre-api:
+    container_name: sre-api
     env_file:
       - app.env
     build:
       args:
-        JAR_FILE: dashboard-assembly-0.0.1-SNAPSHOT.jar
+        JAR_FILE: sre-api-ef607ba.jar
       context: .
     ports:
       - "8080:8080"
