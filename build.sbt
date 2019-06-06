@@ -9,7 +9,7 @@ val AnormVersion = "2.6.2"
 val SqliteJdbcVersion = "3.23.1"
 val Ofx4jVersion = "1.14"
 val JsoupVersion = "1.11.3"
-val CronVersion =  "0.0.12"
+val CronVersion =  "0.1.0"
 val ScalaCacheVersion = "0.27.0"
 val ScalaCacheCatsVersion = "0.27.0"
 
