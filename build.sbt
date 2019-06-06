@@ -48,7 +48,7 @@ lazy val root = (project in file("."))
       "com.github.cb372"          %% "scalacache-cats-effect" % ScalaCacheCatsVersion
     ),
     addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.6"),
-    addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.2.4")
+    addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.0")
   ).
   settings(
     mainClass in assembly := Some("sre.api.Server"),
