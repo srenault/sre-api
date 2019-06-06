@@ -1,14 +1,14 @@
 val projectName = "sre-api"
 
 val Http4sVersion = "0.20.0"
-val Specs2Version = "4.1.0"
+val Specs2Version = "4.1.2"
 val LogbackVersion = "1.2.3"
 val CirceVersion = "0.11.1"
-val CirceConfigVersion = "0.5.0"
+val CirceConfigVersion = "0.6.1"
 val AnormVersion = "2.6.2"
-val SqliteJdbcVersion = "3.23.1"
+val SqliteJdbcVersion = "3.27.2.1"
 val Ofx4jVersion = "1.17"
-val JsoupVersion = "1.11.3"
+val JsoupVersion = "1.12.1"
 val CronVersion =  "0.0.12"
 val ScalaCacheVersion = "0.27.0"
 val ScalaCacheCatsVersion = "0.27.0"
@@ -47,7 +47,7 @@ lazy val root = (project in file("."))
       "com.github.cb372"          %% "scalacache-guava"       % ScalaCacheVersion,
       "com.github.cb372"          %% "scalacache-cats-effect" % ScalaCacheCatsVersion
     ),
-    addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.6"),
+    addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.10"),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.2.4")
   ).
   settings(
