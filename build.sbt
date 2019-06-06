@@ -47,7 +47,7 @@ lazy val root = (project in file("."))
       "com.github.cb372"          %% "scalacache-guava"       % ScalaCacheVersion,
       "com.github.cb372"          %% "scalacache-cats-effect" % ScalaCacheCatsVersion
     ),
-    addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.6"),
+    addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.10"),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.2.4")
   ).
   settings(
