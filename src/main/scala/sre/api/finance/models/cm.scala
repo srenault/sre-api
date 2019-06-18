@@ -116,7 +116,9 @@ case class CMAccount(
   statements: List[CMStatement]
 ) {
   def since(date: LocalDate): CMAccount = {
-    this.copy(statements = statements.dropWhile(!_.date.equals(date)))
+    this.copy(statements = statements.filter { statement =>
+      statement.date.equals(date) || statement.date.isAfter(date)
+    })
   }
 }
 
