@@ -10,8 +10,8 @@ val SqliteJdbcVersion = "3.27.2.1"
 val Ofx4jVersion = "1.17"
 val JsoupVersion = "1.12.1"
 val CronVersion =  "0.1.0"
-val ScalaCacheVersion = "0.27.0"
-val ScalaCacheCatsVersion = "0.27.0"
+val ScalaCacheVersion = "0.28.0"
+val ScalaCacheCatsVersion = "0.28.0"
 
 val gitVersion = {
   import scala.sys.process._
