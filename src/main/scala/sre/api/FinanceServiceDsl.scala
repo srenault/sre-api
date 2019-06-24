@@ -1,7 +1,6 @@
 package sre.api
 
 import java.time.LocalDate
-import java.time.temporal.ChronoField
 import java.time.format.DateTimeFormatterBuilder
 import cats._
 import cats.implicits._
@@ -20,8 +19,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
       Validated
         .catchNonFatal {
           val format = new DateTimeFormatterBuilder()
-            .appendPattern("yyyy-MM")
-            .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
+            .appendPattern("yyyy-MM-dd")
             .toFormatter();
           LocalDate.parse(value.value, format)
         }
@@ -29,7 +27,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
         .toValidatedNel
   }
 
-  object DateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[LocalDate]("date")
+  object DateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[LocalDate]("startDate")
 
   object AccountIdVar {
     def unapply(str: String): Option[String] = {
