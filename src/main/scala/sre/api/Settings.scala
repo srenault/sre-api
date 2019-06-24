@@ -71,6 +71,10 @@ case class EnergySettings(electricity: ElectricitySettings)
 
 case class WeatherSettings(endpoint: Uri)
 
+case class S3Settings(bucket: String, publicKey: String, secretKey: String, prefix: Option[String])
+
+case class ApkSettings(s3: S3Settings)
+
 case class Settings(
   httpPort: Int,
   db: String,
@@ -78,7 +82,8 @@ case class Settings(
   finance: FinanceSettings,
   domoticz: DomoticzSettings,
   energy: EnergySettings,
-  weather: WeatherSettings
+  weather: WeatherSettings,
+  apk: ApkSettings
 )
 
 object Settings {
@@ -98,8 +103,9 @@ object Settings {
       domoticzSettings <- AppConfig.as[DomoticzSettings]("domoticz")
       energySettings <- AppConfig.as[EnergySettings]("energy")
       weatherSettings <- AppConfig.as[WeatherSettings]("weather")
+      apkSettings <- AppConfig.as[ApkSettings]("apk")
     } yield Settings(httpPort, db, transportSettings, financeSettings, domoticzSettings,
-      energySettings, weatherSettings)
+      energySettings, weatherSettings, apkSettings)
   }
 
   implicit val UriDecoder: Decoder[Uri] = new Decoder[Uri] {

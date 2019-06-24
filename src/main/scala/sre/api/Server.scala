@@ -9,6 +9,8 @@ import transport.subway.SubwayClient
 import finance.{ IComptaClient, CMClient }
 import domoticz.DomoticzClient
 import weather.WeatherClient
+import utils.S3Client
+import apk.ApkClient
 
 object Server extends IOApp {
 
@@ -33,7 +35,10 @@ object ServerStream {
   def weatherService[F[_]: Effect](weatherClient: WeatherClient[F], settings: Settings) =
     new WeatherService[F](weatherClient, settings).service
 
-  def stream[F[_]: ConcurrentEffect](implicit timer: Timer[F]) = {
+  def apkService[F[_]: Effect](apkClient: ApkClient[F], settings: Settings) =
+    new ApkService[F](apkClient, settings).service
+
+  def stream[F[_]: ConcurrentEffect](implicit timer: Timer[F], cs: ContextShift[F]) = {
     Settings.load() match {
       case Right(settings) =>
         for {
@@ -44,12 +49,15 @@ object ServerStream {
           cmClient <- CMClient.stream[F](httpClient, settings)
           domoticzClient = DomoticzClient[F](httpClient, settings.domoticz)
           weatherClient = WeatherClient[F](httpClient, settings.weather)
+          s3Client = S3Client[F](settings.apk.s3)
+          apkClient = ApkClient(s3Client)
           R <- BlazeBuilder[F].bindHttp(settings.httpPort, "0.0.0.0")
                               .mountService(trainService(trainClient, settings), "/api/transport/train")
                               .mountService(subwayService(subwayClient, settings), "/api/transport/subway")
                               .mountService(financeService(icomptaClient, cmClient, settings), "/api/finance")
                               .mountService(energyService(domoticzClient, settings), "/api/energy")
                               .mountService(weatherService(weatherClient, settings), "/api/weather")
+                              .mountService(apkService(apkClient, settings), "/api/apk")
                               .serve
         } yield R
 

@@ -5,10 +5,9 @@ import cats.implicits._
 import io.circe._
 import io.circe.literal._
 import org.http4s.circe._
-import org.http4s.client.dsl.Http4sClientDsl
 import sre.api.transport.train._
 
-case class SubwayClient[F[_]: ConcurrentEffect](trainClient: TrainClient[F]) extends Http4sClientDsl[F] {
+case class SubwayClient[F[_]: ConcurrentEffect](trainClient: TrainClient[F]) {
 
   def nextDepartures(stopId: String): F[List[NextDeparture]] = trainClient.withAuthInfo { authInfo =>
     val uri = (trainClient.endpoint / "ratp" / "nextDepartures").withQueryParam("stopId", stopId)
