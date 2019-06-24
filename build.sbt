@@ -56,7 +56,7 @@ lazy val root = (project in file("."))
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x => MergeStrategy.first
     },
-    assemblyJarName in assembly := s"$projectName-$gitVersion.jar",
+    assemblyJarName in assembly := s"$projectName.jar",
   )
 
 scalacOptions ++= Seq(
