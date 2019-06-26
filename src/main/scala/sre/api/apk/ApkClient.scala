@@ -28,7 +28,7 @@ case class ApkClient[F[_]: ConcurrentEffect](s3Client: S3Client[F]) {
     }
   }
 
-  def download(branch: String, file: String): Stream[F, Byte] = {
-    s3Client.streamFile(s"$branch/$file")
+  def download(file: String): Stream[F, Byte] = {
+    s3Client.streamFile(file)
   }
 }

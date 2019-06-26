@@ -35,8 +35,8 @@ object ServerStream {
   def weatherService[F[_]: Effect](weatherClient: WeatherClient[F], settings: Settings) =
     new WeatherService[F](weatherClient, settings).service
 
-  def apkService[F[_]: Effect](apkClient: ApkClient[F], settings: Settings) =
-    new ApkService[F](apkClient, settings).service
+  def releasesService[F[_]: Effect](apkClient: ApkClient[F], settings: Settings) =
+    new ReleasesService[F](apkClient, settings).service
 
   def stream[F[_]: ConcurrentEffect](implicit timer: Timer[F], cs: ContextShift[F]) = {
     Settings.load() match {
@@ -57,7 +57,7 @@ object ServerStream {
                               .mountService(financeService(icomptaClient, cmClient, settings), "/api/finance")
                               .mountService(energyService(domoticzClient, settings), "/api/energy")
                               .mountService(weatherService(weatherClient, settings), "/api/weather")
-                              .mountService(apkService(apkClient, settings), "/api/apk")
+                              .mountService(releasesService(apkClient, settings), "/api/releases")
                               .serve
         } yield R
 
