@@ -12,6 +12,7 @@ val JsoupVersion = "1.12.1"
 val CronVersion =  "0.1.0"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
+val AwsSdkVersion = "1.11.577"
 
 val gitVersion = {
   import scala.sys.process._
@@ -45,7 +46,8 @@ lazy val root = (project in file("."))
       "org.jsoup"                 % "jsoup"                   % JsoupVersion,
       "eu.timepit"                %% "fs2-cron-core"          % CronVersion,
       "com.github.cb372"          %% "scalacache-guava"       % ScalaCacheVersion,
-      "com.github.cb372"          %% "scalacache-cats-effect" % ScalaCacheCatsVersion
+      "com.github.cb372"          %% "scalacache-cats-effect" % ScalaCacheCatsVersion,
+      "com.amazonaws"             % "aws-java-sdk"            % AwsSdkVersion
     ),
     addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.10"),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.0")
