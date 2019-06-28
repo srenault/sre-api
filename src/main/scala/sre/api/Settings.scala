@@ -76,6 +76,7 @@ case class S3Settings(bucket: String, publicKey: String, secretKey: String, pref
 case class ApkSettings(s3: S3Settings)
 
 case class Settings(
+  advertisedAddress: String,
   httpPort: Int,
   db: String,
   transport: TransportSettings,
@@ -94,6 +95,7 @@ object Settings {
     com.typesafe.config.ConfigFactory.load(CONFIG_FILE_NAME)
 
   def load(): Either[Error, Settings] = {
+    val advertisedAddress = AppConfig.getString("advertisedAddress")
     val httpPort = AppConfig.getInt("httpPort")
     val db = AppConfig.getString("db")
     for {
@@ -104,7 +106,7 @@ object Settings {
       energySettings <- AppConfig.as[EnergySettings]("energy")
       weatherSettings <- AppConfig.as[WeatherSettings]("weather")
       apkSettings <- AppConfig.as[ApkSettings]("apk")
-    } yield Settings(httpPort, db, transportSettings, financeSettings, domoticzSettings,
+    } yield Settings(advertisedAddress, httpPort, db, transportSettings, financeSettings, domoticzSettings,
       energySettings, weatherSettings, apkSettings)
   }
 
