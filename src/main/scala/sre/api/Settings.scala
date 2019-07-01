@@ -89,10 +89,8 @@ case class Settings(
 
 object Settings {
 
-  val CONFIG_FILE_NAME = "app.conf"
-
   lazy val AppConfig: com.typesafe.config.Config =
-    com.typesafe.config.ConfigFactory.load(CONFIG_FILE_NAME)
+    com.typesafe.config.ConfigFactory.load()
 
   def load(): Either[Error, Settings] = {
     val advertisedAddress = AppConfig.getString("advertisedAddress")
