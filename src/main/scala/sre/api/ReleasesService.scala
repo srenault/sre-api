@@ -18,7 +18,7 @@ class ReleasesService[F[_]: Effect](releasesClient: ReleasesClient[F], settings:
       case GET -> "download" /: rest =>
         val file = rest.toList.mkString("/")
         val stream = releasesClient.apkClient.download(file)
-        Ok(stream.map(_.toString)).map(_.putHeaders(
+        Ok(stream).map(_.putHeaders(
           Header("Content-Disposition", "attachment"),
           Header("filename", file),
           Header("Content-Type", "application/vnd.android.package-archive")
