@@ -1,7 +1,7 @@
 package sre.api
 package releases
 
-import java.time.LocalDate
+import java.time.LocalDateTime
 import cats.effect._
 import org.http4s.EntityEncoder
 import org.http4s.circe._
@@ -15,7 +15,7 @@ object Release {
   implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[Release]] = jsonEncoderOf[F, List[Release]]
 }
 
-case class Version(sha1: String, date: LocalDate, url: String)
+case class Version(sha1: String, date: LocalDateTime, url: String)
 
 object Version {
 

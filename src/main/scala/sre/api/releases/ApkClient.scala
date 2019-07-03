@@ -21,7 +21,7 @@ case class ApkClient[F[_]: Effect](s3Client: S3Client[F]) {
           val date = obj.getLastModified
             .toInstant()
             .atZone(ZoneId.systemDefault())
-            .toLocalDate();
+            .toLocalDateTime();
 
           val url = s"${settings.advertisedAddress}/api/releases/download/$branch/$name"
 
