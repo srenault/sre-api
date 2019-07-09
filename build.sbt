@@ -1,6 +1,6 @@
 val projectName = "sre-api"
 
-val Http4sVersion = "0.20.3"
+val Http4sVersion = "0.20.4"
 val Specs2Version = "4.6.0"
 val LogbackVersion = "1.2.3"
 val CirceVersion = "0.11.1"
@@ -12,7 +12,7 @@ val JsoupVersion = "1.12.1"
 val CronVersion =  "0.1.0"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
-val AwsSdkVersion = "1.11.577"
+val AwsSdkVersion = "1.11.588"
 
 val gitVersion = {
   import scala.sys.process._
