@@ -33,6 +33,7 @@ case class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClien
         } yield res
 
       case GET -> Root / "accounts" / AccountIdVar(accountId) :? DateQueryParamMatcher(maybeValidatedDate) =>
+        org.slf4j.LoggerFactory.getLogger("sre.api.FinanceService.account").info("-----------> " + maybeValidatedDate)
         WithAccount(accountId) { account =>
           WithPeriodDate(maybeValidatedDate) { maybeStartPeriod =>
             val accountSinceStartPeriod = maybeStartPeriod map(account.since) getOrElse account
