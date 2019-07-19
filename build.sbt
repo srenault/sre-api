@@ -12,7 +12,7 @@ val JsoupVersion = "1.12.1"
 val CronVersion =  "0.1.0"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
-val AwsSdkVersion = "1.11.588"
+val AwsSdkVersion = "1.11.594"
 
 val gitVersion = {
   import scala.sys.process._
