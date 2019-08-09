@@ -33,7 +33,7 @@ case class CMClient[F[_]](
 
   def fetchAccountByInput(input: CMAccountInput): F[CMAccount] = {
     fetchStatements(input.id).map { statements =>
-      val balance = statements.lastOption.map(_.balance).getOrElse {
+      val balance = statements.lastOption.flatMap(_.balance).getOrElse {
         sys.error(s"Unable to get balance for ${input.id}")
       }
       settings.accounts.find(_.id == input.id) match {

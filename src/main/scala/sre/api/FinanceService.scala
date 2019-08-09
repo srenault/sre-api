@@ -20,17 +20,17 @@ case class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClien
         for {
           accounts <- cmClient.fetchAccounts()
 
-          statements <- financeApi.filterStatementsForPeriod(accounts)
+          maybePeriod <- financeApi.computeLastPeriod(accounts.flatMap(_.statements))
 
-          (credit, debit) = CMStatement.computeCreditAndDebit(statements)
+          statementsForPeriod = maybePeriod.toList.flatMap(_.statements)
 
-          startPeriod = statements.headOption.map(_.date)
+          (credit, debit) = CMStatement.computeCreditAndDebit(statementsForPeriod)
 
-          res <- Ok(json"""{ "startPeriod": $startPeriod,
+          res <- Ok(json"""{ "startPeriod": ${maybePeriod.map(_.startDate)},
                              "credit": $credit,
                              "debit": $debit,
                              "accounts": $accounts }""")
-        } yield res
+        } yield res // TODO NOT FOUND
 
       case GET -> Root / "accounts" / AccountIdVar(accountId) :? DateQueryParamMatcher(maybeValidatedDate) =>
         org.slf4j.LoggerFactory.getLogger("sre.api.FinanceService.account").info("-----------> " + maybeValidatedDate)
@@ -43,6 +43,9 @@ case class FinanceService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClien
             }
           }
         }
+
+      case GET -> Root / "test" =>
+        financeApi.f().flatMap(_ => Ok())
     }
   }
 }

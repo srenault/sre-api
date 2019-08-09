@@ -159,7 +159,7 @@ case class CMStatement(
   date: LocalDate,
   amount: Float,
   label: String,
-  balance: Float
+  balance: Option[Float]
 )
 
 object CMStatement {
@@ -196,7 +196,7 @@ object CMCsvRecord {
 
   def toStatement(csvRecord: CMCsvRecord): CMStatement = {
     val date = parseDateOrFail(csvRecord.date)
-    CMStatement(date, csvRecord.amount.toFloat, csvRecord.label, csvRecord.balance.toFloat)
+    CMStatement(date, csvRecord.amount.toFloat, csvRecord.label, Some(csvRecord.balance.toFloat))
   }
 }
 
@@ -213,4 +213,6 @@ object CMCsvLine {
   }
 }
 
-case class CMPeriod(startDate: LocalDate, endDate: LocalDate, statements: List[CMStatement])
+case class CMPeriod(startDate: LocalDate, endDate: Option[LocalDate], statements: List[CMStatement])
+
+case class CMPeriodSegment(wageDate: Option[java.time.LocalDate], statements: List[CMStatement])

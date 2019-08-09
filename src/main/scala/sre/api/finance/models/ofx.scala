@@ -1,10 +1,7 @@
 package sre.api.finance
 
 import cats.effect._
-import cats.data.OptionT
-import cats.implicits._
-import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
-import java.time.temporal.ChronoField
+import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.io.{ File, InputStream, ByteArrayInputStream, FileInputStream }
 
@@ -39,47 +36,55 @@ case class OfxStmTrn(
   user: LocalDate,
   amount: Float,
   name: String
-)
+) {
+  def toStatement: CMStatement = {
+    CMStatement(posted, amount, name, None)
+  }
+}
+
+case class OfxFile(file: File, date: LocalDate) {
+  lazy val name = file.getName
+}
+
+object OfxFile {
+  val Reg = """(.+)?\.ofx""".r
+
+  val format = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+  def unapply(file: File): Option[OfxFile] = {
+    file.getName match {
+      case Reg(dateStr) =>
+        scala.util.control.Exception.nonFatalCatch[OfxFile].opt {
+          val date = LocalDate.parse(dateStr, format)
+          OfxFile(file, date)
+        }
+
+      case _ => None
+    }
+  }
+}
+
+object OfxDir {
+
+  def listFiles(dir: File): List[OfxFile] = {
+    dir.listFiles.toList.collect {
+      case OfxFile(ofxFile) => ofxFile
+    }
+  }
+}
 
 object OfxStmTrn {
 
-  object OfxFile {
-    val Reg = """(.+)?\.ofx""".r
+  // def streamOfxDir[F[_]](ofxDir: File)(implicit F: Effect[F]): Stream[F,List[OfxStmTrn]] = {
+  //   val sortedFiles = ofxDir.listFiles.collect {
+  //     case file@OfxFile(date) => file -> date
+  //   }.sortBy { case (_, date) => -date.toEpochDay }
+  //     .map(_._1)
 
-    val format = new DateTimeFormatterBuilder()
-      .appendPattern("yyyy-MM")
-      .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
-      .toFormatter();
-
-    def unapply(file: File): Option[LocalDate] = {
-      file.getName match {
-        case Reg(dateStr) =>
-          scala.util.control.Exception.nonFatalCatch[LocalDate].opt {
-            LocalDate.parse(dateStr, format)
-          }
-
-        case _ => None
-      }
-    }
-  }
-
-  def load[F[_]: Effect](ofxDirectory: File, date: LocalDate): OptionT[F, List[OfxStmTrn]] = {
-    val maybeOfxFile = ofxDirectory.listFiles.find {
-        case file@OfxFile(d) => d == date
-    }
-
-    maybeOfxFile match {
-      case Some(ofxFile) =>
-        val is = new FileInputStream(ofxFile)
-        OptionT.liftF(load(is))
-      case None => OptionT.none
-    }
-  }
-
-  def load[F[_]: Effect](s: String): F[List[OfxStmTrn]] = {
-    val is: InputStream = new ByteArrayInputStream(s.getBytes())
-    load(is)
-  }
+  //   Stream.emits(sortedFiles).flatMap { file =>
+  //     Stream.eval(load(file))
+  //   }
+  // }
 
   def load[F[_]](is: InputStream)(implicit F: Effect[F]): F[List[OfxStmTrn]] =
     F.pure {
@@ -119,4 +124,14 @@ object OfxStmTrn {
           sys.error(s"Unable to parse OfxStmTrn from $x")
       }.toList
     }
+
+  def load[F[_]: Effect](ofxFile: File): F[List[OfxStmTrn]] = {
+    val is = new FileInputStream(ofxFile)
+    load(is)
+  }
+
+  def load[F[_]: Effect](s: String): F[List[OfxStmTrn]] = {
+    val is: InputStream = new ByteArrayInputStream(s.getBytes())
+    load(is)
+  }
 }
