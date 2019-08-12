@@ -1,4 +1,4 @@
-package sre.api.finance
+package sre.api.finance.icompta
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter

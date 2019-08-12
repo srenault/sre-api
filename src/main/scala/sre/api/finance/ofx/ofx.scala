@@ -1,9 +1,11 @@
 package sre.api.finance
+package ofx
 
 import cats.effect._
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.io.{ File, InputStream, ByteArrayInputStream, FileInputStream }
+import cm.CMStatement
 
 sealed trait OfxStrTrnType {
   def value: String
@@ -31,14 +33,19 @@ object OfxStrTrnType {
 }
 
 case class OfxStmTrn(
+  fitid: String,
   `type`: OfxStrTrnType,
   posted: LocalDate,
   user: LocalDate,
   amount: Float,
   name: String
 ) {
-  def toStatement: CMStatement = {
-    CMStatement(posted, amount, name, None)
+  def toStatement(accountId: String): CMStatement = {
+    CMStatement(fitid, accountId, posted, amount, name, None)
+  }
+
+  def toStatement(ofxFile: OfxFile): CMStatement = {
+    CMStatement(fitid, ofxFile.file.getParentFile.getName, posted, amount, name, None)
   }
 }
 
@@ -51,7 +58,12 @@ object OfxFile {
 
   val format = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-  def unapply(file: File): Option[OfxFile] = {
+  def open(path: String): Option[OfxFile] = {
+    val file = new File(path)
+    fromFile(file)
+  }
+
+  def fromFile(file: File): Option[OfxFile] = {
     file.getName match {
       case Reg(dateStr) =>
         scala.util.control.Exception.nonFatalCatch[OfxFile].opt {
@@ -67,24 +79,11 @@ object OfxFile {
 object OfxDir {
 
   def listFiles(dir: File): List[OfxFile] = {
-    dir.listFiles.toList.collect {
-      case OfxFile(ofxFile) => ofxFile
-    }
+    dir.listFiles.toList.flatMap(OfxFile.fromFile)
   }
 }
 
 object OfxStmTrn {
-
-  // def streamOfxDir[F[_]](ofxDir: File)(implicit F: Effect[F]): Stream[F,List[OfxStmTrn]] = {
-  //   val sortedFiles = ofxDir.listFiles.collect {
-  //     case file@OfxFile(date) => file -> date
-  //   }.sortBy { case (_, date) => -date.toEpochDay }
-  //     .map(_._1)
-
-  //   Stream.emits(sortedFiles).flatMap { file =>
-  //     Stream.eval(load(file))
-  //   }
-  // }
 
   def load[F[_]](is: InputStream)(implicit F: Effect[F]): F[List[OfxStmTrn]] =
     F.pure {
@@ -98,7 +97,7 @@ object OfxStmTrn {
       ofxReader.setContentHandler(new DefaultHandler() {
 
         override def onElement(name: String, value: String) {
-          if (List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "NAME").exists(_ == name)) {
+          if (List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "FITID", "NAME").exists(_ == name)) {
             val updated = stack.pop() :+ value
             stack.push(updated)
           }
@@ -114,20 +113,24 @@ object OfxStmTrn {
       ofxReader.parse(is)
 
       stack.map {
-        case typStr :: postedStr :: userStr :: amountStr :: name :: Nil =>
+        case typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil =>
           val `type` = OfxStrTrnType(typStr)
           val posted = LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
           val user = LocalDate.parse(userStr, DateTimeFormatter.BASIC_ISO_DATE)
-          OfxStmTrn(`type`, posted, user, amountStr.toFloat, name)
+          OfxStmTrn(fitid, `type`, posted, user, amountStr.toFloat, name)
 
         case x =>
           sys.error(s"Unable to parse OfxStmTrn from $x")
       }.toList
     }
 
-  def load[F[_]: Effect](ofxFile: File): F[List[OfxStmTrn]] = {
-    val is = new FileInputStream(ofxFile)
+  def load[F[_]: Effect](file: File): F[List[OfxStmTrn]] = {
+    val is = new FileInputStream(file)
     load(is)
+  }
+
+  def load[F[_]: Effect](ofxFile: OfxFile): F[List[OfxStmTrn]] = {
+    load(ofxFile.file)
   }
 
   def load[F[_]: Effect](s: String): F[List[OfxStmTrn]] = {

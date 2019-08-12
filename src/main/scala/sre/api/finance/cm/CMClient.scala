@@ -1,4 +1,5 @@
 package sre.api.finance
+package cm
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -10,6 +11,7 @@ import org.http4s._
 import org.http4s.client._
 import org.slf4j.{ LoggerFactory, Logger }
 import sre.api.{ Settings, CMSettings }
+import ofx.OfxStmTrn
 
 case class CMClient[F[_]](
   httpClient: Client[F],
@@ -64,7 +66,11 @@ case class CMClient[F[_]](
 
   def fetchStatements(accountId: String, maybeStartDate: Option[LocalDate] = None, maybeEndDate: Option[LocalDate] = None): F[List[CMStatement]] = {
     exportAsCSV(accountId, maybeStartDate, maybeEndDate).map { csvRecords =>
-      csvRecords.map(_.toStatement)
+      csvRecords.zipWithIndex.map {
+        case (csvRecord, index) =>
+          val id = s"${accountId}${index}"
+          csvRecord.toStatement(id, accountId)
+      }
     }
   }
 
@@ -140,7 +146,7 @@ case class CMClient[F[_]](
             CMDownloadForm.parse(body) match {
               case Left(_) =>
                 val lines = body.split("\n").toList
-                F.pure { lines.tail.map(CMCsvLine.parseOrFail) }
+                F.pure { lines.tail.map(CMCsvRecord.parseOrFail) }
 
               case Right(form) =>
                 formCache.set(form).flatMap { _ =>

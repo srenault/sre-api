@@ -1,4 +1,4 @@
-package sre.api.finance
+package sre.api.finance.cm
 
 import cats.effect._
 import cats.implicits._

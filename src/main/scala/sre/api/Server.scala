@@ -6,7 +6,8 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.http4s.client.blaze._
 import transport.train.TrainClient
 import transport.subway.SubwayClient
-import finance.{ IComptaClient, CMClient }
+import finance.icompta.IComptaClient
+import finance.cm.CMClient
 import domoticz.DomoticzClient
 import weather.WeatherClient
 import utils.S3Client
@@ -26,8 +27,8 @@ object ServerStream {
   def subwayService[F[_]: Effect](subwayClient: SubwayClient[F], settings: Settings) =
     new SubwayService[F](subwayClient, settings).service
 
-  def financeService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CMClient[F], settings: Settings) =
-    new FinanceService[F](icomptaClient, cmClient, settings).service
+  def financeService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CMClient[F], dbClient: DBClient[F], settings: Settings) =
+    new FinanceService[F](icomptaClient, cmClient, dbClient, settings).service
 
   def energyService[F[_]: Effect](domoticzClient: DomoticzClient[F], settings: Settings) =
     new EnergyService[F](domoticzClient, settings).service
@@ -42,6 +43,7 @@ object ServerStream {
     Settings.load() match {
       case Right(settings) =>
         for {
+          dbClient <- DBClient.stream[F](settings)
           httpClient <- Http1Client.stream[F]()
           trainClient <- TrainClient.stream[F](httpClient, settings)
           subwayClient = SubwayClient[F](trainClient)
@@ -55,7 +57,7 @@ object ServerStream {
           R <- BlazeBuilder[F].bindHttp(settings.httpPort, "0.0.0.0")
                               .mountService(trainService(trainClient, settings), "/api/transport/train")
                               .mountService(subwayService(subwayClient, settings), "/api/transport/subway")
-                              .mountService(financeService(icomptaClient, cmClient, settings), "/api/finance")
+                              .mountService(financeService(icomptaClient, cmClient, dbClient, settings), "/api/finance")
                               .mountService(energyService(domoticzClient, settings), "/api/energy")
                               .mountService(weatherService(weatherClient, settings), "/api/weather")
                               .mountService(releasesService(releasesClient, settings), "/api/releases")
