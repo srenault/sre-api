@@ -51,7 +51,7 @@ lazy val root = (project in file("."))
       "com.amazonaws"             % "aws-java-sdk"            % AwsSdkVersion
     ),
     addCompilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.10"),
-    addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.0")
+    addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
   ).
   settings(
     mainClass in assembly := Some("sre.api.Server"),
