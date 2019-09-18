@@ -12,9 +12,9 @@ case class TrainSettings(endpoint: Uri)
 
 case class TransportSettings(train: TrainSettings)
 
-case class IComptaCategorySettings(label: String, path: List[String], threshold: Int)
+case class IComptaCategorySettings(label: String, rulePath: List[String], threshold: Int)
 
-case class IComptaSettings(db: String, wageCategory: String)
+case class IComptaSettings(db: String, wageRuleId: String)
 
 case class CMTasksSettings(balances: CronExpr, expenses: CronExpr)
 
@@ -29,7 +29,7 @@ case class CMCachesSettings(
 
 case class CMAccountSettings(
   id: String,
-  `type`: finance.CMAccountType,
+  `type`: finance.cm.CMAccountType,
   label: String,
   categories: Map[String, IComptaCategorySettings]
 )
@@ -48,7 +48,7 @@ case class CMSettings(
   def downloadUri: Uri = baseUri.withPath(downloadPath)
 }
 
-case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings)
+case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transactionsDir: File)
 
 case class DomoticzDeviceSettings(idx: Int)
 
@@ -136,17 +136,17 @@ object Settings {
       }
   }
 
-  implicit val CMAccountTypeDecoder: Decoder[finance.CMAccountType] = new Decoder[finance.CMAccountType] {
-    final def apply(c: HCursor): Decoder.Result[finance.CMAccountType] =
+  implicit val CMAccountTypeDecoder: Decoder[finance.cm.CMAccountType] = new Decoder[finance.cm.CMAccountType] {
+    final def apply(c: HCursor): Decoder.Result[finance.cm.CMAccountType] =
       c.as[String].right.flatMap {
-        case id if id == finance.CMAccountType.Saving.id =>
-          Right(finance.CMAccountType.Saving)
+        case id if id == finance.cm.CMAccountType.Saving.id =>
+          Right(finance.cm.CMAccountType.Saving)
 
-        case id if id == finance.CMAccountType.Current.id =>
-          Right(finance.CMAccountType.Current)
+        case id if id == finance.cm.CMAccountType.Current.id =>
+          Right(finance.cm.CMAccountType.Current)
 
-        case id if id == finance.CMAccountType.Joint.id =>
-          Right(finance.CMAccountType.Joint)
+        case id if id == finance.cm.CMAccountType.Joint.id =>
+          Right(finance.cm.CMAccountType.Joint)
 
         case id =>
           Left(DecodingFailure(s"Can't parse $id as CMAccountType", c.history))

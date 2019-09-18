@@ -1,4 +1,5 @@
 package sre.api.finance
+package cm
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -9,7 +10,7 @@ import scalacache.guava._
 import scalacache.CatsEffect.modes._
 import com.google.common.cache.CacheBuilder
 import sre.api.CMCacheSettings
-
+import ofx.OfxStmTrn
 
 case class CMBalancesCache(settings: CMCacheSettings) {
 

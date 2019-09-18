@@ -8,7 +8,7 @@ import cats.data.{ Validated, ValidatedNel }
 import cats.data.Validated.{ Invalid, Valid }
 import org.http4s._
 import org.http4s.dsl.Http4sDsl
-import finance._
+import finance.cm.{ CMClient, CMAccount }
 
 trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
 
