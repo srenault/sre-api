@@ -1,5 +1,6 @@
 package sre.api.finance.cm
 
+import cats.data.{ EitherT, NonEmptyList }
 import cats.effect._
 import cats.implicits._
 import cats.effect.concurrent.{ Ref, Deferred }
@@ -10,7 +11,7 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.slf4j.Logger
 import sre.api.CMSettings
 
-trait CMClientDsl[F[_]] extends Http4sClientDsl[F] {
+trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
   val logger: Logger
 
@@ -18,84 +19,165 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] {
 
   def settings: CMSettings
 
-  def sessionRef: Ref[F, Option[Deferred[F, CMSession]]]
+  def basicAuthSessionRef: Ref[F, Option[Deferred[F, CMBasicAuthSession]]]
 
-  def login()(implicit F: ConcurrentEffect[F]): F[CMSession] = {
-    logger.info("Authenticating...")
+  def otpSessionRef: Ref[F, Option[Deferred[F, CMOtpSession]]]
+
+  protected def doBasicAuth()(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
 
     val body = UrlForm(
       "_cm_user" -> settings.username,
       "_cm_pwd" -> settings.password,
+      "_charset_" -> "windows-1252",
       "flag" -> "password"
     )
 
-    val request = POST(body, settings.authenticationUri)
-
-    httpClient.fetch(request) { response =>
-      val cookie = response.cookies.find(_.name == "IdSes") getOrElse sys.error("Unable to get cm session")
-      val location = response.headers.get(headers.Location) getOrElse sys.error("Unable to get login")
-      val redirectUri = GET(location.uri, CMSession(cookie).toRequestCookie)
-
-      httpClient.fetch(redirectUri) { response =>
-        logger.info(s"Authentication OK")
-        F.pure(CMSession(cookie))
+    for {
+      maybeValidOtpSession <- getOtpSession().map {
+        case Some(otpSession: CMValidOtpSession) => Some(otpSession)
+        case _ => None
       }
+
+      maybeAuthClientStateCookie = maybeValidOtpSession.map(otpSession => headers.Cookie(otpSession.authClientStateCookie))
+
+      basicAuthSession <- {
+        val authenticationRequest = POST(body, settings.authenticationUri, maybeAuthClientStateCookie.toList:_*)
+        httpClient.fetch(authenticationRequest) { response =>
+          val (maybeIdSesCookie, otherCookies) = response.cookies.partition(_.name == CMBasicAuthSession.IDSES_COOKIE)
+          val idSesCookie = maybeIdSesCookie.headOption.getOrElse(sys.error("Unable to get cm basic auth session"))
+          val cmBasicAuthSession = CMBasicAuthSession.create(idSesCookie, otherCookies)
+          F.pure(cmBasicAuthSession)
+        }
+      }
+
+      hasExpiredOtpSession <- maybeValidOtpSession match {
+        case Some(validOtpSession) =>
+          isOtpSessionExpired(basicAuthSession, validOtpSession)
+
+        case None => F.pure(true)
+      }
+
+      _ <- maybeValidOtpSession match {
+        case Some(validOtpSession) if !hasExpiredOtpSession =>
+          validateBasicAuthSession(basicAuthSession, validOtpSession)
+
+        case _ =>
+          F.pure(Unit)
+      }
+
+    } yield basicAuthSession
+  }
+
+  protected def validateBasicAuthSession(basicAuthSession: CMBasicAuthSession, validOtpSession: CMValidOtpSession)(implicit F: ConcurrentEffect[F]): F[Unit] = {
+    val cookieHeader = headers.Cookie(NonEmptyList(basicAuthSession.idSesCookie, validOtpSession.authClientStateCookie :: Nil))
+
+    for {
+      engineRequest <- GET(settings.engineUri, cookieHeader).map(_.putHeaders(cookieHeader))
+      _ <- httpClient.fetch(engineRequest)(_.as[Unit])
+
+      homeDispatchRequest <- GET(settings.homeDispatcherUri, cookieHeader).map(_.putHeaders(cookieHeader))
+      _ <- httpClient.fetch(homeDispatchRequest)(_.as[Unit])
+    } yield ()
+  }
+
+  private def refreshBasicAuthSession()(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
+    logger.info("Requesting cm basic auth session...")
+    for {
+      d <- Deferred[F, CMBasicAuthSession]
+      _ <- basicAuthSessionRef.set(Some(d))
+      basicAuthSession <- doBasicAuth()
+      _ <- d.complete(basicAuthSession)
+    } yield {
+      logger.info("Got a new cm basic auth session")
+      basicAuthSession
     }
   }
 
-  def refreshSession()(implicit F: ConcurrentEffect[F]): F[CMSession] = {
-    logger.info("Refreshing session...")
+  protected def getOrCreateBasicAuthSession()(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
     for {
-      d <- Deferred[F, CMSession]
-      _ <- sessionRef.set(Some(d))
-      session <- login()
-      _ <- d.complete(session)
-    } yield session
+      maybeBasicAuthSession <- basicAuthSessionRef.get
+      basicAuthSession <- maybeBasicAuthSession match {
+        case Some(deferredBasicAuthSession) => deferredBasicAuthSession.get
+        case None => refreshBasicAuthSession()
+      }
+    } yield basicAuthSession
   }
 
-  def authenticatedFetch[A](request: Request[F], retries: Int = 1)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F]): F[A] = {
+  private def refreshSession()(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, CMSession] = {
+    for {
+      basicAuthSession <- EitherT.liftF(refreshBasicAuthSession())
+
+      currentOtpSession <- EitherT(getOrRequestOtpSession().map {
+        case otpSession: CMValidOtpSession => Right(otpSession)
+        case otpSession: CMPendingOtpSession => Left(otpSession.toOtpRequest)
+      })
+
+      otpExpired <- EitherT.liftF(isOtpSessionExpired(basicAuthSession, currentOtpSession))
+
+      otpSession <- (
+        if (otpExpired) {
+          EitherT.liftF[F, CMOtpRequest, CMPendingOtpSession](requestOtpSession())
+        }  else EitherT.liftF[F, CMOtpRequest, CMOtpSession](F.pure(currentOtpSession))
+      ).widen[CMOtpSession]
+
+    } yield CMSession(basicAuthSession, otpSession)
+  }
+
+  private def getSession()(implicit F: ConcurrentEffect[F], timer: Timer[F]): F[CMSession] = {
+    for {
+      basicAuthSession <- getOrCreateBasicAuthSession()
+      otpSession <- getOrRequestOtpSession()
+    } yield CMSession(basicAuthSession, otpSession)
+  }
+
+  private def authenticatedFetch[A](request: Request[F], retries: Int = 1)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
     logger.info(s"Performing request ${request.uri} with retries = $retries")
-    withSession { session =>
-      httpClient.fetch(request.putHeaders(session.toRequestCookie)) { response =>
-        val isUnauthorized = response.headers.get(headers.Location).exists { location =>
-          location.value == settings.authenticationUri.toString
+
+    EitherT.liftF(getSession()).flatMap {
+      case CMSession(session, otpSession: CMPendingOtpSession) =>
+        EitherT.left(F.pure(otpSession.toOtpRequest))
+
+      case CMSession(session, otpSession: CMValidOtpSession) =>
+        val authenticatedRequest = {
+          val cookieHeader = headers.Cookie(session.idSesCookie)
+          request.putHeaders(cookieHeader)
         }
 
-        if (isUnauthorized && retries > 0) {
-          refreshSession().flatMap { session =>
-            authenticatedFetch(request, retries - 1)(f)
+        EitherT(httpClient.fetch(authenticatedRequest) { response =>
+          val hasExpiredBasicAuthSession = response.headers.get(headers.Location).exists { location =>
+            location.value == settings.authenticationUri.toString
           }
-        } else if (isUnauthorized) {
-          sys.error("Unable to refresh cm session")
-        } else if (response.status == Status.Ok){
-          logger.info(s"Request ${request.uri} OK")
-          f(response)
-        } else {
-          sys.error(s"An error occured while performing $request\n:$response")
-        }
-      }
+
+          val hasExpiredOtpSession = response.headers.get(headers.Location).exists { location =>
+            location.value == settings.validationPath.toString
+          }
+
+          if (hasExpiredBasicAuthSession && retries > 0) {
+            refreshSession().value.flatMap { _ =>
+              authenticatedFetch(request, retries - 1)(f).value
+            }
+          } else if (hasExpiredBasicAuthSession) {
+            sys.error("Unable to refresh cm session")
+          } else if (hasExpiredOtpSession) {
+            requestOtpSession().map(otpSession => Left(otpSession.toOtpRequest))
+          } else if (response.status == Status.Ok){
+            logger.info(s"Request ${request.uri} OK")
+            f(response).map(result => Right(result))
+          } else {
+            sys.error(s"An error occured while performing $authenticatedRequest\n:$response")
+          }
+        })
     }
   }
 
-  def withSession[A](f: CMSession => F[A])(implicit F: ConcurrentEffect[F]): F[A] = {
-    for {
-      maybeSession <- sessionRef.get
-      session <- maybeSession match {
-        case Some(deferredSession) => deferredSession.get
-        case None => refreshSession()
-      }
-      res <- f(session)
-    } yield res
-  }
-
-  def doAuthenticatedGET[A](uri: Uri)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F]): F[A] = {
-    GET(uri).flatMap { request =>
+  def doAuthenticatedGET[A](uri: Uri)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
+    EitherT.liftF(GET(uri)).flatMap { request =>
       authenticatedFetch(request)(f)
     }
   }
 
-  def doAuthenticatedPOST[A](uri: Uri, data: UrlForm)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F]): F[A] = {
-    POST(data, uri).flatMap { request =>
+  def doAuthenticatedPOST[A](uri: Uri, data: UrlForm)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
+    EitherT.liftF(POST(data, uri)).flatMap { request =>
       authenticatedFetch(request)(f)
     }
   }

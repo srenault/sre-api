@@ -178,7 +178,7 @@ case class AnalyticsIndex[F[_]](
           }
         }
 
-        val sortedOfxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)//.filter(f => List("2019-05-01.ofx", "2019-04-01.ofx").exists(f.name == _))
+        val sortedOfxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)//.filter(f => List("2019-09-05.ofx", "2019-08-02.ofx").exists(f.name == _))
 
         step(sortedOfxFiles, accSegments = Nil, accPeriods = Nil)
 

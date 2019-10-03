@@ -2,6 +2,7 @@ package sre.api
 
 import java.io.File
 import scala.concurrent.duration.FiniteDuration
+import cats.effect._
 import org.http4s.Uri
 import io.circe._
 import io.circe.generic.auto._
@@ -37,15 +38,27 @@ case class CMAccountSettings(
 case class CMSettings(
   baseUri: Uri,
   authenticationPath: String,
+  validationPath: String,
+  homePath: String,
   downloadPath: String,
+  transactionPath: String,
+  enginePath: String,
+  homeDispatcherPath: String,
   username: String,
   password: String,
   accounts: List[CMAccountSettings],
   tasks: CMTasksSettings,
-  cache: CMCachesSettings
+  cache: CMCachesSettings,
+  otpSession: String
 ) {
-  def authenticationUri: Uri = baseUri.withPath(authenticationPath)
-  def downloadUri: Uri = baseUri.withPath(downloadPath)
+  val authenticationUri: Uri = baseUri.withPath(authenticationPath)
+  val validationUri: Uri = baseUri.withPath(validationPath)
+  val homeUri: Uri = baseUri.withPath(homePath)
+  val downloadUri: Uri = baseUri.withPath(downloadPath)
+  val transactionUri: Uri = baseUri.withPath(transactionPath)
+  val engineUri: Uri = baseUri.withPath(enginePath)
+  val homeDispatcherUri: Uri = baseUri.withPath(homeDispatcherPath)
+  def otpSessionFile[F[_]: Sync] = finance.cm.CMOtpSessionFile(otpSession)
 }
 
 case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transactionsDir: File)
