@@ -4,6 +4,7 @@ import cats.effect._
 import cats.implicits._
 import org.http4s.server.blaze.BlazeBuilder
 import org.http4s.client.blaze._
+import org.http4s.client.middleware.RequestLogger
 import transport.train.TrainClient
 import transport.subway.SubwayClient
 import finance.icompta.IComptaClient
@@ -27,7 +28,7 @@ object ServerStream {
   def subwayService[F[_]: Effect](subwayClient: SubwayClient[F], settings: Settings) =
     new SubwayService[F](subwayClient, settings).service
 
-  def financeService[F[_]: Effect](icomptaClient: IComptaClient[F], cmClient: CMClient[F], dbClient: DBClient[F], settings: Settings) =
+  def financeService[F[_]: ConcurrentEffect : Timer](icomptaClient: IComptaClient[F], cmClient: CMClient[F], dbClient: DBClient[F], settings: Settings) =
     new FinanceService[F](icomptaClient, cmClient, dbClient, settings).service
 
   def energyService[F[_]: Effect](domoticzClient: DomoticzClient[F], settings: Settings) =
@@ -39,12 +40,12 @@ object ServerStream {
   def releasesService[F[_]: Effect](releasesClient: ReleasesClient[F], settings: Settings) =
     new ReleasesService[F](releasesClient, settings).service
 
-  def stream[F[_]: ConcurrentEffect](implicit timer: Timer[F], cs: ContextShift[F]) = {
+  def stream[F[_] : Timer : ContextShift : ConcurrentEffect] = {
     Settings.load() match {
       case Right(settings) =>
         for {
           dbClient <- DBClient.stream[F](settings)
-          httpClient <- Http1Client.stream[F]()
+          httpClient <- Http1Client.stream[F]().map(RequestLogger(true, true))
           trainClient <- TrainClient.stream[F](httpClient, settings)
           subwayClient = SubwayClient[F](trainClient)
           icomptaClient <- IComptaClient.stream[F](settings)

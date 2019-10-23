@@ -4,6 +4,7 @@ package cm
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import cats.effect._
+import cats.data.EitherT
 import cats.implicits._
 import scalacache._
 import scalacache.guava._
@@ -33,8 +34,10 @@ case class CMDownloadFormCache(settings: CMCacheSettings) {
     GuavaCache(underlying)
   }
 
-  def cached[F[_]: ConcurrentEffect](f: => F[CMDownloadForm]): F[CMDownloadForm] = {
-    cache.cachingF(KEY)(ttl = Some(settings.ttl))(f)
+  def cached[F[_]](f: => EitherT[F, CMOtpRequest, CMDownloadForm])(implicit F: ConcurrentEffect[F]): EitherT[F, CMOtpRequest, CMDownloadForm] = {
+    f.semiflatMap { form =>
+      cache.caching(KEY)(ttl = Some(settings.ttl))(form)
+    }
   }
 
   def set[F[_]: ConcurrentEffect](form: CMDownloadForm): F[Unit] = {
@@ -54,8 +57,10 @@ case class CMOfxExportCache(settings: CMCacheSettings) {
   private def key(accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate]): String =
     List(Some(accountId), startDate.map(_.format(dateFormat)), endDate.map(_.format(dateFormat))).flatten.mkString("#")
 
-  def cached[F[_]: ConcurrentEffect](accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate])(f: => F[List[OfxStmTrn]]): F[List[OfxStmTrn]] = {
-    cache.cachingF(key(accountId, startDate, endDate))(ttl = Some(settings.ttl))(f)
+  def cached[F[_]: ConcurrentEffect](accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate])(f: => EitherT[F, CMOtpRequest, List[OfxStmTrn]]): EitherT[F, CMOtpRequest, List[OfxStmTrn]] = {
+    f.semiflatMap { statements =>
+      cache.caching(key(accountId, startDate, endDate))(ttl = Some(settings.ttl))(statements)
+    }
   }
 }
 
@@ -71,7 +76,9 @@ case class CMCsvExportCache(settings: CMCacheSettings) {
   private def key(accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate]): String =
     List(Some(accountId), startDate.map(_.format(dateFormat)), endDate.map(_.format(dateFormat))).flatten.mkString("#")
 
-  def cached[F[_]: ConcurrentEffect](accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate])(f: => F[List[CMCsvRecord]]): F[List[CMCsvRecord]] = {
-    cache.cachingF(key(accountId, startDate, endDate))(ttl = Some(settings.ttl))(f)
+  def cached[F[_]: ConcurrentEffect](accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate])(f: => EitherT[F, CMOtpRequest, List[CMCsvRecord]]): EitherT[F, CMOtpRequest, List[CMCsvRecord]] = {
+    f.semiflatMap { statements =>
+      cache.caching(key(accountId, startDate, endDate))(ttl = Some(settings.ttl))(statements)
+    }
   }
 }

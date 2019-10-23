@@ -10,7 +10,7 @@ import finance.icompta.IComptaClient
 import finance.cm.CMClient
 import finance.analytics.{ AnalyticsClient, Period }
 
-case class FinanceService[F[_]: Effect](
+case class FinanceService[F[_]: ConcurrentEffect : Timer](
   icomptaClient: IComptaClient[F],
   cmClient: CMClient[F],
   dbClient: DBClient[F],
@@ -22,23 +22,26 @@ case class FinanceService[F[_]: Effect](
   val service: HttpService[F] = CorsMiddleware {
     HttpService[F] {
 
+      case GET -> Root / "otp" / transactionId / "status" =>
+        cmClient.checkOtpStatus(transactionId).flatMap { otpStatus =>
+          Ok(otpStatus)
+        }
+
       case GET -> Root / "accounts" =>
+        WithAccounts() { accounts =>
+          for {
+            maybePeriod: Option[Period] <- analyticsClient.computeCurrentPeriod(accounts)
 
-        for {
+            res <- maybePeriod match {
+              case Some(period) =>
+                Ok(json"""{ "period": $period, "accounts": $accounts }""")
 
-          accounts <- cmClient.fetchAccounts()
+              case None =>
+                NotFound()
+            }
 
-          maybePeriod: Option[Period] <- analyticsClient.computeCurrentPeriod(accounts)
-
-          res <- maybePeriod match {
-            case Some(period) =>
-              Ok(json"""{ "period": $period, "accounts": $accounts }""")
-
-            case None =>
-              NotFound()
-          }
-
-        } yield res
+          } yield res
+        }
 
       case GET -> Root / "accounts" / AccountIdVar(accountId) :? DateQueryParamMatcher(maybeValidatedDate) =>
         WithAccount(accountId) { account =>

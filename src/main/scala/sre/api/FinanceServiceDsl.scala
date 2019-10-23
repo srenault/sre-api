@@ -3,6 +3,7 @@ package sre.api
 import java.time.LocalDate
 import java.time.format.DateTimeFormatterBuilder
 import cats._
+import cats.effect._
 import cats.implicits._
 import cats.data.{ Validated, ValidatedNel }
 import cats.data.Validated.{ Invalid, Valid }
@@ -43,10 +44,18 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithAccount(accountId: String)(f: CMAccount => F[Response[F]])(implicit F: Monad[F]): F[Response[F]] = {
-    cmClient.fetchAccount(accountId).flatMap {
-      case Some(account) => f(account)
-      case None => NotFound()
+  def WithAccounts()(f: List[CMAccount] => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
+    cmClient.fetchAccounts().value.flatMap {
+      case Right(accounts) => f(accounts)
+      case Left(otpRequest) => Response[F](Unauthorized).withEntity(otpRequest).pure[F]
+    }
+  }
+
+  def WithAccount(accountId: String)(f: CMAccount => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
+    cmClient.fetchAccount(accountId).value.flatMap {
+      case Right(Some(account)) => f(account)
+      case Right(None) => NotFound()
+      case Left(otpRequest) => Response[F](Unauthorized).withEntity(otpRequest).pure[F]
     }
   }
 }
