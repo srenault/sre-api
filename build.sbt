@@ -1,16 +1,16 @@
 val projectName = "sre-api"
 
 
-val Http4sVersion = "0.20.10"
+val Http4sVersion = "0.20.11"
 val Specs2Version = "4.7.1"
 val LogbackVersion = "1.2.3"
-val CirceVersion = "0.11.1"
+val CirceVersion = "0.12.3"
 val CirceConfigVersion = "0.6.1"
-val AnormVersion = "2.6.4"
+val AnormVersion = "2.6.5"
 val SqliteJdbcVersion = "3.28.0"
 val Ofx4jVersion = "1.17"
 val JsoupVersion = "1.12.1"
-val CronVersion =  "0.1.0"
+val CronVersion =  "0.2.2"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
 val AwsSdkVersion = "1.11.615"
@@ -35,6 +35,7 @@ lazy val root = (project in file("."))
       "org.http4s"                %% "http4s-blaze-server"    % Http4sVersion,
       "org.http4s"                %% "http4s-blaze-client"    % Http4sVersion,
       "org.http4s"                %% "http4s-circe"           % Http4sVersion,
+      "org.http4s"                %% "http4s-scala-xml"       % Http4sVersion,
       "org.specs2"                %% "specs2-core"            % Specs2Version % "test",
       "ch.qos.logback"            %  "logback-classic"        % LogbackVersion,
       "io.circe"                  %% "circe-parser"           % CirceVersion,

@@ -1,4 +1,7 @@
 package sre.api.finance
+package icompta
+
+import cm.CMStatement
 
 sealed trait Rule {
   def name: String

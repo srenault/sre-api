@@ -1,12 +1,11 @@
 package sre.api.finance
+package ofx
 
 import cats.effect._
-import cats.data.OptionT
-import cats.implicits._
-import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
-import java.time.temporal.ChronoField
+import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.io.{ File, InputStream, ByteArrayInputStream, FileInputStream }
+import cm.CMStatement
 
 sealed trait OfxStrTrnType {
   def value: String
@@ -34,52 +33,57 @@ object OfxStrTrnType {
 }
 
 case class OfxStmTrn(
+  fitid: String,
   `type`: OfxStrTrnType,
   posted: LocalDate,
   user: LocalDate,
   amount: Float,
   name: String
-)
+) {
+  def toStatement(accountId: String): CMStatement = {
+    CMStatement(fitid, accountId, posted, amount, name, None)
+  }
+
+  def toStatement(ofxFile: OfxFile): CMStatement = {
+    CMStatement(fitid, ofxFile.file.getParentFile.getName, posted, amount, name, None)
+  }
+}
+
+case class OfxFile(file: File, date: LocalDate) {
+  lazy val name = file.getName
+}
+
+object OfxFile {
+  val Reg = """(.+)?\.ofx""".r
+
+  val format = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+  def open(path: String): Option[OfxFile] = {
+    val file = new File(path)
+    fromFile(file)
+  }
+
+  def fromFile(file: File): Option[OfxFile] = {
+    file.getName match {
+      case Reg(dateStr) =>
+        scala.util.control.Exception.nonFatalCatch[OfxFile].opt {
+          val date = LocalDate.parse(dateStr, format)
+          OfxFile(file, date)
+        }
+
+      case _ => None
+    }
+  }
+}
+
+object OfxDir {
+
+  def listFiles(dir: File): List[OfxFile] = {
+    dir.listFiles.toList.flatMap(OfxFile.fromFile)
+  }
+}
 
 object OfxStmTrn {
-
-  object OfxFile {
-    val Reg = """(.+)?\.ofx""".r
-
-    val format = new DateTimeFormatterBuilder()
-      .appendPattern("yyyy-MM")
-      .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
-      .toFormatter();
-
-    def unapply(file: File): Option[LocalDate] = {
-      file.getName match {
-        case Reg(dateStr) =>
-          scala.util.control.Exception.nonFatalCatch[LocalDate].opt {
-            LocalDate.parse(dateStr, format)
-          }
-
-        case _ => None
-      }
-    }
-  }
-
-  def load[F[_]: Effect](ofxDirectory: File, date: LocalDate): OptionT[F, List[OfxStmTrn]] = {
-    val maybeOfxFile = ofxDirectory.listFiles.find {
-        case file@OfxFile(d) => d == date
-    }
-
-    maybeOfxFile match {
-      case Some(ofxFile) =>
-        val is = new FileInputStream(ofxFile)
-        OptionT.liftF(load(is))
-      case None => OptionT.none
-    }
-  }
-
-  def load[F[_]: Effect](s: String): F[List[OfxStmTrn]] = {
-    val is: InputStream = new ByteArrayInputStream(s.getBytes())
-    load(is)
-  }
 
   def load[F[_]](is: InputStream)(implicit F: Effect[F]): F[List[OfxStmTrn]] =
     F.pure {
@@ -93,7 +97,7 @@ object OfxStmTrn {
       ofxReader.setContentHandler(new DefaultHandler() {
 
         override def onElement(name: String, value: String) {
-          if (List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "NAME").exists(_ == name)) {
+          if (List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "FITID", "NAME").exists(_ == name)) {
             val updated = stack.pop() :+ value
             stack.push(updated)
           }
@@ -109,14 +113,28 @@ object OfxStmTrn {
       ofxReader.parse(is)
 
       stack.map {
-        case typStr :: postedStr :: userStr :: amountStr :: name :: Nil =>
+        case typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil =>
           val `type` = OfxStrTrnType(typStr)
           val posted = LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
           val user = LocalDate.parse(userStr, DateTimeFormatter.BASIC_ISO_DATE)
-          OfxStmTrn(`type`, posted, user, amountStr.toFloat, name)
+          OfxStmTrn(fitid, `type`, posted, user, amountStr.toFloat, name)
 
         case x =>
           sys.error(s"Unable to parse OfxStmTrn from $x")
       }.toList
     }
+
+  def load[F[_]: Effect](file: File): F[List[OfxStmTrn]] = {
+    val is = new FileInputStream(file)
+    load(is)
+  }
+
+  def load[F[_]: Effect](ofxFile: OfxFile): F[List[OfxStmTrn]] = {
+    load(ofxFile.file)
+  }
+
+  def load[F[_]: Effect](s: String): F[List[OfxStmTrn]] = {
+    val is: InputStream = new ByteArrayInputStream(s.getBytes())
+    load(is)
+  }
 }
