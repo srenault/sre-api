@@ -156,14 +156,17 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     val polling = Stream.awakeEvery[F](2.second)
       .zipRight(Stream.eval(f).repeat)
       .interruptWhen(otpPollingInterrupter)
-      .interruptAfter(20.seconds)
+      .interruptAfter(2.minutes)
+      .onFinalize(F.defer(resetOtpSession()))
 
-    F.start(polling.compile.drain *> cancelOtpValidation())
+    F.start(polling.compile.drain)
   }
 
-  private def cancelOtpValidation()(implicit F: Effect[F]): F[Unit] = {
-    otpSessionRef.set(None) *> otpPollingInterrupter.set(false)
-  }
+  private def resetOtpSession()(implicit F: Effect[F]): F[Unit] =
+    F.defer {
+      logger.info(s"Pending OTP session has been reset.")
+      otpSessionFile.delete() *> otpSessionRef.set(None) *> otpPollingInterrupter.set(false)
+    }
 
   protected def isOtpSessionExpired(basicAuthSession: CMBasicAuthSession, otpSession: CMValidOtpSession)(implicit F: ConcurrentEffect[F]): F[Boolean] = {
     val cookieHeader = headers.Cookie(basicAuthSession.idSesCookie, otpSession.authClientStateCookie)
@@ -180,8 +183,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
   protected def requestOtpSession()(implicit F: ConcurrentEffect[F], timer: Timer[F]): F[CMPendingOtpSession] = {
     logger.info(s"Requesting new cm OTP session ...")
     for {
-      _ <- otpPollingInterrupter.set(false)
-      _ <- otpSessionFile.delete()
+      _ <- resetOtpSession()
       d <- Deferred[F, CMOtpSession]
       _ <- otpSessionRef.set(Some(d))
       basicAuthSession <- getOrCreateBasicAuthSession()
