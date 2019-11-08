@@ -4,6 +4,7 @@ package cm
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import fs2.Stream
+import cats.Parallel
 import cats.data.EitherT
 import cats.implicits._
 import cats.effect._
@@ -27,7 +28,7 @@ case class CMClient[F[_]](
   ofxCache: CMOfxExportCache,
   csvCache: CMCsvExportCache,
   logger: Logger
-)(implicit F: ConcurrentEffect[F], timer: Timer[F]) extends CMClientDsl[F] {
+)(implicit F: ConcurrentEffect[F], timer: Timer[F], parallel: Parallel[F]) extends CMClientDsl[F] {
 
   private val FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
@@ -65,7 +66,9 @@ case class CMClient[F[_]](
 
   def fetchAccounts(): EitherT[F, CMOtpRequest, List[CMAccount]] = {
     fetchDownloadForm().flatMap { downloadForm =>
-      downloadForm.inputs.map(fetchAccountByInput).sequence
+      downloadForm.inputs.grouped(4).toList.map { group =>
+        EitherT(group.map(fetchAccountByInput(_).value).parSequence.map(_.sequence))
+      }.sequence.map(_.flatten)
     }
   }
 
@@ -169,7 +172,7 @@ case class CMClient[F[_]](
 
 object CMClient {
 
-  def stream[F[_]](httpClient: Client[F], settings: Settings)(implicit F: ConcurrentEffect[F], timer: Timer[F]): Stream[F, CMClient[F]] = {
+  def stream[F[_]: ConcurrentEffect : Timer : Parallel](httpClient: Client[F], settings: Settings): Stream[F, CMClient[F]] = {
     val logger = LoggerFactory.getLogger("sre.api.finance.CmClient")
 
     val otpSessionFile = settings.finance.cm.otpSessionFile

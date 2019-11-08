@@ -1,5 +1,6 @@
 package sre.api
 
+import cats.Parallel
 import cats.effect._
 import cats.implicits._
 import org.http4s.server.blaze.BlazeBuilder
@@ -40,7 +41,7 @@ object ServerStream {
   def releasesService[F[_]: Effect](releasesClient: ReleasesClient[F], settings: Settings) =
     new ReleasesService[F](releasesClient, settings).service
 
-  def stream[F[_] : Timer : ContextShift : ConcurrentEffect] = {
+  def stream[F[_] : Timer : ContextShift : ConcurrentEffect : Parallel] = {
     Settings.load() match {
       case Right(settings) =>
         for {
