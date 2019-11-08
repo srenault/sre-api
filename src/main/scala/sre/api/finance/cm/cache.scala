@@ -34,9 +34,15 @@ case class CMDownloadFormCache(settings: CMCacheSettings) {
     GuavaCache(underlying)
   }
 
-  def cached[F[_]](f: => EitherT[F, CMOtpRequest, CMDownloadForm])(implicit F: ConcurrentEffect[F]): EitherT[F, CMOtpRequest, CMDownloadForm] = {
-    f.semiflatMap { form =>
-      cache.caching(KEY)(ttl = Some(settings.ttl))(form)
+  def cached[F[_]](f: EitherT[F, CMOtpRequest, CMDownloadForm])(implicit F: ConcurrentEffect[F]): EitherT[F, CMOtpRequest, CMDownloadForm] = {
+    EitherT.liftT(cache.get(KEY)).flatMap {
+      case Some(downloadForm) =>
+        EitherT.right(F.pure(downloadForm))
+
+      case None =>
+        f.semiflatMap { downloadForm =>
+          cache.caching(KEY)(ttl = Some(settings.ttl))(downloadForm)
+        }
     }
   }
 
@@ -54,12 +60,23 @@ case class CMOfxExportCache(settings: CMCacheSettings) {
     GuavaCache(underlying)
   }
 
-  private def key(accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate]): String =
+  private def computeKey(accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate]): String =
     List(Some(accountId), startDate.map(_.format(dateFormat)), endDate.map(_.format(dateFormat))).flatten.mkString("#")
 
-  def cached[F[_]: ConcurrentEffect](accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate])(f: => EitherT[F, CMOtpRequest, List[OfxStmTrn]]): EitherT[F, CMOtpRequest, List[OfxStmTrn]] = {
-    f.semiflatMap { statements =>
-      cache.caching(key(accountId, startDate, endDate))(ttl = Some(settings.ttl))(statements)
+  def cached[F[_]](
+    accountId: String,
+    startDate: Option[LocalDate],
+    endDate: Option[LocalDate]
+  )(f: EitherT[F, CMOtpRequest, List[OfxStmTrn]])(implicit F: ConcurrentEffect[F]): EitherT[F, CMOtpRequest, List[OfxStmTrn]] = {
+    val key = computeKey(accountId, startDate, endDate)
+    EitherT.liftT(cache.get(key)).flatMap {
+      case Some(statements) =>
+        EitherT.right(F.pure(statements))
+
+      case None =>
+        f.semiflatMap { statements =>
+          cache.caching(key)(ttl = Some(settings.ttl))(statements)
+        }
     }
   }
 }
@@ -73,12 +90,23 @@ case class CMCsvExportCache(settings: CMCacheSettings) {
     GuavaCache(underlying)
   }
 
-  private def key(accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate]): String =
+  private def computeKey(accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate]): String =
     List(Some(accountId), startDate.map(_.format(dateFormat)), endDate.map(_.format(dateFormat))).flatten.mkString("#")
 
-  def cached[F[_]: ConcurrentEffect](accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate])(f: => EitherT[F, CMOtpRequest, List[CMCsvRecord]]): EitherT[F, CMOtpRequest, List[CMCsvRecord]] = {
-    f.semiflatMap { statements =>
-      cache.caching(key(accountId, startDate, endDate))(ttl = Some(settings.ttl))(statements)
+  def cached[F[_]](
+    accountId: String,
+    startDate: Option[LocalDate],
+    endDate: Option[LocalDate]
+  )(f: EitherT[F, CMOtpRequest, List[CMCsvRecord]])(implicit F: ConcurrentEffect[F]): EitherT[F, CMOtpRequest, List[CMCsvRecord]] = {
+    val key = computeKey(accountId, startDate, endDate)
+    EitherT.liftT(cache.get(key)).flatMap {
+      case Some(statements) =>
+        EitherT.right(F.pure(statements))
+
+      case None =>
+        f.semiflatMap { statements =>
+          cache.caching(key)(ttl = Some(settings.ttl))(statements)
+        }
     }
   }
 }
