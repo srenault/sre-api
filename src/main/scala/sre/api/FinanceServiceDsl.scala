@@ -7,7 +7,9 @@ import cats.effect._
 import cats.implicits._
 import cats.data.{ Validated, ValidatedNel }
 import cats.data.Validated.{ Invalid, Valid }
+import io.circe.literal._
 import org.http4s._
+import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import finance.cm.{ CMClient, CMAccount }
 
@@ -47,7 +49,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
   def WithAccounts()(f: List[CMAccount] => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
     cmClient.fetchAccounts().value.flatMap {
       case Right(accounts) => f(accounts)
-      case Left(otpRequest) => Response[F](Unauthorized).withEntity(otpRequest).pure[F]
+      case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
     }
   }
 
@@ -55,7 +57,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     cmClient.fetchAccount(accountId).value.flatMap {
       case Right(Some(account)) => f(account)
       case Right(None) => NotFound()
-      case Left(otpRequest) => Response[F](Unauthorized).withEntity(otpRequest).pure[F]
+      case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
     }
   }
 }

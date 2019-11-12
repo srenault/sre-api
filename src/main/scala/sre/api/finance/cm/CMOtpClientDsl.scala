@@ -157,7 +157,13 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       .zipRight(Stream.eval(f).repeat)
       .interruptWhen(otpPollingInterrupter)
       .interruptAfter(2.minutes)
-      .onFinalize(F.defer(resetOtpSession()))
+      .onFinalizeCase {
+        case ExitCase.Error(_) | ExitCase.Canceled =>
+          resetOtpSession()
+
+        case ExitCase.Completed =>
+          Sync[F].unit
+      }
 
     F.start(polling.compile.drain)
   }

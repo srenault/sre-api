@@ -8,7 +8,7 @@ import io.circe._
 import io.circe.literal._
 import io.circe.Encoder
 
-trait CMOtpStatus
+sealed trait CMOtpStatus
 
 object CMOtpStatus {
   case class Validated(transactionId: String, validatedAt: LocalDateTime) extends CMOtpStatus
