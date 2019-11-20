@@ -49,7 +49,8 @@ case class CMSettings(
   accounts: List[CMAccountSettings],
   tasks: CMTasksSettings,
   cache: CMCachesSettings,
-  otpSession: String
+  otpSession: String,
+  apkId: String
 ) {
   val authenticationUri: Uri = baseUri.withPath(authenticationPath)
   val validationUri: Uri = baseUri.withPath(validationPath)

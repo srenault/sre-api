@@ -7,7 +7,7 @@ import org.http4s.EntityEncoder
 import io.circe.generic.semiauto._
 import io.circe.Encoder
 
-case class CMOtpRequest(transactionId: String, requestedAt: LocalDateTime)
+case class CMOtpRequest(transactionId: String, requestedAt: LocalDateTime, apkId: String)
 
 object CMOtpRequest {
   implicit val encoder: Encoder[CMOtpRequest] = deriveEncoder[CMOtpRequest]

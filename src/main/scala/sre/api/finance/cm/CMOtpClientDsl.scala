@@ -157,7 +157,19 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       .zipRight(Stream.eval(f).repeat)
       .interruptWhen(otpPollingInterrupter)
       .interruptAfter(2.minutes)
-      .onFinalize(F.defer(resetOtpSession()))
+      .onFinalizeCase {
+        case ExitCase.Canceled | ExitCase.Completed =>
+          getOtpSession().flatMap {
+            case Some(otpSession: CMPendingOtpSession) =>
+              resetOtpSession()
+
+            case _ => Sync[F].unit
+          }
+
+        case ExitCase.Error(e) =>
+          logger.warn(s"Unexpected error while polling pending OTP status with transaction $transactionId:\n${e.getMessage}")
+          Sync[F].unit
+      }
 
     F.start(polling.compile.drain)
   }

@@ -109,7 +109,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
       currentOtpSession <- EitherT(getOrRequestOtpSession().map {
         case otpSession: CMValidOtpSession => Right(otpSession)
-        case otpSession: CMPendingOtpSession => Left(otpSession.toOtpRequest)
+        case otpSession: CMPendingOtpSession => Left(otpSession.toOtpRequest(settings.apkId))
       })
 
       otpExpired <- EitherT.liftF(isOtpSessionExpired(basicAuthSession, currentOtpSession))
@@ -135,7 +135,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
     EitherT.liftF(getSession()).flatMap {
       case CMSession(session, otpSession: CMPendingOtpSession) =>
-        EitherT.left(F.pure(otpSession.toOtpRequest))
+        EitherT.left(F.pure(otpSession.toOtpRequest(settings.apkId)))
 
       case CMSession(session, otpSession: CMValidOtpSession) =>
         val authenticatedRequest = {
@@ -159,7 +159,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
           } else if (hasExpiredBasicAuthSession) {
             sys.error("Unable to refresh cm session")
           } else if (hasExpiredOtpSession) {
-            requestOtpSession().map(otpSession => Left(otpSession.toOtpRequest))
+            requestOtpSession().map(otpSession => Left(otpSession.toOtpRequest(settings.apkId)))
           } else if (response.status == Status.Ok){
             logger.info(s"Request ${request.uri} OK")
             f(response).map(result => Right(result))

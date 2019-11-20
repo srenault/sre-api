@@ -80,7 +80,7 @@ case class CMPendingOtpSession(
 
   def status = CMOtpStatus.Pending(transactionId, requestedAt)
 
-  def toOtpRequest = CMOtpRequest(transactionId, requestedAt)
+  def toOtpRequest(apkId: String) = CMOtpRequest(transactionId, requestedAt, apkId)
 
   def validate(cookie: ResponseCookie): CMValidOtpSession =
     CMValidOtpSession.create(
