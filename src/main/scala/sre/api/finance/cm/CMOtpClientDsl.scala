@@ -160,15 +160,15 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       .onFinalizeCase {
         case ExitCase.Canceled | ExitCase.Completed =>
           getOtpSession().flatMap {
-            case Some(otpSession: CMPendingOtpSession) =>
+            case Some(otpSession: CMPendingOtpSession) => // TIMEOUT
               resetOtpSession()
 
-            case _ => Sync[F].unit
+            case _ => Sync[F].unit // VALIDATED
           }
 
         case ExitCase.Error(e) =>
           logger.warn(s"Unexpected error while polling pending OTP status with transaction $transactionId:\n${e.getMessage}")
-          Sync[F].unit
+          resetOtpSession()
       }
 
     F.start(polling.compile.drain)
