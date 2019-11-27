@@ -95,7 +95,7 @@ object CMPendingOtpSession {
   val OTPAUTH_COOKIE = "%5Fwirt%5Fsosddmzsiwfcmcicfr%5FSOSD%5FOTPAUTH%5Fsaguid"
   val OTP_HIDDEN_FIELD_ID = "otp_hidden"
   val GLOBAL_BACKUP_FIELD_ID = "global_backup_hidden_key"
-  val INPUT_HIDDEN_KEY_IN_APPS_END_NEW1_ID = "InputHiddenKeyInAppSendNew1"
+  val INPUT_HIDDEN_KEY_IN_APPS_SEND_NEW1_ID = "InputHiddenKeyInAppSendNew1"
   val FID_DO_VALIDATE_X_FIELD = "_FID_DoValidate.x" -> "0"
   val FID_DO_VALIDATE_Y_FIELD = "_FID_DoValidate.y" -> "0"
   val WXF2_CC_FIELD = "_wxf2_cc" -> "fr-FR"

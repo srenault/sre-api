@@ -1,6 +1,6 @@
 package sre.api.finance.cm
 
-import cats.data.{ EitherT, NonEmptyList }
+import cats.data.EitherT
 import cats.effect._
 import cats.implicits._
 import cats.effect.concurrent.{ Ref, Deferred }
@@ -50,34 +50,23 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
         }
       }
 
-      hasExpiredOtpSession <- maybeValidOtpSession match {
-        case Some(validOtpSession) =>
-          isOtpSessionExpired(basicAuthSession, validOtpSession)
+      basicAuthSessionStep1 <- redirectToHome(basicAuthSession, maybeValidOtpSession)
 
-        case None => F.pure(true)
-      }
+      basicAuthSessionStep2 <- redirectToHome(basicAuthSessionStep1, maybeValidOtpSession)
 
-      _ <- maybeValidOtpSession match {
-        case Some(validOtpSession) if !hasExpiredOtpSession =>
-          validateBasicAuthSession(basicAuthSession, validOtpSession)
-
-        case _ =>
-          F.pure(Unit)
-      }
-
-    } yield basicAuthSession
+    } yield basicAuthSessionStep2
   }
 
-  protected def validateBasicAuthSession(basicAuthSession: CMBasicAuthSession, validOtpSession: CMValidOtpSession)(implicit F: ConcurrentEffect[F]): F[Unit] = {
-    val cookieHeader = headers.Cookie(NonEmptyList(basicAuthSession.idSesCookie, validOtpSession.authClientStateCookie :: Nil))
-
-    for {
-      engineRequest <- GET(settings.engineUri, cookieHeader).map(_.putHeaders(cookieHeader))
-      _ <- httpClient.fetch(engineRequest)(_.as[Unit])
-
-      homeDispatchRequest <- GET(settings.homeDispatcherUri, cookieHeader).map(_.putHeaders(cookieHeader))
-      _ <- httpClient.fetch(homeDispatchRequest)(_.as[Unit])
-    } yield ()
+  private def redirectToHome(basicAuthSession: CMBasicAuthSession, validOtpSession: Option[CMValidOtpSession])(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
+    val cookies = basicAuthSession.cookies ++ validOtpSession.map(_.authClientStateCookie).toList
+    val cookieHeader = headers.Cookie(cookies)
+    val request = GET(settings.homeUri, cookieHeader)
+    httpClient.fetch(request) { response =>
+      F.pure {
+        val otherCookies = basicAuthSession.otherCookies ++ response.cookies.map(c => RequestCookie(c.name, c.content))
+        basicAuthSession.copy(otherCookies = otherCookies)
+      }
+    }
   }
 
   private def refreshBasicAuthSession()(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {

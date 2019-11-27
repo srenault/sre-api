@@ -42,8 +42,6 @@ case class CMSettings(
   homePath: String,
   downloadPath: String,
   transactionPath: String,
-  enginePath: String,
-  homeDispatcherPath: String,
   username: String,
   password: String,
   accounts: List[CMAccountSettings],
@@ -57,8 +55,6 @@ case class CMSettings(
   val homeUri: Uri = baseUri.withPath(homePath)
   val downloadUri: Uri = baseUri.withPath(downloadPath)
   val transactionUri: Uri = baseUri.withPath(transactionPath)
-  val engineUri: Uri = baseUri.withPath(enginePath)
-  val homeDispatcherUri: Uri = baseUri.withPath(homeDispatcherPath)
   def otpSessionFile[F[_]: Sync] = finance.cm.CMOtpSessionFile(otpSession)
 }
 

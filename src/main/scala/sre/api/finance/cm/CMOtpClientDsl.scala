@@ -25,7 +25,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     for {
       basicAuthSession <- getOrCreateBasicAuthSession()
 
-      request <- GET(settings.validationUri, headers.Cookie(basicAuthSession.idSesCookie))
+      request <- GET(settings.validationUri, headers.Cookie(basicAuthSession.cookies))
 
       pendingOtpSession <- httpClient.fetch(request) { response =>
 
@@ -35,7 +35,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
           val otp = doc.select(s"""[name="${CMPendingOtpSession.OTP_HIDDEN_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get otp value")
           }
-          val inApp = doc.select(s"""[name="${CMPendingOtpSession.INPUT_HIDDEN_KEY_IN_APPS_END_NEW1_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
+          val inApp = doc.select(s"""[name="${CMPendingOtpSession.INPUT_HIDDEN_KEY_IN_APPS_SEND_NEW1_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get inApp value")
           }
 
@@ -81,8 +81,10 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     for {
       basicAuthSession <- getOrCreateBasicAuthSession()
 
+      cookies = (basicAuthSession.cookies ++ pendingOtpSession.cookies.toList)
+
       validatedOtpSession <- {
-        val cookieHeader = headers.Cookie(basicAuthSession.idSesCookie :: pendingOtpSession.cookies ++ basicAuthSession.otherCookies)
+        val cookieHeader = headers.Cookie(cookies)
 
         val uri = settings.validationUri
           .withQueryParam("_tabi", "C")
@@ -91,7 +93,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
         val data = UrlForm(
           CMPendingOtpSession.OTP_HIDDEN_FIELD_ID -> pendingOtpSession.otpHidden,
           CMPendingOtpSession.GLOBAL_BACKUP_FIELD_ID -> pendingOtpSession.globalBackup,
-          CMPendingOtpSession.INPUT_HIDDEN_KEY_IN_APPS_END_NEW1_ID -> pendingOtpSession.inputHiddenInAppsEndNew1,
+          CMPendingOtpSession.INPUT_HIDDEN_KEY_IN_APPS_SEND_NEW1_ID -> pendingOtpSession.inputHiddenInAppsEndNew1,
           CMPendingOtpSession.FID_DO_VALIDATE_X_FIELD,
           CMPendingOtpSession.FID_DO_VALIDATE_Y_FIELD,
           CMPendingOtpSession.WXF2_CC_FIELD
@@ -106,7 +108,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
         }
       }
 
-      _ <- validateBasicAuthSession(basicAuthSession, validatedOtpSession)
+      //_ <- validateBasicAuthSession(basicAuthSession, validatedOtpSession)
 
     } yield {
       logger.info(s"Otp session for transaction ${pendingOtpSession.transactionId} validated")
@@ -181,7 +183,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     }
 
   protected def isOtpSessionExpired(basicAuthSession: CMBasicAuthSession, otpSession: CMValidOtpSession)(implicit F: ConcurrentEffect[F]): F[Boolean] = {
-    val cookieHeader = headers.Cookie(basicAuthSession.idSesCookie, otpSession.authClientStateCookie)
+    val cookieHeader = headers.Cookie(otpSession.authClientStateCookie :: basicAuthSession.cookies)
     val request = GET(settings.homeUri, cookieHeader)
     httpClient.fetch(request) { response =>
       F.pure {
