@@ -51,7 +51,7 @@ lazy val root = (project in file("."))
       "com.github.cb372"          %% "scalacache-cats-effect" % ScalaCacheCatsVersion,
       "com.amazonaws"             % "aws-java-sdk"            % AwsSdkVersion
     ),
-    addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.0"),
+    addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
   ).
   settings(
