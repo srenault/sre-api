@@ -11,11 +11,19 @@ import io.circe.literal._
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
-import finance.cm.{ CMClient, CMAccount }
+import finance.cm.{ CMClient, CMAccountState, CMAccountsOverview }
+import finance.analytics.AnalyticsClient
+import finance.icompta.IComptaClient
 
 trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
 
+  def icomptaClient: IComptaClient[F]
+
   def cmClient: CMClient[F]
+
+  def dbClient: DBClient[F]
+
+  def analyticsClient: AnalyticsClient[F]
 
   implicit val dateQueryParamDecoder = new QueryParamDecoder[LocalDate] {
     def decode(value: QueryParameterValue): ValidatedNel[ParseFailure, LocalDate] =
@@ -46,18 +54,47 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithAccounts()(f: List[CMAccount] => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
-    cmClient.fetchAccounts().value.flatMap {
-      case Right(accounts) => f(accounts)
+  def WithAccountsOverview()(f: CMAccountsOverview => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
+    cmClient.fetchAccountsState().value.flatMap {
+      case Right(accountsState) =>
+        val allStatements = accountsState.flatMap(_.statements)
+        analyticsClient.computeCurrentPeriod(allStatements) flatMap {
+          case Some(period) =>
+            val accountsOverview = CMAccountsOverview(period, accountsState.map(_.toOverview))
+            f(accountsOverview)
+
+          case None =>
+            NotFound()
+
+        }
+
       case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
     }
   }
 
-  def WithAccount(accountId: String)(f: CMAccount => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
-    cmClient.fetchAccount(accountId).value.flatMap {
-      case Right(Some(account)) => f(account)
+  def WithAccountState(accountId: String, maybeStartPeriod: Option[LocalDate])(f: CMAccountState => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
+    lazy val fetchAccountState = cmClient.fetchAccountState(accountId).value.flatMap {
+      case Right(Some(accountState)) =>
+        val accountSinceStartPeriod = maybeStartPeriod map(accountState.since) getOrElse accountState
+        f(accountSinceStartPeriod)
+
       case Right(None) => NotFound()
+
       case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
+    }
+
+    maybeStartPeriod match {
+      case Some(startPeriod) =>
+        analyticsClient.getAccountStateAt(accountId, startPeriod).value.flatMap {
+          case Some(accountState) =>
+            f(accountState)
+
+          case None =>
+            fetchAccountState
+        }
+
+      case _ =>
+        fetchAccountState
     }
   }
 }

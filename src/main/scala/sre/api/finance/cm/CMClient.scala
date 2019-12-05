@@ -40,34 +40,41 @@ case class CMClient[F[_]](
     }
   }
 
-  def fetchAccountByInput(input: CMAccountInput): EitherT[F, CMOtpRequest, CMAccount] = {
+  private def fetchAccountStateByInput(input: CMAccountInput): EitherT[F, CMOtpRequest, CMAccountState] = {
     fetchStatements(input.id).map { statements =>
-      val balance = statements.lastOption.flatMap(_.balance).getOrElse {
-        sys.error(s"Unable to get balance for ${input.id}")
-      }
       settings.accounts.find(_.id == input.id) match {
         case Some(accountSettings) =>
-          CMAccount(input.id, accountSettings.`type`, input.label, Some(accountSettings.label), balance, statements)
+          CMAccountState(
+            id = input.id,
+            `type` = accountSettings.`type`,
+            label = input.label,
+            displayName = Some(accountSettings.label),
+            statements = statements
+          )
 
         case None =>
-          CMAccount(input.id, CMAccountType.Unknown, input.label, None, balance, statements)
+          CMAccountState.unknown(
+            id = input.id,
+            label = input.label,
+            statements = statements
+          )
       }
     }
   }
 
-  def fetchAccount(accountId: String): EitherT[F, CMOtpRequest, Option[CMAccount]] = {
+  def fetchAccountState(accountId: String): EitherT[F, CMOtpRequest, Option[CMAccountState]] = {
     fetchDownloadForm().flatMap { downloadForm =>
       downloadForm.inputs.find(_.id == accountId) match {
-        case Some(input) => fetchAccountByInput(input).map(account => Some(account))
+        case Some(input) => fetchAccountStateByInput(input).map(account => Some(account))
         case None => EitherT.right(F.pure(None))
       }
     }
   }
 
-  def fetchAccounts(): EitherT[F, CMOtpRequest, List[CMAccount]] = {
+  def fetchAccountsState(): EitherT[F, CMOtpRequest, List[CMAccountState]] = {
     fetchDownloadForm().flatMap { downloadForm =>
       downloadForm.inputs.grouped(4).toList.map { group =>
-        EitherT(group.map(fetchAccountByInput(_).value).parSequence.map(_.sequence))
+        EitherT(group.map(fetchAccountStateByInput(_).value).parSequence.map(_.sequence))
       }.sequence.map(_.flatten)
     }
   }

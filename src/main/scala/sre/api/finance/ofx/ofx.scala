@@ -51,6 +51,7 @@ case class OfxStmTrn(
 
 case class OfxFile(file: File, date: LocalDate) {
   lazy val name = file.getName
+  lazy val accountId = file.getParentFile.getName
 }
 
 object OfxFile {
