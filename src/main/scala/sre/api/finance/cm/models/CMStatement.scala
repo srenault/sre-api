@@ -19,7 +19,10 @@ case class CMStatement(
   label: String,
   balance: Option[Float]
 ) {
-  def id: String = List(fitid, accountId, date, amount, label).mkString("#")
+  def id: String = {
+    val v = List(fitid, accountId, date, amount, label).mkString("#")
+    java.util.Base64.getEncoder().encodeToString(v.getBytes("UTF-8"))
+  }
 }
 
 object CMStatement {
