@@ -6,27 +6,26 @@ import fs2.Stream
 import java.time.LocalDate
 import java.sql.{ DriverManager, Connection }
 import anorm._
-import finance.analytics.PeriodIndex
+import finance.analytics.{ PeriodIndex, CompletePeriodIndex }
 
 case class DBClient[F[_]](implicit connection: Connection, F: Effect[F]) {
 
   def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
     F.delay {
       periodIndexes.collect {
-        case PeriodIndex(partitions, startDate, Some(endDate), wageStatements, balance) =>
-          val yearMonth = PeriodIndex.yearMonth(startDate, endDate)
-          val encodedPartitions = PeriodIndex.encodePartitions(partitions)
-          val encodedWageStatements = PeriodIndex.encodeWageStatements(wageStatements)
+        case CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, balance) =>
+          val encodedPartitions = CompletePeriodIndex.encodePartitions(partitions)
+          val encodedWageStatements = CompletePeriodIndex.encodeWageStatements(wageStatements)
           val lastUpdate = java.time.LocalDateTime.now()
 
           SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, balance, lastupdate)
-            values ($yearMonth, $startDate, $endDate, $encodedPartitions, $encodedWageStatements, $balance, $lastUpdate)""".executeUpdate()
+            values (${yearMonth.atDay(1)}, $startDate, $endDate, $encodedPartitions, $encodedWageStatements, $balance, $lastUpdate)""".executeUpdate()
       }
     }
 
-  def selectAllPeriodIndexes(): F[List[PeriodIndex]] = F.delay {
+  def selectAllPeriodIndexes(): F[List[CompletePeriodIndex]] = F.delay {
     try {
-      SQL"SELECT * FROM FINANCE_PERIODINDEX".as(PeriodIndex.parser.*)
+      SQL"SELECT * FROM FINANCE_PERIODINDEX".as(CompletePeriodIndex.parser.*)
     } catch {
       case e: Exception =>
         e.printStackTrace
@@ -34,11 +33,11 @@ case class DBClient[F[_]](implicit connection: Connection, F: Effect[F]) {
     }
   }
 
-  def selectOnePeriodIndex(date: LocalDate): F[Option[PeriodIndex]] = F.delay {
+  def selectOnePeriodIndex(date: LocalDate): F[Option[CompletePeriodIndex]] = F.delay {
     try {
       SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE startdate <= {date} and enddate > {date}")
         .on("date" -> date)
-        .as(PeriodIndex.parser.singleOpt)
+        .as(CompletePeriodIndex.parser.singleOpt)
     } catch {
       case e: Exception =>
         e.printStackTrace

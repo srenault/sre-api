@@ -47,7 +47,7 @@ case class CMClient[F[_]](
           CMAccountState(
             id = input.id,
             `type` = accountSettings.`type`,
-            label = input.label,
+            label = Some(input.label),
             displayName = Some(accountSettings.label),
             statements = statements
           )
@@ -55,7 +55,7 @@ case class CMClient[F[_]](
         case None =>
           CMAccountState.unknown(
             id = input.id,
-            label = input.label,
+            label = Some(input.label),
             statements = statements
           )
       }

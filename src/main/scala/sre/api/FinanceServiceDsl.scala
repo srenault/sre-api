@@ -46,11 +46,11 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithPeriodDate(maybeValidatedDate: Option[ValidatedNel[ParseFailure, LocalDate]])(f: Option[LocalDate] => F[Response[F]])(implicit F: Monad[F]): F[Response[F]] = {
+  def WithPeriodDate(maybeValidatedDate: Option[ValidatedNel[ParseFailure, LocalDate]])(f: LocalDate => F[Response[F]])(implicit F: Monad[F]): F[Response[F]] = {
     maybeValidatedDate match {
       case Some(Invalid(e)) => BadRequest(s"Invalid date: $e")
-      case Some(Valid(date)) => f(Some(date))
-      case None => f(None)
+      case Some(Valid(date)) => f(date)
+      case None => BadRequest("startDate parameter missing")
     }
   }
 
@@ -72,29 +72,20 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithAccountState(accountId: String, maybeStartPeriod: Option[LocalDate])(f: CMAccountState => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
-    lazy val fetchAccountState = cmClient.fetchAccountState(accountId).value.flatMap {
-      case Right(Some(accountState)) =>
-        val accountSinceStartPeriod = maybeStartPeriod map(accountState.since) getOrElse accountState
-        f(accountSinceStartPeriod)
+  def WithAccountState(accountId: String, startPeriod: LocalDate)(f: CMAccountState => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
+    analyticsClient.getAccountStateAt(accountId, startPeriod).value.flatMap {
+      case Some(accountState) =>
+        f(accountState)
 
-      case Right(None) => NotFound()
+      case None =>
+        cmClient.fetchAccountState(accountId).value.flatMap {
+          case Right(Some(accountState)) =>
+            f(accountState.since(startPeriod))
 
-      case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
-    }
+          case Right(None) => NotFound()
 
-    maybeStartPeriod match {
-      case Some(startPeriod) =>
-        analyticsClient.getAccountStateAt(accountId, startPeriod).value.flatMap {
-          case Some(accountState) =>
-            f(accountState)
-
-          case None =>
-            fetchAccountState
+          case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
         }
-
-      case _ =>
-        fetchAccountState
     }
   }
 }

@@ -61,7 +61,7 @@ case class AnalyticsClient[F[_]](
               .map(_.toStatement(accountId))
               .sortBy(_.date.toEpochDay)
               .dropWhile(_.date.isBefore(periodIndex.startDate))
-              .takeWhile(st => periodIndex.endDate.map(endDate => st.date.isBefore(endDate.plusDays(1))) getOrElse true)
+              .takeWhile(_.date.isBefore(periodIndex.endDate.plusDays(1)))
           }
       }
     } yield {
@@ -72,7 +72,7 @@ case class AnalyticsClient[F[_]](
   def getPreviousPeriods(): F[List[Period]] = {
     dbClient.selectAllPeriodIndexes().map { periodIndexes =>
       periodIndexes.map { periodIndex =>
-        Period(periodIndex.startDate, periodIndex.endDate, periodIndex.balance)
+        Period(periodIndex.startDate, Some(periodIndex.endDate), periodIndex.balance)
       }
     }
   }
@@ -80,7 +80,7 @@ case class AnalyticsClient[F[_]](
   def computeCurrentPeriod(statements: List[CMStatement]): F[Option[Period]] = {
     analyticsIndex.buildIndexes(statements).map { indexes =>
       indexes.lastOption.map { periodIndex =>
-        Period(periodIndex.startDate, periodIndex.endDate, periodIndex.balance)
+        Period(periodIndex.startDate, periodIndex.maybeEndDate, periodIndex.balance)
       }
     }
   }

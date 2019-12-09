@@ -10,7 +10,7 @@ import io.circe.generic.semiauto._
 case class CMAccountOverview(
   id: String,
   `type`: CMAccountType,
-  label: String,
+  label: Option[String],
   displayName: Option[String],
   balance: Float
 )

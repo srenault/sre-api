@@ -12,7 +12,7 @@ import sre.api.CMAccountSettings
 case class CMAccountState(
   id: String,
   `type`: CMAccountType,
-  label: String,
+  label: Option[String],
   displayName: Option[String],
   statements: List[CMStatement]
 ) {
@@ -43,13 +43,13 @@ object CMAccountState {
     CMAccountState(
       id = accountSettings.id,
       `type` = accountSettings.`type`,
-      label = accountSettings.label,
-      displayName = None,
+      label = None,
+      displayName = Some(accountSettings.label),
       statements = statements
     )
   }
 
-  def unknown(id: String, label: String, statements: List[CMStatement]): CMAccountState = {
+  def unknown(id: String, label: Option[String], statements: List[CMStatement]): CMAccountState = {
     CMAccountState(id, CMAccountType.Unknown, label, displayName = None, statements)
   }
 
