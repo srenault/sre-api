@@ -25,6 +25,15 @@ sealed trait PeriodIndex {
   def includeNewWageStatement(wageStatement: CMStatement, statements: List[CMStatement]): PeriodIndex
 }
 
+object PeriodIndex {
+
+  lazy val ORDER_ASC: scala.math.Ordering[PeriodIndex] =
+    scala.math.Ordering.by[PeriodIndex, Long](_.startDate.toEpochDay)
+
+  lazy val ORDER_DESC: scala.math.Ordering[PeriodIndex] =
+    ORDER_ASC.reverse
+}
+
 case class CompletePeriodIndex(
   yearMonth: YearMonth,
   partitions: List[OfxFile],

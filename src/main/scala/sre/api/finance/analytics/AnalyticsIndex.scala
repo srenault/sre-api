@@ -27,7 +27,7 @@ case class AnalyticsIndex[F[_]](
 
           val segmentsForPeriod = (segment +: pendingSegments).distinct
 
-          val allStatements = segmentsForPeriod.flatMap(_.statements.toList).toList.sortBy(-_.date.toEpochDay).distinct
+          val allStatements = segmentsForPeriod.flatMap(_.statements.toList).toList.sorted(CMStatement.ORDER_DESC)
 
           val partitions = segmentsForPeriod.flatMap(_.partitions)
 
@@ -82,7 +82,7 @@ case class AnalyticsIndex[F[_]](
       }
     }
 
-    val sortedSegments = segments.sortBy(-_.startDate.toEpochDay)
+    val sortedSegments = segments.sorted(SegmentIndex.ORDER_DESC)
 
     step(sortedSegments, accPeriods = periods, pendingSegments)
   }
@@ -96,7 +96,7 @@ case class AnalyticsIndex[F[_]](
 
         case statements =>
 
-          val sortedStatements = statements.sortBy(-_.date.toEpochDay);
+          val sortedStatements = statements.sorted(CMStatement.ORDER_DESC)
 
           val maybeWageStatement = sortedStatements.find(isWageStatement)
 
@@ -147,7 +147,7 @@ case class AnalyticsIndex[F[_]](
                 }
               }.flatMap { statements =>
 
-                val sortedStatements = statements.sortBy(-_.date.toEpochDay)
+                val sortedStatements = statements.sorted(CMStatement.ORDER_DESC)
 
                 val maybeLastWageStatement = accPeriods.headOption.map(period => period.startWageStatement)
 
@@ -170,7 +170,7 @@ case class AnalyticsIndex[F[_]](
               }
 
             case Nil =>
-              val ascendantPeriods = accPeriods.sortBy(_.startDate.toEpochDay)
+              val ascendantPeriods = accPeriods.sorted(PeriodIndex.ORDER_ASC)
 
               F.pure(ascendantPeriods)
           }
