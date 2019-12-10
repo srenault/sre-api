@@ -3,7 +3,7 @@ package sre.api
 import cats.effect._
 import cats.implicits._
 import fs2.Stream
-import java.time.LocalDate
+import java.time.YearMonth
 import java.sql.{ DriverManager, Connection }
 import anorm._
 import finance.analytics.{ PeriodIndex, CompletePeriodIndex }
@@ -33,10 +33,10 @@ case class DBClient[F[_]](implicit connection: Connection, F: Effect[F]) {
     }
   }
 
-  def selectOnePeriodIndex(date: LocalDate): F[Option[CompletePeriodIndex]] = F.delay {
+  def selectOnePeriodIndex(periodDate: YearMonth): F[Option[CompletePeriodIndex]] = F.delay {
     try {
-      SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE startdate <= {date} and enddate > {date}")
-        .on("date" -> date)
+      SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearmonth = {yearmonth}")
+        .on("yearmonth" -> periodDate.atDay(1))
         .as(CompletePeriodIndex.parser.singleOpt)
     } catch {
       case e: Exception =>

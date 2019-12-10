@@ -2,7 +2,7 @@ package sre.api
 package finance
 package analytics
 
-import java.time.LocalDate
+import java.time.YearMonth
 import cats.data.OptionT
 import cats.effect._
 import cats.implicits._
@@ -45,11 +45,11 @@ case class AnalyticsClient[F[_]](
     })
   }
 
-  def getAccountStateAt(accountId: String, startPeriod: LocalDate): OptionT[F, CMAccountState] = {
+  def getAccountStateAt(accountId: String, periodDate: YearMonth): OptionT[F, CMAccountState] = {
     for {
       accountSettings <- OptionT(F.pure(settings.finance.cm.accounts.find(_.id == accountId)))
 
-      periodIndex <- OptionT(dbClient.selectOnePeriodIndex(startPeriod))
+      periodIndex <- OptionT(dbClient.selectOnePeriodIndex(periodDate))
 
       statements <- OptionT.liftF {
         periodIndex.partitions

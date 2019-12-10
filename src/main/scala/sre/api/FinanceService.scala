@@ -32,9 +32,9 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer](
           Ok(accountsOverview.asJson)
         }
 
-      case GET -> Root / "accounts" / AccountIdVar(accountId) :? DateQueryParamMatcher(maybeValidatedDate) =>
-        WithPeriodDate(maybeValidatedDate) { maybeStartPeriod =>
-          WithAccountState(accountId, maybeStartPeriod) { accountState =>
+      case GET -> Root / "accounts" / AccountIdVar(accountId) :? PeriodQueryParamMatcher(validatedPeriod) =>
+        WithPeriodDate(validatedPeriod) { periodDate =>
+          WithAccountState(accountId, periodDate) { accountState =>
             analyticsClient.computeExpensesByCategory(accountState).value.flatMap { expenses =>
               val json = accountState.asJson.deepMerge(json"""{ "expenses": $expenses }""")
               Ok(json)

@@ -1,6 +1,6 @@
 package sre.api
 
-import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatterBuilder
 import cats._
 import cats.effect._
@@ -25,20 +25,21 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
 
   def analyticsClient: AnalyticsClient[F]
 
-  implicit val dateQueryParamDecoder = new QueryParamDecoder[LocalDate] {
-    def decode(value: QueryParameterValue): ValidatedNel[ParseFailure, LocalDate] =
+  implicit val periodQueryParamDecoder = new QueryParamDecoder[YearMonth] {
+    def decode(value: QueryParameterValue): ValidatedNel[ParseFailure, YearMonth] =
       Validated
         .catchNonFatal {
           val format = new DateTimeFormatterBuilder()
-            .appendPattern("yyyy-MM-dd")
+            .appendPattern("yyyy-MM")
             .toFormatter();
-          LocalDate.parse(value.value, format)
+          val date = YearMonth.parse(value.value, format)
+          YearMonth.from(date)
         }
-        .leftMap(t => ParseFailure(s"Query decoding LocalDate failed", t.getMessage))
+        .leftMap(t => ParseFailure(s"Query decoding period failed", t.getMessage))
         .toValidatedNel
   }
 
-  object DateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[LocalDate]("startDate")
+  object PeriodQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[YearMonth]("period")
 
   object AccountIdVar {
     def unapply(str: String): Option[String] = {
@@ -46,7 +47,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithPeriodDate(maybeValidatedDate: Option[ValidatedNel[ParseFailure, LocalDate]])(f: LocalDate => F[Response[F]])(implicit F: Monad[F]): F[Response[F]] = {
+  def WithPeriodDate(maybeValidatedDate: Option[ValidatedNel[ParseFailure, YearMonth]])(f: YearMonth => F[Response[F]])(implicit F: Monad[F]): F[Response[F]] = {
     maybeValidatedDate match {
       case Some(Invalid(e)) => BadRequest(s"Invalid date: $e")
       case Some(Valid(date)) => f(date)
@@ -72,15 +73,15 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithAccountState(accountId: String, startPeriod: LocalDate)(f: CMAccountState => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
-    analyticsClient.getAccountStateAt(accountId, startPeriod).value.flatMap {
+  def WithAccountState(accountId: String, periodDate: YearMonth)(f: CMAccountState => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
+    analyticsClient.getAccountStateAt(accountId, periodDate).value.flatMap {
       case Some(accountState) =>
         f(accountState)
 
       case None =>
         cmClient.fetchAccountState(accountId).value.flatMap {
           case Right(Some(accountState)) =>
-            f(accountState.since(startPeriod))
+            f(accountState.since(periodDate.atDay(1)))
 
           case Right(None) => NotFound()
 
