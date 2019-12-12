@@ -45,7 +45,7 @@ case class AnalyticsClient[F[_]](
     })
   }
 
-  def getAccountStateAt(accountId: String, periodDate: YearMonth): OptionT[F, CMAccountState] = {
+  def getAccountStateAt(accountId: String, periodDate: YearMonth): OptionT[F, (Period, CMAccountState)] = {
     for {
       accountSettings <- OptionT(F.pure(settings.finance.cm.accounts.find(_.id == accountId)))
 
@@ -65,14 +65,19 @@ case class AnalyticsClient[F[_]](
           }
       }
     } yield {
-      CMAccountState(accountSettings, statements)
+      Period(periodIndex) -> CMAccountState(accountSettings, statements)
     }
   }
 
   def getPreviousPeriods(): F[List[Period]] = {
     dbClient.selectAllPeriodIndexes().map { periodIndexes =>
       periodIndexes.map { periodIndex =>
-        Period(periodIndex.startDate, Some(periodIndex.endDate), periodIndex.balance)
+        Period(
+          startDate = periodIndex.startDate,
+          endDate = Some(periodIndex.endDate),
+          yearMonth = Some(periodIndex.yearMonth),
+          balance = periodIndex.balance
+        )
       }
     }
   }
@@ -80,7 +85,12 @@ case class AnalyticsClient[F[_]](
   def computeCurrentPeriod(statements: List[CMStatement]): F[Option[Period]] = {
     analyticsIndex.buildIndexes(statements).map { indexes =>
       indexes.lastOption.map { periodIndex =>
-        Period(periodIndex.startDate, periodIndex.maybeEndDate, periodIndex.balance)
+        Period(
+          startDate = periodIndex.startDate,
+          endDate = periodIndex.maybeEndDate,
+          yearMonth = None,
+          balance = periodIndex.balance
+        )
       }
     }
   }

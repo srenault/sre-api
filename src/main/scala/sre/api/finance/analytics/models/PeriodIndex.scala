@@ -16,6 +16,7 @@ sealed trait PeriodIndex {
   def maybeEndDate: Option[LocalDate]
   def wageStatements: NonEmptyList[CMStatement]
   def balance: Double
+  def maybeYearMonth: Option[YearMonth]
 
   def startWageStatement: CMStatement =
     wageStatements.toList.sortBy(_.date.toEpochDay).head
@@ -43,6 +44,8 @@ case class CompletePeriodIndex(
   balance: Double
 ) extends PeriodIndex {
   def maybeEndDate = Some(endDate)
+
+  def maybeYearMonth = Some(yearMonth)
 
   def includeStatements(statements: List[CMStatement]): CompletePeriodIndex = {
     val amount = statements.foldLeft(0D)(_ + _.amount)
@@ -152,6 +155,8 @@ case class IncompletePeriodIndex(
   balance: Double
 ) extends PeriodIndex {
   def maybeEndDate = None
+
+  def maybeYearMonth = None
 
   def includeStatements(statements: List[CMStatement]): IncompletePeriodIndex = {
     val amount = statements.foldLeft(0D)(_ + _.amount)

@@ -12,7 +12,7 @@ import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import finance.cm.{ CMClient, CMAccountState, CMAccountsOverview }
-import finance.analytics.AnalyticsClient
+import finance.analytics.{ AnalyticsClient, Period }
 import finance.icompta.IComptaClient
 
 trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
@@ -39,7 +39,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
         .toValidatedNel
   }
 
-  object PeriodQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[YearMonth]("period")
+  object PeriodDateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[YearMonth]("periodDate")
 
   object AccountIdVar {
     def unapply(str: String): Option[String] = {
@@ -47,11 +47,11 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithPeriodDate(maybeValidatedDate: Option[ValidatedNel[ParseFailure, YearMonth]])(f: YearMonth => F[Response[F]])(implicit F: Monad[F]): F[Response[F]] = {
+  def WithPeriodDate(maybeValidatedDate: Option[ValidatedNel[ParseFailure, YearMonth]])(f: Option[YearMonth] => F[Response[F]])(implicit F: Monad[F]): F[Response[F]] = {
     maybeValidatedDate match {
       case Some(Invalid(e)) => BadRequest(s"Invalid date: $e")
-      case Some(Valid(date)) => f(date)
-      case None => BadRequest("startDate parameter missing")
+      case Some(Valid(date)) => f(Some(date))
+      case None => f(None)
     }
   }
 
@@ -73,17 +73,32 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithAccountState(accountId: String, periodDate: YearMonth)(f: CMAccountState => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
-    analyticsClient.getAccountStateAt(accountId, periodDate).value.flatMap {
-      case Some(accountState) =>
-        f(accountState)
+  def WithAccountState(accountId: String, maybePeriodDate: Option[YearMonth])(f: (Period, CMAccountState) => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
+    maybePeriodDate match {
+      case Some(periodDate) =>
+        analyticsClient.getAccountStateAt(accountId, periodDate).value.flatMap {
+          case Some((period, accountState)) =>
+            f(period, accountState)
+
+          case None =>
+            NotFound()
+        }
 
       case None =>
-        cmClient.fetchAccountState(accountId).value.flatMap {
-          case Right(Some(accountState)) =>
-            f(accountState.since(periodDate.atDay(1)))
+        cmClient.fetchAccountsState().value.flatMap {
+          case Right(accountsState) =>
+            val allStatements = accountsState.flatMap(_.statements)
+            analyticsClient.computeCurrentPeriod(allStatements) flatMap {
+              case Some(period) =>
+                accountsState.find(_.id === accountId) match {
+                  case Some(accountState) => f(period, accountState.forPeriod(period))
+                  case None => NotFound()
+                }
 
-          case Right(None) => NotFound()
+              case None =>
+                NotFound()
+
+            }
 
           case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
         }

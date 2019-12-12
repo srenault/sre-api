@@ -1,6 +1,6 @@
-package sre.api.finance.cm
+package sre.api.finance
+package cm
 
-import java.time.LocalDate
 import cats.effect._
 import org.http4s._
 import org.http4s.EntityEncoder
@@ -8,6 +8,7 @@ import org.http4s.circe._
 import io.circe.Encoder
 import io.circe.generic.semiauto._
 import sre.api.CMAccountSettings
+import analytics.Period
 
 case class CMAccountState(
   id: String,
@@ -16,10 +17,20 @@ case class CMAccountState(
   displayName: Option[String],
   statements: List[CMStatement]
 ) {
-  def since(date: LocalDate): CMAccountState = {
-    this.copy(statements = statements.filter { statement =>
-      statement.date.equals(date) || statement.date.isAfter(date)
-    })
+
+  def forPeriod(period: Period): CMAccountState = {
+    val statementsAfterStartPeriod = statements
+      .sorted(CMStatement.ORDER_ASC)
+      .dropWhile(_.date.isBefore(period.startDate))
+
+    val statementsForPeriod = period.endDate match {
+      case Some(endDate) =>
+        statementsAfterStartPeriod.takeWhile(_.date.isBefore(endDate.plusDays(1)))
+      case None =>
+        statementsAfterStartPeriod
+    }
+
+    this.copy(statements = statementsForPeriod)
   }
 
   def toOverview: CMAccountOverview = {
