@@ -59,7 +59,8 @@ case class AnalyticsClient[F[_]](
             ofxStmTrn
               .flatten
               .map(_.toStatement(accountId))
-              .sortBy(_.date.toEpochDay)
+              .distinct
+              .sorted(CMStatement.ORDER_ASC)
               .dropWhile(_.date.isBefore(periodIndex.startDate))
               .takeWhile(_.date.isBefore(periodIndex.endDate.plusDays(1)))
           }
