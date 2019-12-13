@@ -5,13 +5,13 @@ import java.time.format.DateTimeFormatterBuilder
 import cats._
 import cats.effect._
 import cats.implicits._
-import cats.data.{ Validated, ValidatedNel }
+import cats.data.{ Validated, ValidatedNel, EitherT }
 import cats.data.Validated.{ Invalid, Valid }
 import io.circe.literal._
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
-import finance.cm.{ CMClient, CMAccountState, CMAccountsOverview }
+import finance.cm.{ CMClient, CMAccountState, CMAccountsOverview, CMOtpRequest }
 import finance.analytics.{ AnalyticsClient, Period }
 import finance.icompta.IComptaClient
 
@@ -55,23 +55,28 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  def WithAccountsOverview()(f: CMAccountsOverview => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
-    cmClient.fetchAccountsState().value.flatMap {
-      case Right(accountsState) =>
-        val allStatements = accountsState.flatMap(_.statements)
-        analyticsClient.computeCurrentPeriod(allStatements) flatMap {
-          case Some(period) =>
-            val accountsOverview = CMAccountsOverview(period, accountsState.map(_.toOverview))
-            f(accountsOverview)
+  protected def handleOtpRequest[A](otpOrResult: EitherT[F, CMOtpRequest, A])(f: A => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
+    otpOrResult.value.flatMap {
+      case Left(otpRequest) =>
+        Ok(json"""{ "otpRequired": $otpRequest }""")
 
-          case None =>
-            NotFound()
-
-        }
-
-      case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
+      case Right(result) =>
+        f(result)
     }
   }
+
+  def WithAccountsOverview()(f: CMAccountsOverview => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] =
+    handleOtpRequest(cmClient.fetchAccountsState()) { accountsState =>
+      val allStatements = accountsState.flatMap(_.statements)
+      analyticsClient.computeCurrentPeriod(allStatements).flatMap {
+        case Some(period) =>
+          val accountsOverview = CMAccountsOverview(period, accountsState.map(_.toOverview))
+          f(accountsOverview)
+
+        case None =>
+          NotFound()
+      }
+    }
 
   def WithAccountState(accountId: String, maybePeriodDate: Option[YearMonth])(f: (Period, CMAccountState) => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
     maybePeriodDate match {
@@ -85,22 +90,18 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
         }
 
       case None =>
-        cmClient.fetchAccountsState().value.flatMap {
-          case Right(accountsState) =>
-            val allStatements = accountsState.flatMap(_.statements)
-            analyticsClient.computeCurrentPeriod(allStatements) flatMap {
-              case Some(period) =>
-                accountsState.find(_.id === accountId) match {
-                  case Some(accountState) => f(period, accountState.forPeriod(period))
-                  case None => NotFound()
-                }
+        handleOtpRequest(cmClient.fetchAccountsState()) { accountsState =>
+          val allStatements = accountsState.flatMap(_.statements)
+          analyticsClient.computeCurrentPeriod(allStatements).flatMap {
+            case Some(period) =>
+              accountsState.find(_.id === accountId) match {
+                case Some(accountState) => f(period, accountState.forPeriod(period))
+                case None => NotFound()
+              }
 
-              case None =>
-                NotFound()
-
-            }
-
-          case Left(otpRequest) => Ok(json"""{ "otpRequired": $otpRequest }""")
+            case None =>
+              NotFound()
+          }
         }
     }
   }
