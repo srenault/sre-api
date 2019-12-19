@@ -10,7 +10,7 @@ import finance.icompta.IComptaClient
 import finance.cm.CMClient
 import finance.analytics.AnalyticsClient
 
-case class FinanceService[F[_]: ConcurrentEffect : Timer](
+case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
   icomptaClient: IComptaClient[F],
   cmClient: CMClient[F],
   dbClient: DBClient[F],
@@ -46,8 +46,14 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer](
           Ok(json"""{ "result": $periods }""")
         }
 
-      case GET -> Root / "analytics" / "reindex" =>
-        analyticsClient.reindex().flatMap(_ => Ok())
+      case GET -> Root / "analytics" / "refresh" :? ReindexFromScrachQueryParamMatcher(maybeFromScratch) =>
+        handleOtpRequest {
+          cmClient.fetchAccountsOfxStmTrn() {
+            case (accountId, response) =>
+              val accountPath = settings.finance.transactionsDir.toPath.resolve(accountId)
+              finance.ofx.OfxStmTrn.persist(is = response.body, accountPath)
+          }
+        }(_ => analyticsClient.reindex(maybeFromScratch getOrElse false) *> Ok())
     }
   }
 }
