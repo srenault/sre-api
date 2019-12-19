@@ -147,6 +147,8 @@ object OfxStmTrn {
       val filename = OfxFile.filename(LocalDate.now)
       val path = accountPath.resolve(filename)
 
+      java.nio.file.Files.deleteIfExists(path)
+
       is.through(fs2.io.file.writeAll(path, blocker, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil))
 
     }.compile.drain

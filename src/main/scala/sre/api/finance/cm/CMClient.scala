@@ -32,7 +32,7 @@ case class CMClient[F[_]](
 
   def fetchDownloadForm(): EitherT[F, CMOtpRequest, CMDownloadForm] = {
     formCache.cached {
-      doAuthenticatedGET(settings.downloadUri) { response =>
+      authenticatedGet(settings.downloadUri) { response =>
         response.as[String].map(CMDownloadForm.parseOrFail)
       }
     }
@@ -88,9 +88,9 @@ case class CMClient[F[_]](
     }
   }
 
-  def fetchOfxTransactions(accountId: String, maybeStartDate: Option[LocalDate] = None, maybeEndDate: Option[LocalDate] = None): EitherT[F, CMOtpRequest, Response[F]] =
+  def fetchAccountOfxStmTrn[A](accountId: String, maybeStartDate: Option[LocalDate] = None, maybeEndDate: Option[LocalDate] = None)(f: Response[F] => F[A]): EitherT[F, CMOtpRequest, A] =
     fetchDownloadForm().flatMap { downloadForm =>
-      val action = settings.baseUri.withPath(downloadForm.action)
+      val uri = settings.baseUri.withPath(downloadForm.action)
       val input = downloadForm.inputs.find(_.id == accountId) getOrElse {
         sys.error(s"Unknown account $accountId")
       }
@@ -109,7 +109,16 @@ case class CMClient[F[_]](
         "_FID_DoDownload.y" -> "0"
       )
 
-      doAuthenticatedPOST(action, data)(F.pure)
+      authenticatedPost(uri, data)(f)
+    }
+
+  def fetchAccountsOfxStmTrn[A](maybeStartDate: Option[LocalDate] = None, maybeEndDate: Option[LocalDate] = None)(f: (String, Response[F]) => F[A]): EitherT[F, CMOtpRequest, List[A]] =
+   fetchDownloadForm().flatMap { downloadForm =>
+      downloadForm.inputs.grouped(4).toList.map { group =>
+        EitherT(group.map { input =>
+          fetchAccountOfxStmTrn(input.id)(response => f(input.id, response)).value
+        }.toList.parSequence.map(_.sequence))
+      }.sequence.map(_.flatten)
     }
 
   def fetchCSVRecords(accountId: String, maybeStartDate: Option[LocalDate] = None, maybeEndDate: Option[LocalDate] = None, retries: Int = 1): EitherT[F, CMOtpRequest, List[CMCsvRecord]] =
@@ -139,7 +148,7 @@ case class CMClient[F[_]](
           "_FID_DoDownload.y" -> "0"
         )
 
-        doAuthenticatedPOST(uri, data)(_.as[String]).flatMap { body =>
+        authenticatedPost(uri, data)(_.as[String]).flatMap { body =>
           CMDownloadForm.parse(body) match {
             case Left(_) =>
               val lines = body.split("\n").toList

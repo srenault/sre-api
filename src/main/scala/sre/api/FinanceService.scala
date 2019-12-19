@@ -1,5 +1,6 @@
 package sre.api
 
+import cats.Parallel
 import cats.effect._
 import cats.implicits._
 import org.http4s._
@@ -46,14 +47,14 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
           Ok(json"""{ "result": $periods }""")
         }
 
-      case GET -> Root / "analytics" / "reindex" =>
-        analyticsClient.reindex().flatMap(_ => Ok())
-
-      case GET -> Root / "analytics" / "accounts" / accountId / "import" =>
-        handleOtpRequest(cmClient.fetchOfxTransactions(accountId)) { response =>
-          val accountPath = settings.finance.transactionsDir.toPath.resolve(accountId)
-          finance.ofx.OfxStmTrn.persist(is = response.body, accountPath) *> Ok()
-        }
+      case GET -> Root / "analytics" / "refresh" =>
+        handleOtpRequest {
+          cmClient.fetchAccountsOfxStmTrn() {
+            case (accountId, response) =>
+              val accountPath = settings.finance.transactionsDir.toPath.resolve(accountId)
+              finance.ofx.OfxStmTrn.persist(is = response.body, accountPath)
+          }
+        }(_ => analyticsClient.reindex() *> Ok())
     }
   }
 }
