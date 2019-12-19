@@ -128,7 +128,19 @@ case class AnalyticsIndex[F[_]](
     }
   }
 
-  def buildHistoryIndexes(): F[List[PeriodIndex]] = {
+  def buildHistoryIndexesFromScrach(): F[List[PeriodIndex]] = {
+    val accountDirs@(accountDir :: _) = settings.finance.accountsDir
+    val ofxFiles = OfxDir.listFiles(accountDir)
+    buildHistoryIndexes(accountDirs, ofxFiles)
+  }
+
+  def buildLastestHistoryIndexes(): F[List[PeriodIndex]] = {
+    val accountDirs@(accountDir :: _) = settings.finance.accountsDir
+    val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay).take(4)
+    buildHistoryIndexes(accountDirs, ofxFiles)
+  }
+
+  def buildHistoryIndexes(accountDirs: List[File], ofxFiles: List[OfxFile]): F[List[PeriodIndex]] = {
 
     icomptaClient.buildRulesAst().flatMap { rulesAst =>
 
@@ -176,9 +188,7 @@ case class AnalyticsIndex[F[_]](
           }
         }
 
-        val accountDirs@(accountDir :: _) = settings.finance.transactionsDir.listFiles.toList.filter(_.isDirectory)
-
-        val sortedOfxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)
+        val sortedOfxFiles = ofxFiles.sortBy(-_.date.toEpochDay)
 
         step(accountDirs, sortedOfxFiles, accSegments = Nil, accPeriods = Nil)
 

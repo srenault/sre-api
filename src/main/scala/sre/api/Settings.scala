@@ -53,7 +53,9 @@ case class CMSettings(
   def otpSessionFile[F[_]: Sync] = finance.cm.CMOtpSessionFile(otpSession)
 }
 
-case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transactionsDir: File)
+case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transactionsDir: File) {
+  def accountsDir: List[File] = transactionsDir.listFiles.toList.filter(_.isDirectory)
+}
 
 case class DomoticzDeviceSettings(idx: Int)
 

@@ -39,6 +39,8 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
         .toValidatedNel
   }
 
+  object ReindexFromScrachQueryParamMatcher extends OptionalQueryParamDecoderMatcher[Boolean]("fromScratch")
+
   object PeriodDateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[YearMonth]("periodDate")
 
   object AccountIdVar {

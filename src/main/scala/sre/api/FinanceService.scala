@@ -1,6 +1,5 @@
 package sre.api
 
-import cats.Parallel
 import cats.effect._
 import cats.implicits._
 import org.http4s._
@@ -47,14 +46,14 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
           Ok(json"""{ "result": $periods }""")
         }
 
-      case GET -> Root / "analytics" / "refresh" =>
+      case GET -> Root / "analytics" / "refresh" :? ReindexFromScrachQueryParamMatcher(maybeFromScratch) =>
         handleOtpRequest {
           cmClient.fetchAccountsOfxStmTrn() {
             case (accountId, response) =>
               val accountPath = settings.finance.transactionsDir.toPath.resolve(accountId)
               finance.ofx.OfxStmTrn.persist(is = response.body, accountPath)
           }
-        }(_ => analyticsClient.reindex() *> Ok())
+        }(_ => analyticsClient.reindex(maybeFromScratch getOrElse false) *> Ok())
     }
   }
 }

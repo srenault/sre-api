@@ -16,8 +16,14 @@ case class AnalyticsClient[F[_]](
   settings: Settings
 )(implicit F: Effect[F]) {
 
-  def reindex(): F[Unit] = {
-    analyticsIndex.buildHistoryIndexes().flatMap { indexes =>
+  def reindex(fromScratch: Boolean): F[Unit] = {
+    val eventuallyIndexes = if (fromScratch) {
+      analyticsIndex.buildHistoryIndexesFromScrach()
+    } else {
+      analyticsIndex.buildLastestHistoryIndexes()
+    }
+
+    eventuallyIndexes.flatMap { indexes =>
       dbClient.upsertPeriodIndexes(indexes)
     }
   }
