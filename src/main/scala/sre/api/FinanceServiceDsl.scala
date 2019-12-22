@@ -25,23 +25,31 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
 
   def analyticsClient: AnalyticsClient[F]
 
+  def validatePeriodDate(str: String): ValidatedNel[ParseFailure, YearMonth] = {
+    Validated
+      .catchNonFatal {
+        val format = new DateTimeFormatterBuilder()
+          .appendPattern("yyyy-MM")
+          .toFormatter();
+        val date = YearMonth.parse(str, format)
+        YearMonth.from(date)
+      }
+      .leftMap(t => ParseFailure(s"Query decoding period failed", t.getMessage))
+      .toValidatedNel
+  }
+
   implicit val periodQueryParamDecoder = new QueryParamDecoder[YearMonth] {
     def decode(value: QueryParameterValue): ValidatedNel[ParseFailure, YearMonth] =
-      Validated
-        .catchNonFatal {
-          val format = new DateTimeFormatterBuilder()
-            .appendPattern("yyyy-MM")
-            .toFormatter();
-          val date = YearMonth.parse(value.value, format)
-          YearMonth.from(date)
-        }
-        .leftMap(t => ParseFailure(s"Query decoding period failed", t.getMessage))
-        .toValidatedNel
+      validatePeriodDate(value.value)
   }
 
   object ReindexFromScrachQueryParamMatcher extends OptionalQueryParamDecoderMatcher[Boolean]("fromScratch")
 
-  object PeriodDateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[YearMonth]("periodDate")
+  object OptionalPeriodDateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[YearMonth]("periodDate")
+
+  object PeriodDateVar {
+    def unapply(str: String): Option[YearMonth] = validatePeriodDate(str).toOption
+  }
 
   object AccountIdVar {
     def unapply(str: String): Option[String] = {

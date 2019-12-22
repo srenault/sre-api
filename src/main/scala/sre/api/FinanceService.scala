@@ -32,7 +32,7 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
           Ok(accountsOverview.asJson)
         }
 
-      case GET -> Root / "accounts" / AccountIdVar(accountId) :? PeriodDateQueryParamMatcher(maybeValidatedPeriod) =>
+      case GET -> Root / "accounts" / AccountIdVar(accountId) :? OptionalPeriodDateQueryParamMatcher(maybeValidatedPeriod) =>
         WithPeriodDate(maybeValidatedPeriod) { maybePeriodDate =>
           WithAccountState(accountId, maybePeriodDate) { (period, accountState) =>
             analyticsClient.computeExpensesByCategory(accountState).value.flatMap { expenses =>
@@ -44,6 +44,15 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
       case GET -> Root / "analytics" =>
         analyticsClient.getPreviousPeriods().flatMap { periods =>
           Ok(json"""{ "result": $periods }""")
+        }
+
+      case GET -> Root / "analytics" / "period" / PeriodDateVar(periodDate) =>
+        analyticsClient.getStatementsAt(periodDate).value.flatMap {
+          case Some((period, statements)) =>
+            Ok(json"""{ "statements": $statements, "period":  $period }""")
+
+          case None =>
+            NotFound()
         }
 
       case GET -> Root / "analytics" / "refresh" :? ReindexFromScrachQueryParamMatcher(maybeFromScratch) =>

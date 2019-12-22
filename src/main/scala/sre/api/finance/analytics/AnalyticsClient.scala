@@ -51,6 +51,24 @@ case class AnalyticsClient[F[_]](
     })
   }
 
+  def getStatementsAt(periodDate: YearMonth): OptionT[F, (Period, List[CMStatement])] = {
+    for {
+      periodIndex <- OptionT(dbClient.selectOnePeriodIndex(periodDate))
+
+      statements <- OptionT.liftF {
+        periodIndex.partitions
+          .map(f => finance.ofx.OfxStmTrn.load(f).map(f.accountId -> _))
+          .sequence
+          .map { transactionsByAccount =>
+            transactionsByAccount.map {
+              case (accountId, transactions) =>
+                transactions.map(_.toStatement(accountId))
+            }.flatten.distinct
+          }
+      }
+    } yield Period(periodIndex) -> statements
+  }
+
   def getAccountStateAt(accountId: String, periodDate: YearMonth): OptionT[F, (Period, CMAccountState)] = {
     for {
       accountSettings <- OptionT(F.pure(settings.finance.cm.accounts.find(_.id == accountId)))
