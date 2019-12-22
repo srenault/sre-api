@@ -29,7 +29,7 @@ object ServerStream {
   def subwayService[F[_]: Effect](subwayClient: SubwayClient[F], settings: Settings) =
     new SubwayService[F](subwayClient, settings).service
 
-  def financeService[F[_]: ConcurrentEffect : Timer](icomptaClient: IComptaClient[F], cmClient: CMClient[F], dbClient: DBClient[F], settings: Settings) =
+  def financeService[F[_]: ConcurrentEffect : Timer : ContextShift](icomptaClient: IComptaClient[F], cmClient: CMClient[F], dbClient: DBClient[F], settings: Settings) =
     new FinanceService[F](icomptaClient, cmClient, dbClient, settings).service
 
   def energyService[F[_]: Effect](domoticzClient: DomoticzClient[F], settings: Settings) =

@@ -1,21 +1,34 @@
 package sre.api.finance
 package analytics
 
-import java.time.LocalDate
+import java.time.{ LocalDate, YearMonth }
 import cats.effect._
 import org.http4s.EntityEncoder
 import org.http4s.circe._
 import io.circe.Encoder
 import io.circe.generic.semiauto._
 
-case class Period(startDate: LocalDate, endDate: Option[LocalDate], balance: Long)
+case class Period(startDate: LocalDate, endDate: Option[LocalDate], yearMonth: Option[YearMonth], balance: Long)
 
 object Period {
 
-  def apply(startDate: LocalDate, endDate: Option[LocalDate], balance: Double): Period = {
+  def apply(
+    startDate: LocalDate,
+    endDate: Option[LocalDate],
+    yearMonth: Option[YearMonth],
+    balance: Double
+  ): Period = {
     val roundBalance = BigDecimal(balance).setScale(0, BigDecimal.RoundingMode.HALF_UP).toLong
-    Period(startDate, endDate, roundBalance)
+    Period(startDate, endDate, yearMonth, roundBalance)
   }
+
+  def apply(periodIndex: PeriodIndex): Period =
+    Period(
+      periodIndex.startDate,
+      periodIndex.maybeEndDate,
+      periodIndex.maybeYearMonth,
+      periodIndex.balance
+    )
 
   implicit val encoder: Encoder[Period] = deriveEncoder[Period]
   implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, Period] = jsonEncoderOf[F, Period]

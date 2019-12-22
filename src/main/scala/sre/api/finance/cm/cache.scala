@@ -11,7 +11,6 @@ import scalacache.guava._
 import scalacache.CatsEffect.modes._
 import com.google.common.cache.CacheBuilder
 import sre.api.CMCacheSettings
-import ofx.OfxStmTrn
 
 case class CMBalancesCache(settings: CMCacheSettings) {
 
@@ -48,36 +47,6 @@ case class CMDownloadFormCache(settings: CMCacheSettings) {
 
   def set[F[_]: ConcurrentEffect](form: CMDownloadForm): F[Unit] = {
     cache.put(KEY)(form, Some(settings.ttl)).map(_ => Unit)
-  }
-}
-
-case class CMOfxExportCache(settings: CMCacheSettings) {
-
-  private val dateFormat = DateTimeFormatter.ISO_LOCAL_DATE
-
-  private val cache: Cache[List[OfxStmTrn]] = {
-    val underlying = CacheBuilder.newBuilder().maximumSize(settings.size).build[String, Entry[List[OfxStmTrn]]]
-    GuavaCache(underlying)
-  }
-
-  private def computeKey(accountId: String, startDate: Option[LocalDate], endDate: Option[LocalDate]): String =
-    List(Some(accountId), startDate.map(_.format(dateFormat)), endDate.map(_.format(dateFormat))).flatten.mkString("#")
-
-  def cached[F[_]](
-    accountId: String,
-    startDate: Option[LocalDate],
-    endDate: Option[LocalDate]
-  )(f: EitherT[F, CMOtpRequest, List[OfxStmTrn]])(implicit F: ConcurrentEffect[F]): EitherT[F, CMOtpRequest, List[OfxStmTrn]] = {
-    val key = computeKey(accountId, startDate, endDate)
-    EitherT.liftT(cache.get(key)).flatMap {
-      case Some(statements) =>
-        EitherT.right(F.pure(statements))
-
-      case None =>
-        f.semiflatMap { statements =>
-          cache.caching(key)(ttl = Some(settings.ttl))(statements)
-        }
-    }
   }
 }
 

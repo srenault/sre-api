@@ -9,7 +9,6 @@ import org.http4s.EntityEncoder
 import org.http4s.circe._
 import io.circe._
 import io.circe.literal._
-import io.circe.generic.semiauto._
 
 case class CMStatement(
   fitid: String,
@@ -19,7 +18,10 @@ case class CMStatement(
   label: String,
   balance: Option[Float]
 ) {
-  def id: String = List(fitid, accountId, date, amount, label).mkString("#")
+  def id: String = {
+    val v = List(fitid, accountId, date, amount, label).mkString("#")
+    java.util.Base64.getEncoder().encodeToString(v.getBytes("UTF-8"))
+  }
 }
 
 object CMStatement {
@@ -40,4 +42,10 @@ object CMStatement {
     }
   }
   implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[CMStatement]] = jsonEncoderOf[F, List[CMStatement]]
+
+  lazy val ORDER_ASC: scala.math.Ordering[CMStatement] =
+    scala.math.Ordering.by[CMStatement, Long](_.date.toEpochDay)
+
+  lazy val ORDER_DESC: scala.math.Ordering[CMStatement] =
+    ORDER_ASC.reverse
 }
