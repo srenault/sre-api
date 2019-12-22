@@ -32,8 +32,9 @@ case class S3Client[F[_]](bucket: String, prefix: Option[String], awsClient: Ama
     val key = prefix.fold(file)(_ + "/" + file)
     val req = new GetObjectRequest(bucket, key)
     val inputStream: java.io.InputStream = awsClient.getObject(req).getObjectContent
-    val blockingExecutionContext = scala.concurrent.ExecutionContext.global
-    fs2.io.readInputStream(F.pure(inputStream), 1024, blockingExecutionContext)
+    Stream.resource(Blocker[F]).flatMap { blocker =>
+      fs2.io.readInputStream(F.pure(inputStream), 1024, blocker)
+    }
   }
 }
 

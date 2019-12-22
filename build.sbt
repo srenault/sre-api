@@ -1,6 +1,6 @@
 val projectName = "sre-api"
 
-
+val Fs2Version = "2.1.0"
 val Http4sVersion = "0.20.14"
 val Specs2Version = "4.7.1"
 val LogbackVersion = "1.2.3"
@@ -10,7 +10,6 @@ val AnormVersion = "2.6.5"
 val SqliteJdbcVersion = "3.28.0"
 val Ofx4jVersion = "1.17"
 val JsoupVersion = "1.12.1"
-val CronVersion =  "0.2.2"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
 val AwsSdkVersion = "1.11.615"
@@ -31,6 +30,8 @@ lazy val root = (project in file("."))
     version := "0.0.1-SNAPSHOT",
     scalaVersion := "2.12.6",
     libraryDependencies ++= Seq(
+      "co.fs2"                    %% "fs2-core"               % Fs2Version,
+      "co.fs2"                    %% "fs2-io"                 % Fs2Version,
       "org.http4s"                %% "http4s-dsl"             % Http4sVersion,
       "org.http4s"                %% "http4s-blaze-server"    % Http4sVersion,
       "org.http4s"                %% "http4s-blaze-client"    % Http4sVersion,
@@ -46,7 +47,6 @@ lazy val root = (project in file("."))
       "org.playframework.anorm"   %% "anorm"                  % AnormVersion,
       "com.webcohesion.ofx4j"     % "ofx4j"                   % Ofx4jVersion,
       "org.jsoup"                 % "jsoup"                   % JsoupVersion,
-      "eu.timepit"                %% "fs2-cron-core"          % CronVersion,
       "com.github.cb372"          %% "scalacache-guava"       % ScalaCacheVersion,
       "com.github.cb372"          %% "scalacache-cats-effect" % ScalaCacheCatsVersion,
       "com.amazonaws"             % "aws-java-sdk"            % AwsSdkVersion

@@ -119,7 +119,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     } yield CMSession(basicAuthSession, otpSession)
   }
 
-  private def authenticatedFetch[A](request: Request[F], retries: Int = 1)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
+  def authenticatedFetch[A](request: Request[F], retries: Int = 1)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
     logger.info(s"Performing request ${request.uri} with retries = $retries")
 
     EitherT.liftF(getSession()).flatMap {
@@ -132,40 +132,40 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
           request.putHeaders(cookieHeader)
         }
 
-        EitherT(httpClient.fetch(authenticatedRequest) { response =>
-          val hasExpiredBasicAuthSession = response.headers.get(headers.Location).exists { location =>
-            location.value == settings.authenticationUri.toString
-          }
-
-          val hasExpiredOtpSession = response.headers.get(headers.Location).exists { location =>
-            location.value == settings.validationPath.toString
-          }
-
-          if (hasExpiredBasicAuthSession && retries > 0) {
-            refreshSession().value.flatMap { _ =>
-              authenticatedFetch(request, retries - 1)(f).value
+        EitherT[F, CMOtpRequest, A] {
+          httpClient.fetch(authenticatedRequest) { response =>
+            val hasExpiredBasicAuthSession = response.headers.get(headers.Location).exists { location =>
+              location.value == settings.authenticationUri.toString
             }
-          } else if (hasExpiredBasicAuthSession) {
-            sys.error("Unable to refresh cm session")
-          } else if (hasExpiredOtpSession) {
-            requestOtpSession().map(otpSession => Left(otpSession.toOtpRequest(settings.apkId)))
-          } else if (response.status == Status.Ok){
-            logger.info(s"Request ${request.uri} OK")
-            f(response).map(result => Right(result))
-          } else {
-            sys.error(s"An error occured while performing $authenticatedRequest\n:$response")
+
+            val hasExpiredOtpSession = response.headers.get(headers.Location).exists { location =>
+              location.value == settings.validationPath.toString
+            }
+
+            if (hasExpiredBasicAuthSession && retries > 0) {
+              refreshSession().value *> authenticatedFetch(request, retries - 1)(f).value
+            } else if (hasExpiredBasicAuthSession && retries > 0) {
+              sys.error("Unable to refresh cm session")
+            } else if (hasExpiredOtpSession) {
+              requestOtpSession().map(otpSession => Left(otpSession.toOtpRequest(settings.apkId)))
+            } else if (response.status == Status.Ok) {
+              logger.info(s"Request ${request.uri} OK")
+              f(response).map(result => Right[CMOtpRequest, A](result))
+            } else {
+              sys.error(s"An error occured while performing $authenticatedRequest\n:$response")
+            }
           }
-        })
+        }
     }
   }
 
-  def doAuthenticatedGET[A](uri: Uri)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
+  def authenticatedGet[A](uri: Uri)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
     EitherT.liftF(GET(uri)).flatMap { request =>
       authenticatedFetch(request)(f)
     }
   }
 
-  def doAuthenticatedPOST[A](uri: Uri, data: UrlForm)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
+  def authenticatedPost[A](uri: Uri, data: UrlForm)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
     EitherT.liftF(POST(data, uri)).flatMap { request =>
       authenticatedFetch(request)(f)
     }

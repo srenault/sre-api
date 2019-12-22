@@ -7,7 +7,6 @@ import org.http4s.Uri
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.config.syntax._
-import cron4s.expr.CronExpr
 
 case class TrainSettings(endpoint: Uri)
 
@@ -17,14 +16,11 @@ case class IComptaCategorySettings(label: String, rulePath: List[String], thresh
 
 case class IComptaSettings(db: String, wageRuleId: String)
 
-case class CMTasksSettings(balances: CronExpr, expenses: CronExpr)
-
 case class CMCacheSettings(size: Int, ttl: FiniteDuration)
 
 case class CMCachesSettings(
   form: CMCacheSettings,
   balances: CMCacheSettings,
-  ofx: CMCacheSettings,
   csv: CMCacheSettings
 )
 
@@ -45,7 +41,6 @@ case class CMSettings(
   username: String,
   password: String,
   accounts: List[CMAccountSettings],
-  tasks: CMTasksSettings,
   cache: CMCachesSettings,
   otpSession: String,
   apkId: String
@@ -58,7 +53,9 @@ case class CMSettings(
   def otpSessionFile[F[_]: Sync] = finance.cm.CMOtpSessionFile(otpSession)
 }
 
-case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transactionsDir: File)
+case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transactionsDir: File) {
+  def accountsDir: List[File] = transactionsDir.listFiles.toList.filter(_.isDirectory)
+}
 
 case class DomoticzDeviceSettings(idx: Int)
 
@@ -133,15 +130,6 @@ object Settings {
         val f = new File(s)
         if (f.exists) Right(f) else Left {
           DecodingFailure(s"$s doesn't exists", c.history)
-        }
-      }
-  }
-
-  implicit val CronExprDecoder: Decoder[CronExpr] = new Decoder[CronExpr] {
-    final def apply(c: HCursor): Decoder.Result[CronExpr] =
-      c.as[String].right.flatMap { s =>
-        cron4s.Cron(s).left.map { e =>
-          DecodingFailure(s"$s isn't a valid cron expression: $e", c.history)
         }
       }
   }

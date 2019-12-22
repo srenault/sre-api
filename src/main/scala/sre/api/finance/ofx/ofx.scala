@@ -51,23 +51,27 @@ case class OfxStmTrn(
 
 case class OfxFile(file: File, date: LocalDate) {
   lazy val name = file.getName
+  lazy val accountId = file.getParentFile.getName
 }
 
 object OfxFile {
   val Reg = """(.+)?\.ofx""".r
 
-  val format = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
   def open(path: String): Option[OfxFile] = {
     val file = new File(path)
     fromFile(file)
   }
 
+  def filename(date: LocalDate): String =
+    formatter.format(date) + ".ofx"
+
   def fromFile(file: File): Option[OfxFile] = {
     file.getName match {
       case Reg(dateStr) =>
         scala.util.control.Exception.nonFatalCatch[OfxFile].opt {
-          val date = LocalDate.parse(dateStr, format)
+          val date = LocalDate.parse(dateStr, formatter)
           OfxFile(file, date)
         }
 
@@ -136,5 +140,17 @@ object OfxStmTrn {
   def load[F[_]: Effect](s: String): F[List[OfxStmTrn]] = {
     val is: InputStream = new ByteArrayInputStream(s.getBytes())
     load(is)
+  }
+
+  def persist[F[_]: Effect : ContextShift](is: fs2.Stream[F, Byte], accountPath: java.nio.file.Path): F[Unit] = {
+    fs2.Stream.resource(Blocker[F]).flatMap { blocker =>
+      val filename = OfxFile.filename(LocalDate.now)
+      val path = accountPath.resolve(filename)
+
+      java.nio.file.Files.deleteIfExists(path)
+
+      is.through(fs2.io.file.writeAll(path, blocker, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil))
+
+    }.compile.drain
   }
 }
