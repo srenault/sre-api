@@ -24,6 +24,7 @@ case class AnalyticsClient[F[_]](
     }
 
     eventuallyIndexes.flatMap { indexes =>
+      indexes.foreach(println)
       dbClient.upsertPeriodIndexes(indexes)
     }
   }
@@ -64,6 +65,9 @@ case class AnalyticsClient[F[_]](
               case (accountId, transactions) =>
                 transactions.map(_.toStatement(accountId))
             }.flatten.distinct
+             .sorted(CMStatement.ORDER_ASC)
+             .dropWhile(_ != periodIndex.startWageStatement)
+             .takeWhile(_.date.isBefore(periodIndex.endDate))
           }
       }
     } yield Period(periodIndex) -> statements
@@ -86,7 +90,7 @@ case class AnalyticsClient[F[_]](
               .distinct
               .sorted(CMStatement.ORDER_ASC)
               .dropWhile(_.date.isBefore(periodIndex.startDate))
-              .takeWhile(_.date.isBefore(periodIndex.endDate.plusDays(1)))
+              .takeWhile(_.date.isBefore(periodIndex.endDate))
           }
       }
     } yield {
@@ -108,7 +112,7 @@ case class AnalyticsClient[F[_]](
   }
 
   def computeCurrentPeriod(statements: List[CMStatement]): F[Option[Period]] = {
-    analyticsIndex.buildIndexes(statements).map { indexes =>
+    analyticsIndex.buildIndexesFor(statements).map { indexes =>
       indexes.lastOption.map { periodIndex =>
         Period(
           startDate = periodIndex.startDate,
@@ -127,7 +131,7 @@ object AnalyticsClient {
     dbClient: DBClient[F],
     settings: Settings
   )(implicit F: Effect[F]): AnalyticsClient[F] = {
-    val analyticsIndex = AnalyticsIndex(icomptaClient, dbClient, settings)
+    val analyticsIndex = AnalyticsIndex(icomptaClient, settings)
     AnalyticsClient(analyticsIndex, icomptaClient, dbClient, settings)
   }
 }

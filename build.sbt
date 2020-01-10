@@ -2,7 +2,6 @@ val projectName = "sre-api"
 
 val Fs2Version = "2.1.0"
 val Http4sVersion = "0.20.15"
-val Specs2Version = "4.7.1"
 val LogbackVersion = "1.2.3"
 val CirceVersion = "0.12.3"
 val CirceConfigVersion = "0.6.1"
@@ -13,6 +12,7 @@ val JsoupVersion = "1.12.1"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
 val AwsSdkVersion = "1.11.615"
+val ScalaTestVersion = "3.1.0"
 
 val gitVersion = {
   import scala.sys.process._
@@ -37,7 +37,6 @@ lazy val root = (project in file("."))
       "org.http4s"                %% "http4s-blaze-client"    % Http4sVersion,
       "org.http4s"                %% "http4s-circe"           % Http4sVersion,
       "org.http4s"                %% "http4s-scala-xml"       % Http4sVersion,
-      "org.specs2"                %% "specs2-core"            % Specs2Version % "test",
       "ch.qos.logback"            %  "logback-classic"        % LogbackVersion,
       "io.circe"                  %% "circe-parser"           % CirceVersion,
       "io.circe"                  %% "circe-generic"          % CirceVersion,
@@ -49,7 +48,9 @@ lazy val root = (project in file("."))
       "org.jsoup"                 % "jsoup"                   % JsoupVersion,
       "com.github.cb372"          %% "scalacache-guava"       % ScalaCacheVersion,
       "com.github.cb372"          %% "scalacache-cats-effect" % ScalaCacheCatsVersion,
-      "com.amazonaws"             % "aws-java-sdk"            % AwsSdkVersion
+      "com.amazonaws"             % "aws-java-sdk"            % AwsSdkVersion,
+      "org.scalatest"             %% "scalatest"              % ScalaTestVersion % "test",
+      "com.codecommit" %% "cats-effect-testing-scalatest" % "0.4.0"
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
@@ -63,6 +64,7 @@ lazy val root = (project in file("."))
     assemblyJarName in assembly := s"$projectName.jar",
   )
 
-scalacOptions ++= Seq(
-  "-Xlint"
-)
+scalacOptions ++= Seq("-Xlint")
+
+// ScalaTest
+logBuffered in Test := false

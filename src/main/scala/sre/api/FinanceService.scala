@@ -55,6 +55,9 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
             NotFound()
         }
 
+      case GET -> Root / "analytics" / "reindex" =>
+        analyticsClient.reindex(fromScratch = true) *> Ok()
+
       case GET -> Root / "analytics" / "refresh" :? ReindexFromScrachQueryParamMatcher(maybeFromScratch) =>
         handleOtpRequest {
           cmClient.fetchAccountsOfxStmTrn() {

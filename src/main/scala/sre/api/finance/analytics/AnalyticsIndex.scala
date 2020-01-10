@@ -13,9 +13,44 @@ import ofx.{ OfxFile, OfxStmTrn, OfxDir }
 
 case class AnalyticsIndex[F[_]](
   icomptaClient: IComptaClient[F],
-  dbClient: DBClient[F],
   settings: Settings
 )(implicit F: Effect[F]) {
+
+  def buildIndexesFor(statements: List[CMStatement]): F[List[PeriodIndex]] = {
+    icomptaClient.buildRulesAst().map { rulesAst =>
+      rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).toList.flatMap { wageRuleAst =>
+        val segments = AnalyticsIndex.computeSegmentIndexes(statements, partitions = Nil)(wageRuleAst.test)
+        val (periods, _) = AnalyticsIndex.computePeriodIndexes(segments, periods = Nil, pendingSegments = Nil)
+        periods
+      }.toList
+    }
+  }
+
+  def buildHistoryIndexesFromScrach(): F[List[PeriodIndex]] = {
+    val accountDirs@(accountDir :: _) = settings.finance.accountsDir
+    val ofxFiles = OfxDir.listFiles(accountDir)
+    buildHistoryIndexes(accountDirs, ofxFiles)
+  }
+
+  def buildLastestHistoryIndexes(): F[List[PeriodIndex]] = {
+    val accountDirs@(accountDir :: _) = settings.finance.accountsDir
+    val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay).take(4)
+    buildHistoryIndexes(accountDirs, ofxFiles)
+  }
+
+  private def buildHistoryIndexes(accountDirs: List[File], ofxFiles: List[OfxFile]): F[List[PeriodIndex]] = {
+    icomptaClient.buildRulesAst().flatMap { rulesAst =>
+
+      rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).map { wageRule =>
+
+        AnalyticsIndex.buildHistoryIndexes(accountDirs, ofxFiles)(wageRule.test)
+
+      }.toList.sequence.map(_.flatten)
+    }
+  }
+}
+
+object AnalyticsIndex {
 
   private def computePeriodIndexes(segments: List[SegmentIndex], periods: List[PeriodIndex], pendingSegments: List[SegmentIndex]): (List[PeriodIndex], List[SegmentIndex]) = {
 
@@ -37,7 +72,7 @@ case class AnalyticsIndex[F[_]](
               val updatedAccPeriods: List[PeriodIndex] = maybeLastPeriod match {
 
                 case Some(lastPeriod) =>
-                  if (scala.math.abs(ChronoUnit.DAYS.between(wageStatement.date, lastPeriod.wageStatements.last.date)) < 10) { // Include new wage statement
+                  if (scala.math.abs(ChronoUnit.DAYS.between(wageStatement.date, lastPeriod.wageStatements.last.date)) <= 10) { // Include new wage statement
                     val statementsForLastPeriod = allStatements.takeWhile(_.date.isAfter(wageStatement.date.minusDays(1)))
 
                     val updatedLastPeriod = lastPeriod.includeNewWageStatement(wageStatement, statementsForLastPeriod)
@@ -118,81 +153,53 @@ case class AnalyticsIndex[F[_]](
     step(statements, acc = Nil).reverse
   }
 
-  def buildIndexes(statements: List[CMStatement]): F[List[PeriodIndex]] = {
-    icomptaClient.buildRulesAst().map { rulesAst =>
-      rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).toList.flatMap { wageRuleAst =>
-        val segments = computeSegmentIndexes(statements, partitions = Nil)(wageRuleAst.test)
-        val (periods, _) = computePeriodIndexes(segments, periods = Nil, pendingSegments = Nil)
-        periods
-      }.toList
-    }
-  }
+  def buildHistoryIndexes[F[_]](accountDirs: List[File], ofxFiles: List[OfxFile])(isWageStatement: CMStatement => Boolean)(implicit F: Effect[F]): F[List[PeriodIndex]] = {
 
-  def buildHistoryIndexesFromScrach(): F[List[PeriodIndex]] = {
-    val accountDirs@(accountDir :: _) = settings.finance.accountsDir
-    val ofxFiles = OfxDir.listFiles(accountDir)
-    buildHistoryIndexes(accountDirs, ofxFiles)
-  }
+    def step(accountDirs: List[File], sortedOfxFiles: List[OfxFile], accSegments: List[SegmentIndex], accPeriods: List[PeriodIndex]): F[List[PeriodIndex]] = {
+      sortedOfxFiles match {
+        case ofxFile :: remainingOfxFiles =>
+          val partitions: List[OfxFile] = accountDirs.map { accountDir =>
+            new File(accountDir.getPath + "/" + ofxFile.name)
+          }.flatMap(OfxFile.fromFile)
 
-  def buildLastestHistoryIndexes(): F[List[PeriodIndex]] = {
-    val accountDirs@(accountDir :: _) = settings.finance.accountsDir
-    val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay).take(4)
-    buildHistoryIndexes(accountDirs, ofxFiles)
-  }
+          partitions.map(p => OfxStmTrn.load(p).map(p -> _)).sequence.map {
+            _.flatMap { case (partition, transactions) =>
+              transactions.map(_.toStatement(partition))
+            }
+          }.flatMap { statements =>
 
-  def buildHistoryIndexes(accountDirs: List[File], ofxFiles: List[OfxFile]): F[List[PeriodIndex]] = {
+            val sortedStatements = statements.sorted(CMStatement.ORDER_DESC)
 
-    icomptaClient.buildRulesAst().flatMap { rulesAst =>
+            val maybeLastWageStatement = accPeriods.headOption.map(period => period.startWageStatement)
 
-      rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).map { wageRuleAst =>
+            // Remove already processed statements
+            val nextStatements = maybeLastWageStatement match {
+              case Some(lastWageStatement) =>
+                sortedStatements.dropWhile { st =>
+                  st.date.isAfter(lastWageStatement.date) ||
+                  (st.date.isEqual(lastWageStatement.date) && st.id != lastWageStatement.id)
+                }.dropWhile(_.id == lastWageStatement.id)
 
-        def step(accountDirs: List[File], sortedOfxFiles: List[OfxFile], accSegments: List[SegmentIndex], accPeriods: List[PeriodIndex]): F[List[PeriodIndex]] = {
-          sortedOfxFiles match {
-            case ofxFile :: remainingOfxFiles =>
-              val partitions: List[OfxFile] = accountDirs.map { accountDir =>
-                new File(accountDir.getPath + "/" + ofxFile.name)
-              }.flatMap(OfxFile.fromFile)
+              case None => statements
+            }
 
-              partitions.map(p => OfxStmTrn.load(p).map(p -> _)).sequence.map {
-                _.flatMap { case (partition, transactions) =>
-                  transactions.map(_.toStatement(partition))
-                }
-              }.flatMap { statements =>
+            val segments = computeSegmentIndexes(nextStatements, partitions)(isWageStatement)
 
-                val sortedStatements = statements.sorted(CMStatement.ORDER_DESC)
+            val (updatedAccPeriods, updatedAccSegments) = computePeriodIndexes(segments, accPeriods, accSegments)
 
-                val maybeLastWageStatement = accPeriods.headOption.map(period => period.startWageStatement)
-
-                // Remove already processed statements
-                val nextStatements = maybeLastWageStatement match {
-                  case Some(lastWageStatement) =>
-                    sortedStatements.dropWhile { st =>
-                      st.date.isAfter(lastWageStatement.date) ||
-                      (st.date.isEqual(lastWageStatement.date) && st.id != lastWageStatement.id)
-                    }.dropWhile(_.id == lastWageStatement.id)
-
-                  case None => statements
-                }
-
-                val segments = computeSegmentIndexes(nextStatements, partitions)(wageRuleAst.test)
-
-                val (updatedAccPeriods, updatedAccSegments) = computePeriodIndexes(segments, accPeriods, accSegments)
-
-                step(accountDirs, remainingOfxFiles, updatedAccSegments, updatedAccPeriods)
-              }
-
-            case Nil =>
-              val ascendantPeriods = accPeriods.sorted(PeriodIndex.ORDER_ASC)
-
-              F.pure(ascendantPeriods)
+            step(accountDirs, remainingOfxFiles, updatedAccSegments, updatedAccPeriods)
           }
-        }
 
-        val sortedOfxFiles = ofxFiles.sortBy(-_.date.toEpochDay)
+        case Nil =>
+          val ascendantPeriods = accPeriods.sorted(PeriodIndex.ORDER_ASC)
 
-        step(accountDirs, sortedOfxFiles, accSegments = Nil, accPeriods = Nil)
-
-      }.toList.sequence.map(_.flatten)
+          F.pure(ascendantPeriods)
+      }
     }
+
+    val sortedOfxFiles = ofxFiles.sortBy(-_.date.toEpochDay)
+
+    step(accountDirs, sortedOfxFiles, accSegments = Nil, accPeriods = Nil)
+
   }
 }
