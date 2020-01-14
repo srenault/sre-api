@@ -21,9 +21,46 @@ sealed trait PeriodIndex {
   def startWageStatement: CMStatement =
     wageStatements.toList.sortBy(_.date.toEpochDay).head
 
-  def includeStatements(statements: List[CMStatement]): PeriodIndex
+  def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): PeriodIndex = {
+    val amount = statements.foldLeft(0D)(_ + _.amount)
 
-  def includeNewWageStatement(wageStatement: CMStatement, statements: List[CMStatement]): PeriodIndex
+    this match {
+      case period: CompletePeriodIndex =>
+        period.copy(
+          partitions = (period.partitions ++ partitions).distinct,
+          balance = balance + amount
+        )
+
+      case period: IncompletePeriodIndex =>
+        period.copy(
+          partitions = (period.partitions ++ partitions).distinct,
+          balance = balance + amount
+        )
+    }
+  }
+
+  def includeNewWageStatement(wageStatement: CMStatement, statements: List[CMStatement], partitions: List[OfxFile]): PeriodIndex = {
+    val amount = statements.foldLeft(0D)(_ + _.amount)
+    val updatedWageStatements = wageStatement :: wageStatements
+
+    this match {
+      case period: CompletePeriodIndex =>
+        period.copy(
+          partitions = (period.partitions ++ partitions).distinct,
+          startDate = wageStatement.date,
+          wageStatements = updatedWageStatements,
+          balance = balance + amount
+        )
+
+      case period: IncompletePeriodIndex =>
+        period.copy(
+          partitions = (period.partitions ++ partitions).distinct,
+          startDate = wageStatement.date,
+          wageStatements = updatedWageStatements,
+          balance = balance + amount
+        )
+    }
+  }
 }
 
 object PeriodIndex {
@@ -46,21 +83,6 @@ case class CompletePeriodIndex(
   def maybeEndDate = Some(endDate)
 
   def maybeYearMonth = Some(yearMonth)
-
-  def includeStatements(statements: List[CMStatement]): CompletePeriodIndex = {
-    val amount = statements.foldLeft(0D)(_ + _.amount)
-    copy(balance = balance + amount)
-  }
-
-  def includeNewWageStatement(wageStatement: CMStatement, statements: List[CMStatement]): CompletePeriodIndex = {
-    val amount = statements.foldLeft(0D)(_ + _.amount)
-
-    copy(
-      startDate = wageStatement.date,
-      wageStatements = wageStatement :: wageStatements,
-      balance = balance + amount
-    )
-  }
 }
 
 object CompletePeriodIndex {
@@ -157,21 +179,6 @@ case class IncompletePeriodIndex(
   def maybeEndDate = None
 
   def maybeYearMonth = None
-
-  def includeStatements(statements: List[CMStatement]): IncompletePeriodIndex = {
-    val amount = statements.foldLeft(0D)(_ + _.amount)
-    copy(balance = balance + amount)
-  }
-
-  def includeNewWageStatement(wageStatement: CMStatement, statements: List[CMStatement]): IncompletePeriodIndex = {
-    val amount = statements.foldLeft(0D)(_ + _.amount)
-
-    copy(
-      startDate = wageStatement.date,
-      wageStatements = wageStatement :: wageStatements,
-      balance = balance + amount
-    )
-  }
 }
 
 object IncompletePeriodIndex {

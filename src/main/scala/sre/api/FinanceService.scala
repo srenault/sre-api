@@ -47,7 +47,7 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
         }
 
       case GET -> Root / "analytics" / "period" / PeriodDateVar(periodDate) =>
-        analyticsClient.getStatementsAt(periodDate).value.flatMap {
+        analyticsClient.getStatementsForPeriod(periodDate).value.flatMap {
           case Some((period, statements)) =>
             Ok(json"""{ "statements": $statements, "period":  $period }""")
 

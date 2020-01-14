@@ -6,4 +6,5 @@ application.conf
 .metals/metals.lock.db
 .metals/metals.log
 .DS_Store
-*.ofx
+src/test/resources/*
+!src/test/resources/resources.tar.enc

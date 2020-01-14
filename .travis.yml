@@ -1,18 +1,22 @@
 language: scala
 scala:
-   - 2.12.6
+- 2.12.6
 script:
-  - sbt assembly
-  - mkdir jar
-  - mv $TRAVIS_BUILD_DIR/target/scala-2.12/sre-api.jar $TRAVIS_BUILD_DIR/jar/sre-api-$TRAVIS_COMMIT.jar
+- sbt assembly
+- mkdir jar
+- mv $TRAVIS_BUILD_DIR/target/scala-2.12/sre-api.jar $TRAVIS_BUILD_DIR/jar/sre-api-$TRAVIS_COMMIT.jar
 deploy:
   provider: s3
-  access_key_id: $AWS_ACCESS_KEY_ID
-  secret_access_key: $AWS_SECRET_ACCESS_KEY
-  bucket: $AWS_BUCKET_NAME
+  access_key_id: "$AWS_ACCESS_KEY_ID"
+  secret_access_key: "$AWS_SECRET_ACCESS_KEY"
+  bucket: "$AWS_BUCKET_NAME"
   local-dir: "$TRAVIS_BUILD_DIR/jar"
   upload-dir: jar
   region: us-east-1
   skip_cleanup: true
   on:
     repo: srenault/sre-api
+before_install:
+- openssl aes-256-cbc -K $encrypted_5d1f07284079_key -iv $encrypted_5d1f07284079_iv
+  -in src/test/resources/resources.tar.enc -out resources.tar -d
+- tar xvf resources.tar --directory src/test/resources/
