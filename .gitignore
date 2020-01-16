@@ -5,3 +5,6 @@ application.conf
 .metals/metals.h2.db
 .metals/metals.lock.db
 .metals/metals.log
+.DS_Store
+src/test/resources/*
+!src/test/resources/resources.tar.enc

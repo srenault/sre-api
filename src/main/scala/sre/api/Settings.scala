@@ -129,7 +129,7 @@ object Settings {
       c.as[String].right.flatMap { s =>
         val f = new File(s)
         if (f.exists) Right(f) else Left {
-          DecodingFailure(s"$s doesn't exists", c.history)
+          DecodingFailure(s"$s file doesn't exists", c.history)
         }
       }
   }

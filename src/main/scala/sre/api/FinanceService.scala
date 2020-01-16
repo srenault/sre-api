@@ -47,13 +47,16 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
         }
 
       case GET -> Root / "analytics" / "period" / PeriodDateVar(periodDate) =>
-        analyticsClient.getStatementsAt(periodDate).value.flatMap {
+        analyticsClient.getStatementsForPeriod(periodDate).value.flatMap {
           case Some((period, statements)) =>
             Ok(json"""{ "statements": $statements, "period":  $period }""")
 
           case None =>
             NotFound()
         }
+
+      case GET -> Root / "analytics" / "reindex" =>
+        analyticsClient.reindex(fromScratch = true) *> Ok()
 
       case GET -> Root / "analytics" / "refresh" :? ReindexFromScrachQueryParamMatcher(maybeFromScratch) =>
         handleOtpRequest {
