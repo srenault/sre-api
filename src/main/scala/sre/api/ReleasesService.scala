@@ -8,7 +8,7 @@ import releases.ReleasesClient
 
 class ReleasesService[F[_]: Effect](releasesClient: ReleasesClient[F], settings: Settings) extends ReleaseServiceDsl[F] {
 
-  val service: HttpService[F] = CorsMiddleware {
+  val service: HttpService[F] =
     HttpService[F] {
       case GET -> Root =>
         releasesClient.list()(settings).flatMap { releases =>
@@ -40,5 +40,4 @@ class ReleasesService[F[_]: Effect](releasesClient: ReleasesClient[F], settings:
           Ok(html, `Content-Type`(MediaType.text.html))
         }
     }
-  }
 }
