@@ -86,6 +86,7 @@ case class Settings(
   advertisedAddress: String,
   httpPort: Int,
   db: String,
+  cors: Boolean,
   transport: TransportSettings,
   finance: FinanceSettings,
   domoticz: DomoticzSettings,
@@ -103,6 +104,7 @@ object Settings {
     val advertisedAddress = AppConfig.getString("advertisedAddress")
     val httpPort = AppConfig.getInt("httpPort")
     val db = AppConfig.getString("db")
+    val cors = AppConfig.getBoolean("cors")
     for {
       trainSettings <- AppConfig.as[TrainSettings]("transport.train")
       transportSettings = TransportSettings(trainSettings)
@@ -111,7 +113,7 @@ object Settings {
       energySettings <- AppConfig.as[EnergySettings]("energy")
       weatherSettings <- AppConfig.as[WeatherSettings]("weather")
       apkSettings <- AppConfig.as[ApkSettings]("apk")
-    } yield Settings(advertisedAddress, httpPort, db, transportSettings, financeSettings, domoticzSettings,
+    } yield Settings(advertisedAddress, httpPort, db, cors, transportSettings, financeSettings, domoticzSettings,
       energySettings, weatherSettings, apkSettings)
   }
 
@@ -129,7 +131,7 @@ object Settings {
       c.as[String].right.flatMap { s =>
         val f = new File(s)
         if (f.exists) Right(f) else Left {
-          DecodingFailure(s"$s doesn't exists", c.history)
+          DecodingFailure(s"$s file doesn't exists", c.history)
         }
       }
   }

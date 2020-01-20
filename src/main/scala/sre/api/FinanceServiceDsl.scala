@@ -91,7 +91,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
   def WithAccountState(accountId: String, maybePeriodDate: Option[YearMonth])(f: (Period, CMAccountState) => F[Response[F]])(implicit F: Effect[F]): F[Response[F]] = {
     maybePeriodDate match {
       case Some(periodDate) =>
-        analyticsClient.getAccountStateAt(accountId, periodDate).value.flatMap {
+        analyticsClient.getAccountStateForPeriod(accountId, periodDate).value.flatMap {
           case Some((period, accountState)) =>
             f(period, accountState)
 

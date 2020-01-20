@@ -56,7 +56,7 @@ object ComparisonOp {
   }
   case object BeginWith extends ComparisonOp {
     def value = "BEGINSWITH[cd]"
- } 
+  }
   case object Equals extends ComparisonOp {
     def value = "="
   }
