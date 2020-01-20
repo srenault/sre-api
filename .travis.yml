@@ -17,6 +17,6 @@ deploy:
   on:
     repo: srenault/sre-api
 before_install:
-- openssl aes-256-cbc -K $encrypted_5d1f07284079_key -iv $encrypted_5d1f07284079_iv
+- openssl aes-256-cbc -K $encrypted_9b506cc28ab7_key -iv $encrypted_9b506cc28ab7_iv
   -in src/test/resources/resources.tar.enc -out resources.tar -d
 - tar xvf resources.tar --directory src/test/resources/
