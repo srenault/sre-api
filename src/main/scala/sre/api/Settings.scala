@@ -72,7 +72,7 @@ case class ElectricityRatioSettings(
   cta: Float
 )
 
-case class ElectricitySettings(ratio: ElectricityRatioSettings, monthlySubscription: Float, monthlyCta: Float)
+case class ElectricitySettings(ratio: ElectricityRatioSettings, yearlySubscription: Float, monthlyCta: Float)
 
 case class EnergySettings(electricity: ElectricitySettings)
 

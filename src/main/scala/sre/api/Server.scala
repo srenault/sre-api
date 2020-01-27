@@ -13,6 +13,7 @@ import finance.cm.CMClient
 import domoticz.DomoticzClient
 import weather.WeatherClient
 import utils.S3Client
+import energy.EnergyClient
 import releases.{ ApkClient, ReleasesClient }
 
 object Server extends IOApp {
@@ -32,8 +33,8 @@ object ServerStream {
   def financeService[F[_]: ConcurrentEffect : Timer : ContextShift](icomptaClient: IComptaClient[F], cmClient: CMClient[F], dbClient: DBClient[F], settings: Settings) =
     new FinanceService[F](icomptaClient, cmClient, dbClient, settings).service
 
-  def energyService[F[_]: Effect](domoticzClient: DomoticzClient[F], settings: Settings) =
-    new EnergyService[F](domoticzClient, settings).service
+  def energyService[F[_]: Effect](energyClient: EnergyClient[F], settings: Settings) =
+    new EnergyService[F](energyClient, settings).service
 
   def weatherService[F[_]: Effect](weatherClient: WeatherClient[F], settings: Settings) =
     new WeatherService[F](weatherClient, settings).service
@@ -52,6 +53,7 @@ object ServerStream {
           icomptaClient <- IComptaClient.stream[F](settings)
           cmClient <- CMClient.stream[F](httpClient, settings)
           domoticzClient = DomoticzClient[F](httpClient, settings.domoticz)
+          energyClient = EnergyClient[F](domoticzClient, settings)
           weatherClient = WeatherClient[F](httpClient, settings.weather)
           s3Client = S3Client[F](settings.apk.s3)
           apkClient = ApkClient(s3Client)
@@ -60,7 +62,7 @@ object ServerStream {
                               .mountService(trainService(trainClient, settings), "/api/transport/train")
                               .mountService(subwayService(subwayClient, settings), "/api/transport/subway")
                               .mountService(financeService(icomptaClient, cmClient, dbClient, settings), "/api/finance")
-                              .mountService(energyService(domoticzClient, settings), "/api/energy")
+                              .mountService(energyService(energyClient, settings), "/api/energy")
                               .mountService(weatherService(weatherClient, settings), "/api/weather")
                               .mountService(releasesService(releasesClient, settings), "/api/releases")
                               .serve
