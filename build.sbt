@@ -52,7 +52,7 @@ lazy val root = (project in file("."))
       "com.github.cb372"          %% "scalacache-cats-effect"         % ScalaCacheCatsVersion,
       "com.amazonaws"             % "aws-java-sdk"                    % AwsSdkVersion,
       "org.scalatest"             %% "scalatest"                      % ScalaTestVersion % "test",
-      "org.easymock"              % "easymock"                         % "4.1" % "test",
+      "org.easymock"              % "easymock"                         % "4.2" % "test",
       "com.codecommit"            %% "cats-effect-testing-scalatest"  % CatsEffectTestScalaTestVersion % "test"
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
