@@ -37,6 +37,10 @@ object Sensor {
   case object Counter extends Sensor {
     def value = "counter"
   }
+
+  case object Percentage extends Sensor {
+    def value = "Percentage"
+  }
 }
 
 sealed trait Range {

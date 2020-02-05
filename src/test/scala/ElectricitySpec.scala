@@ -38,7 +38,8 @@ class ElectricitySpec extends FlatSpec with Matchers {
 
   "Electricity" should "compute cost following consumption" in {
     for(input <- inputs) yield {
-      val cost = Electricity.computeCost(settings.energy.electricity)(
+      val cost = Electricity.computeCost(
+        settings.energy.electricity,
         input.dateFrom,
         input.dateTo,
         input.hcTotal,

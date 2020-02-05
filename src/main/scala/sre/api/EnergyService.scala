@@ -14,19 +14,26 @@ class EnergyService[F[_]: Effect](energyClient: EnergyClient[F], settings: Setti
 
   val service: HttpService[F] = CorsMiddleware(settings) {
     HttpService[F] {
-      case GET -> Root / "electricity" :? DateFromQueryParamMatcher(dateFrom) +& DateToQueryParamMatcher(dateTo) =>
+
+      case GET -> Root / "electricity" / "consumption" :? DateFromQueryParamMatcher(dateFrom) +& DateToQueryParamMatcher(dateTo) =>
 
         val period = Apply[ValidatedNel[ParseFailure, ?]].map2(dateFrom, dateTo)(_ -> _)
 
         period match {
           case Valid((dateFrom, dateTo)) =>
-            energyClient.getElectricityCostFor(dateFrom, dateTo).flatMap { cost =>
-              Ok(json"""{ "cost": $cost }""")
+            energyClient.getElectricityConsumption(dateFrom, dateTo).flatMap { consumption =>
+              val cost = Electricity.computeCost(settings.energy.electricity, consumption)
+              Ok(json"""{ "consumption": $consumption, "cost": $cost }""")
             }
 
           case Invalid(errors) =>
             val json = errors.map(_.message)
             BadRequest(json""" { "errors" : $json }""")
+        }
+
+      case GET -> Root / "electricity" / "current" / "load" =>
+        energyClient.getCurrentElectricityLoad().flatMap { result =>
+          Ok(json"""{ "result": $result }""")
         }
     }
   }

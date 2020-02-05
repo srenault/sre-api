@@ -4,7 +4,6 @@ package energy
 import java.time.temporal.ChronoUnit
 import java.time.LocalDate
 import cats.effect._
-import cats.implicits._
 import domoticz._
 
 case class EnergyClient[F[_]: Effect](
@@ -12,19 +11,20 @@ case class EnergyClient[F[_]: Effect](
   settings: Settings
 ) {
 
-  def getElectricityCostFor(dateFrom: LocalDate, dateTo: LocalDate): F[Float] = {
+  def getElectricityConsumption(dateFrom: LocalDate, dateTo: LocalDate): F[List[ElectrictyConsumption]] = {
     domoticzClient.graph[ElectrictyConsumption](
       sensor = domoticz.Sensor.Counter,
-      idx = settings.domoticz.teleinfo.idx,
+      idx = 3,
       range = Range.Period(dateFrom, dateTo)
-    ).map { consumptionByDay =>
-      val (hcTotal, hpTotal) = consumptionByDay.foldLeft(0F -> 0F) {
-        case ((hcAcc, hpAcc), consumption) =>
-          (hcAcc + consumption.hc) -> (hpAcc + consumption.hp)
-      }
+    )
+  }
 
-      Electricity.computeCost(settings.energy.electricity)(dateFrom, dateTo, hcTotal, hpTotal)
-    }
+  def getCurrentElectricityLoad(): F[List[ElectricityLoad]] = {
+    domoticzClient.graph[ElectricityLoad](
+      sensor = domoticz.Sensor.Percentage,
+      idx = 5,
+      range = Range.Day
+    )
   }
 }
 
@@ -32,7 +32,21 @@ object Electricity {
 
   def round(n: Float): Float = scala.math.round(n * 100F) / 100F
 
-  def computeCost(settings: ElectricitySettings)(dateFrom: LocalDate, dateTo: LocalDate, hcTotal: Float, hpTotal: Float): Float = {
+  def computeCost(settings: ElectricitySettings, consumption: List[ElectrictyConsumption]): Float = {
+    (for {
+      dateFrom <- consumption.headOption.map(_.date)
+      dateTo <- consumption.lastOption.map(_.date)
+    } yield {
+      val (hcTotal, hpTotal) = consumption.foldLeft(0F -> 0F) {
+        case ((hcAcc, hpAcc), consumption) =>
+          (hcAcc + consumption.hc) -> (hpAcc + consumption.hp)
+      }
+
+      computeCost(settings, dateFrom, dateTo, hcTotal, hpTotal)
+    }) getOrElse 0F
+  }
+
+  def computeCost(settings: ElectricitySettings, dateFrom: LocalDate, dateTo: LocalDate, hcTotal: Float, hpTotal: Float): Float = {
     val hcCost = round(hcTotal * settings.ratio.hc)
 
     val hpCost = round(hpTotal * settings.ratio.hp)

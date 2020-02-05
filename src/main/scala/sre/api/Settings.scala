@@ -57,9 +57,7 @@ case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transaction
   def accountsDir: List[File] = transactionsDir.listFiles.toList.filter(_.isDirectory)
 }
 
-case class DomoticzDeviceSettings(idx: Int)
-
-case class DomoticzSettings(endpoint: Uri, username: String, password: String, teleinfo: DomoticzDeviceSettings)
+case class DomoticzSettings(endpoint: Uri, username: String, password: String)
 
 case class ElectricityRatioSettings(
   hp: Float,
