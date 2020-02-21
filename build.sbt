@@ -12,7 +12,7 @@ val JsoupVersion = "1.12.1"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
 val AwsSdkVersion = "1.11.615"
-val ScalaTestVersion = "3.1.0"
+val ScalaTestVersion = "3.1.1"
 val ScalaMockVersion = "4.4.0"
 val CatsEffectTestScalaTestVersion = "0.4.0"
 
