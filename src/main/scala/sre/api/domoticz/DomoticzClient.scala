@@ -1,5 +1,7 @@
-package sre.api.domoticz
+package sre.api
+package domoticz
 
+import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import cats.effect._
@@ -7,12 +9,56 @@ import cats.implicits._
 import org.http4s.client._
 import org.http4s.circe._
 import io.circe._
+import io.circe.parser._
+import fs2.concurrent.{SignallingRef, Topic}
+import fs2.Stream
 import sre.api.DomoticzSettings
+import websocket.{WebSocketClient, WebSocketListener}
+import websocket.messages.WebSocketMessage
 
-case class DomoticzClient[F[_]: ConcurrentEffect](httpClient: Client[F], settings: DomoticzSettings) extends DomoticzClientDsl[F] {
+case class DomoticzClient[F[_]](
+  httpClient: Client[F],
+  wsTopic: Topic[F, WebSocketMessage],
+  wsInterrupter: SignallingRef[F, Boolean],
+  settings: DomoticzSettings
+)(implicit F: ConcurrentEffect[F]) extends DomoticzClientDsl[F] {
+
+  val logger = LoggerFactory.getLogger("sre.api.domoticz.DomoticzClient")
+
+  private lazy val wsClient: WebSocketClient[F] =
+    WebSocketClient(settings)(new WebSocketListener {
+      def onOpen(): Unit = {
+        println("open")
+      }
+
+      def onMessage(message: String): Unit = {
+        parse(message).flatMap(_.as[WebSocketMessage]) match {
+          case Right(message) =>
+            //val events = Stream.emits(message.events).compile.drain
+            //F.runAsync(wsTopic.publish(events))(_ => IO.unit).unsafeRunSync
+            F.runAsync(wsTopic.publish1(message))(_ => IO.unit).unsafeRunSync
+
+          case Left(error) =>
+            logger.warn(s"Unable to parse domoticz event from:\n${message}\n${error}")
+        }
+      }
+
+      def onClose(code: Int, reason: String, remote: Boolean): Unit = {
+        println("close")
+      }
+
+      def onError(ex: Exception): Unit = {
+        println("error")
+      }
+    })
+
+  def initWebSocket(): Stream[F, Unit] = {
+    Stream.eval(wsClient.connect())
+  }
 
   def graph[A : Decoder](sensor: Sensor, idx: Int, range: Range): F[List[A]] = {
-    val uri = (settings.endpoint / "json.htm")
+    val uri = (settings.baseUri / "json.htm")
+
       .withQueryParam("type", "graph")
       .withQueryParam("sensor", sensor.value)
       .withQueryParam("idx", idx)
@@ -26,6 +72,20 @@ case class DomoticzClient[F[_]: ConcurrentEffect](httpClient: Client[F], setting
         case Right(result) => result
       }
     }
+  }
+}
+
+object DomoticzClient {
+
+  def stream[F[_]: ConcurrentEffect](httpClient: Client[F], settings: DomoticzSettings): Stream[F, DomoticzClient[F]] = {
+    val client = for {
+      wsInterrupter <- SignallingRef[F, Boolean](false)
+      wsTopic <- Topic[F, WebSocketMessage](WebSocketMessage.Init)
+    } yield {
+      DomoticzClient(httpClient, wsTopic, wsInterrupter, settings)
+    }
+
+    Stream.eval(client)
   }
 }
 

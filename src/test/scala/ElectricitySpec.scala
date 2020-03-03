@@ -1,7 +1,7 @@
 import java.time.LocalDate
 import org.scalatest._
 import sre.api._
-import sre.api.energy.Electricity
+import sre.api.energy.electricity.Electricity
 
 class ElectricitySpec extends FlatSpec with Matchers {
 

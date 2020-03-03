@@ -18,6 +18,6 @@ trait EnergyServiceDsl[F[_]] extends Http4sDsl[F] {
         .toValidatedNel
   }
 
-  object DateFromQueryParamMatcher extends ValidatingQueryParamDecoderMatcher[LocalDate]("from")
-  object DateToQueryParamMatcher extends ValidatingQueryParamDecoderMatcher[LocalDate]("to")
+  object DateFromQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[LocalDate]("from")
+  object DateToQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[LocalDate]("to")
 }
