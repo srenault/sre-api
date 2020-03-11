@@ -71,6 +71,7 @@ case class CMPendingOtpSession(
   inputHiddenInAppsEndNew1: String,
   globalBackup: String,
   transactionId: String,
+  antiForgeryToken: String,
   otpAuthCookie: RequestCookie,
   otherCookies: List[RequestCookie],
   requestedAt: LocalDateTime,
@@ -105,6 +106,7 @@ object CMPendingOtpSession {
     inputHiddenInAppsEndNew1: String,
     globalBackup: String,
     transactionId: String,
+    antiForgeryToken: String,
     otpAuthCookie: ResponseCookie,
     otherCookies: List[ResponseCookie]
   ): CMPendingOtpSession = {
@@ -113,6 +115,7 @@ object CMPendingOtpSession {
       inputHiddenInAppsEndNew1,
       globalBackup,
       transactionId,
+      antiForgeryToken,
       otpAuthCookie = RequestCookie(otpAuthCookie.name, otpAuthCookie.content),
       otherCookies = otherCookies.map( c => RequestCookie(c.name, c.content)),
       requestedAt = LocalDateTime.now

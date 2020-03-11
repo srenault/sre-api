@@ -50,11 +50,11 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
         }
       }
 
-      basicAuthSessionStep1 <- redirectToHome(basicAuthSession, maybeValidOtpSession)
+      //basicAuthSssionStep1 <- redirectToHome(basicAuthSession, maybeValidOtpSession)
 
-      basicAuthSessionStep2 <- redirectToHome(basicAuthSessionStep1, maybeValidOtpSession)
+      //basicAuthSessionStep2 <- redirectToHome(basicAuthSessionStep1, maybeValidOtpSession)
 
-    } yield basicAuthSessionStep2
+    } yield basicAuthSession
   }
 
   private def redirectToHome(basicAuthSession: CMBasicAuthSession, validOtpSession: Option[CMValidOtpSession])(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
@@ -139,7 +139,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
             }
 
             val hasExpiredOtpSession = response.headers.get(headers.Location).exists { location =>
-              location.value == settings.validationPath.toString
+              location.value.endsWith(settings.validationPath.toString)
             }
 
             if (hasExpiredBasicAuthSession && retries > 0) {

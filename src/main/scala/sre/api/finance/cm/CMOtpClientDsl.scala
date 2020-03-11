@@ -50,11 +50,18 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
             }
           }
 
+          val antiForgeryToken = {
+            val r = """k___ValidateAntiForgeryToken=([^"]+)""".r
+            r.findFirstMatchIn(otpPage).flatMap(m => Option(m.group(1))) getOrElse {
+              sys.error("Unable to get anti forgery token")
+            }
+          }
+
           val (maybeOtpAuthCookie, otherCookies) = response.cookies.partition(_.name == CMPendingOtpSession.OTPAUTH_COOKIE)
 
           val otpAuthCookie = maybeOtpAuthCookie.headOption.getOrElse(sys.error("Unable to get otp session"))
 
-          CMPendingOtpSession.create(otp, inApp, backup, transactionId, otpAuthCookie, otherCookies)
+          CMPendingOtpSession.create(otp, inApp, backup, transactionId, antiForgeryToken, otpAuthCookie, otherCookies)
         }
       }
     } yield pendingOtpSession
@@ -89,6 +96,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
         val uri = settings.validationUri
           .withQueryParam("_tabi", "C")
           .withQueryParam("_pid", "OtpValidationPage")
+          .withQueryParam("k___ValidateAntiForgeryToken", pendingOtpSession.antiForgeryToken)
 
         val data = UrlForm(
           CMPendingOtpSession.OTP_HIDDEN_FIELD_ID -> pendingOtpSession.otpHidden,
@@ -102,6 +110,8 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
         val request = POST(data, uri, cookieHeader)
 
         httpClient.fetch(request) { response =>
+          println(response.status)
+          response.cookies.foreach(println)
           val cookie = response.cookies.find(_.name == CMValidOtpSession.AUTH_CLIENT_STATE) getOrElse sys.error("Unable to get otp session")
           val validOtpSession = pendingOtpSession.validate(cookie)
           F.pure(validOtpSession)
