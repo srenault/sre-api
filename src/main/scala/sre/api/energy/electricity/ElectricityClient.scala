@@ -26,7 +26,7 @@ case class ElectricityClient[F[_]: Effect](domoticzClient: DomoticzClient[F], im
     )
   }
 
-  def getCurrentLoad(): F[List[Load]] = {
+  def getLatestLoad(): F[List[Load]] = {
     domoticzClient.graph[Load](
       sensor = domoticz.Sensor.Percentage,
       idx = 5,
@@ -38,7 +38,7 @@ case class ElectricityClient[F[_]: Effect](domoticzClient: DomoticzClient[F], im
     domoticzClient.wsTopic.subscribe(10).flatMap {
       case message: websocket.messages.Response.Device =>
         Stream.emits(message.events.collect {
-          case t: websocket.events.hardware.Teleinfo => t
+          case event: websocket.events.hardware.Teleinfo if !event.isUnknown => event
         })
 
       case _ => Stream.empty

@@ -34,8 +34,6 @@ case class DomoticzClient[F[_]](
       def onMessage(message: String): Unit = {
         parse(message).flatMap(_.as[WebSocketMessage]) match {
           case Right(message) =>
-            //val events = Stream.emits(message.events).compile.drain
-            //F.runAsync(wsTopic.publish(events))(_ => IO.unit).unsafeRunSync
             F.runAsync(wsTopic.publish1(message))(_ => IO.unit).unsafeRunSync
 
           case Left(error) =>
@@ -45,6 +43,7 @@ case class DomoticzClient[F[_]](
 
       def onClose(code: Int, reason: String, remote: Boolean): Unit = {
         println("close")
+        // TODO Retry
       }
 
       def onError(ex: Exception): Unit = {
@@ -58,7 +57,6 @@ case class DomoticzClient[F[_]](
 
   def graph[A : Decoder](sensor: Sensor, idx: Int, range: Range): F[List[A]] = {
     val uri = (settings.baseUri / "json.htm")
-
       .withQueryParam("type", "graph")
       .withQueryParam("sensor", sensor.value)
       .withQueryParam("idx", idx)
@@ -67,6 +65,7 @@ case class DomoticzClient[F[_]](
     val request = AuthenticatedGET(uri)
 
     httpClient.expect[Json](request).map { response =>
+      println(response)
       response.hcursor.downField("result").as[List[A]] match {
         case Left(e) => throw e
         case Right(result) => result

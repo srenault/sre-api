@@ -44,12 +44,12 @@ class EnergyService[F[_]](energyClient: EnergyClient[F], settings: Settings)(imp
             }
         }
 
-      case GET -> Root / "electricity" / "load" =>
-        energyClient.electricity.getCurrentLoad().flatMap { result =>
+      case GET -> Root / "electricity" / "latest" / "load" =>
+        energyClient.electricity.getLatestLoad().flatMap { result =>
           Ok(json"""{ "result": $result }""")
         }
 
-      case GET -> Root / "electricity" / "now" =>
+      case GET -> Root / "electricity" / "stream" =>
         val stream: Stream[F, ServerSentEvent]  = energyClient.electricity.streamTeleinfo().map { event =>
           ServerSentEvent(event.asJson.noSpaces)
         }

@@ -9,34 +9,45 @@ import java.time.LocalDateTime
 import scala.util.{Try, Failure, Success}
 
 // - Teleinfo
-trait Teleinfo extends HardwareEvent
+sealed trait Teleinfo extends HardwareEvent {
+
+  def `type`: String
+
+  def isUnknown: Boolean =
+    this match {
+      case _:Teleinfo.Unknown => true
+      case _ => false
+    }
+}
 
 object Teleinfo {
 
   val HARDWARE_NAME = "Teleinfo"
 
-  case class Unknown(data: Json) extends Teleinfo
+  case class Unknown(`type`: String, data: Json) extends Teleinfo
+
   object Unknown {
+    val TYPE = "teleinfo_unknown"
+
     implicit val decoder: Decoder[Unknown] = new Decoder[Unknown] {
       final def apply(c: HCursor): Decoder.Result[Unknown] = {
-        c.as[Json].map(Unknown(_))
+        c.as[Json].map(Unknown(TYPE, _))
       }
     }
 
-    implicit val encoder: Encoder[Unknown] = new Encoder[Unknown] {
-      final def apply(unknown: Unknown): Json = {
-        unknown.data
-      }
-    }
+    implicit val encoder: Encoder[Unknown] = deriveEncoder[Unknown]
   }
 
   case class Current(
+    `type`: String,
     name: String,
     value: Float,
     lastUpdate: LocalDateTime
   ) extends Teleinfo
 
   object Current {
+
+    val TYPE = "teleinfo_current"
 
     val Reg = """^([\d]+(\.[\d]+)?) A$""".r
 
@@ -52,7 +63,7 @@ object Teleinfo {
             case Reg(valueAsText, _) =>
               Try(valueAsText.toFloat) match {
                 case Success(value) =>
-                  Right(Current(event.name, value, event.lastUpdate))
+                  Right(Current(TYPE, event.name, value, event.lastUpdate))
 
                 case Failure(error) =>
                   Left(DecodingFailure(error.getMessage, c.history))
@@ -64,12 +75,15 @@ object Teleinfo {
   }
 
   case class Load(
+    `type`: String,
     name: String,
-    percentage: Float,
+    value: Float,
     lastUpdate: LocalDateTime
   ) extends Teleinfo
 
   object Load {
+
+    val TYPE = "teleinfo_load"
 
     val Reg = """^([\d]+(\.[\d]+)?)%$""".r
 
@@ -85,7 +99,7 @@ object Teleinfo {
             case Reg(valueAsText, _) =>
               Try(valueAsText.toFloat) match {
                 case Success(value) =>
-                  Right(Load(event.name, value, event.lastUpdate))
+                  Right(Load(TYPE, event.name, value, event.lastUpdate))
 
                 case Failure(error) =>
                   Left(DecodingFailure(error.getMessage, c.history))
@@ -100,7 +114,7 @@ object Teleinfo {
       teleinfo match {
         case l: Load => l.asJson
         case c: Current => c.asJson
-        case u: Unknown => u.data
+        case u: Unknown => u.asJson
       }
     }
   }
