@@ -2,6 +2,8 @@ package sre.api
 package domoticz
 package websocket
 
+import scala.concurrent.duration._
+import org.slf4j.{Logger, LoggerFactory}
 import java.util.Base64
 import java.net.URI
 import org.java_websocket.client.{WebSocketClient => JavaWebSocketClient}
@@ -11,15 +13,22 @@ import org.java_websocket.drafts._
 import scala.collection.JavaConverters._
 import org.java_websocket.extensions._
 import cats.effect._
+import cats.effect.concurrent.Ref
+import cats.implicits._
+import io.circe.parser._
+import fs2.Stream
+import messages.WebSocketMessage
 
 trait WebSocketListener {
-  def onOpen(): Unit
-  def onMessage(message: String): Unit
-  def onClose(code: Int, reason: String, remote: Boolean): Unit
-  def onError(ex: Exception): Unit
+  def onMessage(message: WebSocketMessage): Unit
 }
 
-case class WebSocketClient[F[_]](settings: DomoticzSettings)(listener: WebSocketListener)(implicit F: Sync[F]) {
+case class WebSocketClient[F[_]](settings: DomoticzSettings)(listener: WebSocketListener)(implicit F: ConcurrentEffect[F], T: Timer[F]) {
+
+  self =>
+
+  val logger = LoggerFactory.getLogger("sre.api.domoticz.websocket.WebSocketClient")
+
   private val uri = new URI(settings.wsUri.renderString)
 
   private val authorizationHeader = {
@@ -44,29 +53,48 @@ case class WebSocketClient[F[_]](settings: DomoticzSettings)(listener: WebSocket
 
   private val draft = new Draft_6455(extensions.asJava, protocols.asJava)
 
-  private val innerClient = new JavaWebSocketClient(uri, draft,  headers.asJava) {
-    override def onOpen(handshakedata: ServerHandshake) {
-      listener.onOpen()
-    }
+  val innerClientRef = Ref.of[F, Option[JavaWebSocketClient]](None)
 
-    override def onClose(code: Int, reason: String, remote: Boolean) {
-      listener.onClose(code, reason, remote)
-    }
+  def createInnerClient(): JavaWebSocketClient = {
+    new JavaWebSocketClient(uri, draft,  headers.asJava) {
+      override def onOpen(handshakedata: ServerHandshake) {
+        logger.info("Domoticz websocket connection is opened")
+      }
 
-    override def onMessage(message: String) {
-      listener.onMessage(message)
-    }
+      override def onClose(code: Int, reason: String, remote: Boolean) {
+        logger.info("Domoticz websocket connection has been closed. Trying to reopen it...")
+        val retryStream = Stream.awakeDelay[F](5.seconds).zipRight(Stream.eval(self.connect()))
+         F.runAsync(retryStream.compile.drain)(_ => IO.unit).unsafeRunSync
+      }
 
-    override def onError(ex: Exception) {
-      listener.onError(ex)
+      override def onMessage(message: String) {
+        parse(message).flatMap(_.as[WebSocketMessage]) match {
+          case Right(message) =>
+            listener.onMessage(message)
+
+          case Left(error) =>
+            logger.warn(s"Unable to parse domoticz event from:\n${message}\n${error}")
+        }
+      }
+
+      override def onError(ex: Exception) {
+        logger.error(s"Domoticz websocket connection error: ${ex.getMessage}")
+        ex.printStackTrace
+      }
     }
   }
 
-  def isOpen: Boolean = innerClient.isOpen
-
   def connect(): F[Unit] = {
-    Sync[F].delay {
-      innerClient.connect()
+    innerClientRef.flatMap { ref =>
+      ref.update {
+        case Some(innerClient) if innerClient.isOpen =>
+          Some(innerClient)
+
+        case _ =>
+          val innerClient = createInnerClient()
+          innerClient.connect()
+          Some(innerClient)
+      }
     }
   }
 }

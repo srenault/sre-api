@@ -1,7 +1,6 @@
 package sre.api
 package domoticz
 
-import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import cats.effect._
@@ -9,8 +8,7 @@ import cats.implicits._
 import org.http4s.client._
 import org.http4s.circe._
 import io.circe._
-import io.circe.parser._
-import fs2.concurrent.{SignallingRef, Topic}
+import fs2.concurrent.Topic
 import fs2.Stream
 import sre.api.DomoticzSettings
 import websocket.{WebSocketClient, WebSocketListener}
@@ -19,39 +17,11 @@ import websocket.messages.WebSocketMessage
 case class DomoticzClient[F[_]](
   httpClient: Client[F],
   wsTopic: Topic[F, WebSocketMessage],
-  wsInterrupter: SignallingRef[F, Boolean],
   settings: DomoticzSettings
-)(implicit F: ConcurrentEffect[F]) extends DomoticzClientDsl[F] {
+)(implicit F: ConcurrentEffect[F], T: Timer[F]) extends DomoticzClientDsl[F] {
 
-  val logger = LoggerFactory.getLogger("sre.api.domoticz.DomoticzClient")
-
-  private lazy val wsClient: WebSocketClient[F] =
-    WebSocketClient(settings)(new WebSocketListener {
-      def onOpen(): Unit = {
-        println("open")
-      }
-
-      def onMessage(message: String): Unit = {
-        parse(message).flatMap(_.as[WebSocketMessage]) match {
-          case Right(message) =>
-            F.runAsync(wsTopic.publish1(message))(_ => IO.unit).unsafeRunSync
-
-          case Left(error) =>
-            logger.warn(s"Unable to parse domoticz event from:\n${message}\n${error}")
-        }
-      }
-
-      def onClose(code: Int, reason: String, remote: Boolean): Unit = {
-        println("close")
-        // TODO Retry
-      }
-
-      def onError(ex: Exception): Unit = {
-        println("error")
-      }
-    })
-
-  def initWebSocket(): Stream[F, Unit] = {
+  lazy val wsConnect: Stream[F, Unit] = {
+    val wsClient = DomoticzClient.createWsClient(wsTopic, settings)
     Stream.eval(wsClient.connect())
   }
 
@@ -65,7 +35,6 @@ case class DomoticzClient[F[_]](
     val request = AuthenticatedGET(uri)
 
     httpClient.expect[Json](request).map { response =>
-      println(response)
       response.hcursor.downField("result").as[List[A]] match {
         case Left(e) => throw e
         case Right(result) => result
@@ -76,12 +45,24 @@ case class DomoticzClient[F[_]](
 
 object DomoticzClient {
 
-  def stream[F[_]: ConcurrentEffect](httpClient: Client[F], settings: DomoticzSettings): Stream[F, DomoticzClient[F]] = {
+  private def createWsClient[F[_]](
+    wsTopic: Topic[F, WebSocketMessage],
+    settings: DomoticzSettings
+  )(implicit F: ConcurrentEffect[F], T: Timer[F]): WebSocketClient[F] = {
+    lazy val client = WebSocketClient(settings)(new WebSocketListener {
+      def onMessage(message: WebSocketMessage): Unit = {
+        F.runAsync(wsTopic.publish1(message))(_ => IO.unit).unsafeRunSync
+      }
+    })
+
+    client
+  }
+
+  def stream[F[_]: ConcurrentEffect : Timer](httpClient: Client[F], settings: DomoticzSettings): Stream[F, DomoticzClient[F]] = {
     val client = for {
-      wsInterrupter <- SignallingRef[F, Boolean](false)
       wsTopic <- Topic[F, WebSocketMessage](WebSocketMessage.Init)
     } yield {
-      DomoticzClient(httpClient, wsTopic, wsInterrupter, settings)
+      DomoticzClient(httpClient, wsTopic, settings)
     }
 
     Stream.eval(client)

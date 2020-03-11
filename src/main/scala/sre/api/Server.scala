@@ -53,7 +53,7 @@ object ServerStream {
           icomptaClient <- IComptaClient.stream[F](settings)
           cmClient <- CMClient.stream[F](httpClient, settings)
           domoticzClient <- DomoticzClient.stream[F](httpClient, settings.domoticz)
-          _ <- domoticzClient.initWebSocket()
+          _ <- domoticzClient.wsConnect
           energyClient = EnergyClient[F](domoticzClient, settings)
           weatherClient = WeatherClient[F](httpClient, settings.weather)
           s3Client = S3Client[F](settings.apk.s3)
