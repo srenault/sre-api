@@ -35,9 +35,6 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
           val otp = doc.select(s"""[name="${CMPendingOtpSession.OTP_HIDDEN_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get otp value")
           }
-          val inApp = doc.select(s"""[name="${CMPendingOtpSession.INPUT_HIDDEN_KEY_IN_APPS_SEND_NEW1_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
-            sys.error("Unable to get inApp value")
-          }
 
           val backup = doc.select(s"""[name="${CMPendingOtpSession.GLOBAL_BACKUP_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get backup value")
@@ -61,7 +58,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
 
           val otpAuthCookie = maybeOtpAuthCookie.headOption.getOrElse(sys.error("Unable to get otp session"))
 
-          CMPendingOtpSession.create(otp, inApp, backup, transactionId, antiForgeryToken, otpAuthCookie, otherCookies)
+          CMPendingOtpSession.create(otp, backup, transactionId, antiForgeryToken, otpAuthCookie, otherCookies)
         }
       }
     } yield pendingOtpSession
@@ -101,7 +98,6 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
         val data = UrlForm(
           CMPendingOtpSession.OTP_HIDDEN_FIELD_ID -> pendingOtpSession.otpHidden,
           CMPendingOtpSession.GLOBAL_BACKUP_FIELD_ID -> pendingOtpSession.globalBackup,
-          CMPendingOtpSession.INPUT_HIDDEN_KEY_IN_APPS_SEND_NEW1_ID -> pendingOtpSession.inputHiddenInAppsEndNew1,
           CMPendingOtpSession.FID_DO_VALIDATE_X_FIELD,
           CMPendingOtpSession.FID_DO_VALIDATE_Y_FIELD,
           CMPendingOtpSession.WXF2_CC_FIELD
