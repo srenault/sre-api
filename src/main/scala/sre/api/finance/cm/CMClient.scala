@@ -8,12 +8,12 @@ import cats.Parallel
 import cats.data.EitherT
 import cats.implicits._
 import cats.effect._
-import cats.effect.concurrent.{ Ref, Deferred }
+import cats.effect.concurrent.{Ref, Deferred}
 import org.http4s._
 import org.http4s.client._
 import fs2.concurrent.SignallingRef
-import org.slf4j.{ LoggerFactory, Logger }
-import sre.api.{ Settings, CMSettings }
+import org.slf4j.{LoggerFactory, Logger}
+import sre.api.{Settings, CMSettings}
 
 case class CMClient[F[_]](
   httpClient: Client[F],
