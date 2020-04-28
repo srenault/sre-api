@@ -51,7 +51,7 @@ lazy val root = (project in file("."))
       "com.github.cb372"          %% "scalacache-guava"               % ScalaCacheVersion,
       "com.github.cb372"          %% "scalacache-cats-effect"         % ScalaCacheCatsVersion,
       "com.amazonaws"             % "aws-java-sdk"                    % AwsSdkVersion,
-      "org.java-websocket"        % "Java-WebSocket"                  % "1.4.0",
+      "org.java-websocket"        % "Java-WebSocket"                  % "1.4.1",
       "org.scalatest"             %% "scalatest"                      % ScalaTestVersion % "test",
       "org.easymock"              % "easymock"                         % "4.1" % "test",
       "com.codecommit"            %% "cats-effect-testing-scalatest"  % CatsEffectTestScalaTestVersion % "test"
