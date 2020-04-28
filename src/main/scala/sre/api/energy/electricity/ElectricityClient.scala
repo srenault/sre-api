@@ -5,25 +5,72 @@ package electricity
 import java.time.temporal.ChronoUnit
 import java.time.LocalDate
 import cats.effect._
+import cats.Parallel
+import cats.implicits._
 import fs2.Stream
 import domoticz._
 
-case class ElectricityClient[F[_]: Effect](domoticzClient: DomoticzClient[F], implicit val settings: Settings) {
+case class ElectricityClient[F[_]: Effect : Parallel](domoticzClient: DomoticzClient[F], implicit val settings: Settings) {
 
-  def getDailyConsumption(dateFrom: LocalDate, dateTo: LocalDate): F[List[Consumption]] = {
-    domoticzClient.graph[Consumption](
+  def getDailyConsumption(dateFrom: LocalDate, dateTo: LocalDate): F[List[PowerConsumption]] = {
+    val range = Range.Period(dateFrom, dateTo)
+
+    val eventuallyHcValues = domoticzClient.graph[PowerMeter1](
       sensor = domoticz.Sensor.Counter,
-      idx = 3,
-      range = Range.Period(dateFrom, dateTo)
+      idx = 1,
+      range = range
     )
+
+    val eventuallyHpValues = domoticzClient.graph[PowerMeter1](
+      sensor = domoticz.Sensor.Counter,
+      idx = 2,
+      range = range
+    )
+
+    (eventuallyHcValues, eventuallyHpValues).parMapN { (hcValues, hpValues) =>
+      val hcConsumption = hcValues.map {
+        case PowerMeter1(date, hc) =>
+          val hcCost = Electricity.computeHcCost(settings.energy.electricity, hc)
+          PowerConsumption(date, hp = 0, hc, hpCost = 0, hcCost)
+      }
+
+      val hpConsumption = hpValues.map {
+        case PowerMeter1(date, hp) =>
+          val hpCost = Electricity.computeHpCost(settings.energy.electricity, hp)
+          PowerConsumption(date, hp, hc = 0, hpCost, hcCost = 0)
+      }
+
+      (hcConsumption ++ hpConsumption).groupBy(_.date).flatMap {
+        case (_, consumptions) =>
+          consumptions.foldLeft[Option[PowerConsumption]](None) {
+            case (None, consumption) => Some(consumption)
+            case (Some(consumptionA), consumptionB) =>
+              Some(
+                consumptionA.copy(
+                  hc = consumptionA.hc + consumptionB.hc,
+                  hp = consumptionA.hp + consumptionB.hp,
+                  hpCost = consumptionA.hpCost + consumptionB.hpCost,
+                  hcCost = consumptionA.hcCost + consumptionB.hcCost
+                )
+              )
+          }
+      }.toList
+    }
   }
 
-  def getMontlyConsumption(): F[List[Consumption]] = {
-    domoticzClient.graph[Consumption](
+  def getMontlyConsumption(): F[List[PowerConsumption]] = {
+    domoticzClient.graph[PowerMeter2](
       sensor = domoticz.Sensor.Counter,
       idx = 3,
       range = Range.Month
-    )
+    ).map { values =>
+      values.map {
+        case PowerMeter2(date, hp, hc) =>
+          val hpCost = Electricity.computeHpCost(settings.energy.electricity, hp)
+          val hcCost = Electricity.computeHcCost(settings.energy.electricity, hc)
+          PowerConsumption(date, hp, hc, hpCost, hcCost)
+      }
+    }
   }
 
   def getLatestLoad(): F[List[Load]] = {
@@ -50,7 +97,7 @@ object Electricity {
 
   private def round(n: Float): Float = scala.math.round(n * 100F) / 100F
 
-  def computeCost(settings: ElectricitySettings, consumption: List[Consumption]): Float = {
+  def computeCost(settings: ElectricitySettings, consumption: List[PowerConsumption]): Float = {
     (for {
       dateFrom <- consumption.headOption.map(_.date)
       dateTo <- consumption.lastOption.map(_.date)
@@ -64,10 +111,20 @@ object Electricity {
     }) getOrElse 0F
   }
 
-  def computeConsumptionCost(settings: ElectricitySettings, hcTotal: Float, hpTotal: Float): Float = {
+  def computeHcCost(settings: ElectricitySettings, hcTotal: Float): Float = {
     val hcCost = round(hcTotal * settings.ratio.hc)
+    round(hcCost)
+  }
 
+  def computeHpCost(settings: ElectricitySettings, hpTotal: Float): Float = {
     val hpCost = round(hpTotal * settings.ratio.hp)
+    round(hpCost)
+  }
+
+  def computeConsumptionCost(settings: ElectricitySettings, hcTotal: Float, hpTotal: Float): Float = {
+    val hcCost = computeHcCost(settings, hcTotal)
+
+    val hpCost = computeHpCost(settings, hpTotal)
 
     round(hcCost + hpCost)
   }
