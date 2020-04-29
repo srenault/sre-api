@@ -16,6 +16,7 @@ val ScalaTestVersion = "3.1.1"
 val ScalaMockVersion = "4.4.0"
 val CatsEffectTestScalaTestVersion = "0.4.0"
 val EasyMockVersion = "4.2"
+val JavaWebSocketVersion = "1.4.1"
 
 val gitVersion = {
   import scala.sys.process._
@@ -52,7 +53,7 @@ lazy val root = (project in file("."))
       "com.github.cb372"          %% "scalacache-guava"               % ScalaCacheVersion,
       "com.github.cb372"          %% "scalacache-cats-effect"         % ScalaCacheCatsVersion,
       "com.amazonaws"             % "aws-java-sdk"                    % AwsSdkVersion,
-      "org.java-websocket"        % "Java-WebSocket"                  % "1.4.0",
+      "org.java-websocket"        % "Java-WebSocket"                  % JavaWebSocketVersion,
       "org.scalatest"             %% "scalatest"                      % ScalaTestVersion % "test",
       "org.easymock"              % "easymock"                        % EasyMockVersion % "test",
       "com.codecommit"            %% "cats-effect-testing-scalatest"  % CatsEffectTestScalaTestVersion % "test"
