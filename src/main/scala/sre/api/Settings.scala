@@ -122,7 +122,7 @@ object Settings {
 
   implicit val UriDecoder: Decoder[Uri] = new Decoder[Uri] {
     final def apply(c: HCursor): Decoder.Result[Uri] =
-      c.as[String].right.flatMap { s =>
+      c.as[String].flatMap { s =>
         Uri.fromString(s).left.map { error =>
           DecodingFailure(error.message, c.history)
         }
@@ -131,7 +131,7 @@ object Settings {
 
   implicit val FileDecoder: Decoder[File] = new Decoder[File] {
     final def apply(c: HCursor): Decoder.Result[File] =
-      c.as[String].right.flatMap { s =>
+      c.as[String].flatMap { s =>
         val f = new File(s)
         if (f.exists) Right(f) else Left {
           DecodingFailure(s"$s file doesn't exists", c.history)
@@ -141,7 +141,7 @@ object Settings {
 
   implicit val CMAccountTypeDecoder: Decoder[finance.cm.CMAccountType] = new Decoder[finance.cm.CMAccountType] {
     final def apply(c: HCursor): Decoder.Result[finance.cm.CMAccountType] =
-      c.as[String].right.flatMap {
+      c.as[String].flatMap {
         case id if id == finance.cm.CMAccountType.Saving.id =>
           Right(finance.cm.CMAccountType.Saving)
 

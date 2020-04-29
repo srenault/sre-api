@@ -1,14 +1,14 @@
 package sre.api
 package utils
 
-import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.auth.{ BasicAWSCredentials, AWSStaticCredentialsProvider }
 import com.amazonaws.services.s3.model._
-import com.amazonaws.services.s3.AmazonS3Client
-import scala.collection.JavaConverters._
+import com.amazonaws.services.s3.{ AmazonS3ClientBuilder, AmazonS3 }
+import scala.jdk.CollectionConverters._
 import cats.effect._
 import fs2.Stream
 
-case class S3Client[F[_]](bucket: String, prefix: Option[String], awsClient: AmazonS3Client)(implicit F: Effect[F], cs: ContextShift[F]) {
+case class S3Client[F[_]](bucket: String, prefix: Option[String], awsClient: AmazonS3)(implicit F: Effect[F], cs: ContextShift[F]) {
 
   def ls(key: String = ""): F[List[S3ObjectSummary]] = F.pure {
     val p = prefix.fold(key)(_ + "/" + key)
@@ -42,7 +42,11 @@ object S3Client {
 
   def apply[F[_]: Effect](settings: S3Settings)(implicit cs: ContextShift[F]): S3Client[F] = {
     val credentials = new BasicAWSCredentials(settings.publicKey, settings.secretKey)
-    val awsClient = new AmazonS3Client(credentials)
+
+    val awsClient = AmazonS3ClientBuilder.standard()
+      .withCredentials(new AWSStaticCredentialsProvider(credentials))
+      .build()
+
     S3Client(settings.bucket, settings.prefix, awsClient)
   }
 }

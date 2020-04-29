@@ -2,7 +2,7 @@ package sre.api.finance.cm
 
 import scala.concurrent.duration._
 import scala.xml.Elem
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import cats.effect._
 import cats.implicits._
 import cats.effect.concurrent.Deferred
@@ -139,13 +139,13 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
                   _ <- otpPollingInterrupter.set(true)
                 } yield {
                   logger.info(s"Otp session with transactionId $transactionId validated")
-                  Unit
+                  ()
                 }
 
-              case _ => F.pure(Unit)
+              case _ => F.pure(())
             }
 
-          case _ => F.pure(Unit)
+          case _ => F.pure(())
         }
     }
   }
@@ -158,7 +158,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
 
       case false =>
         logger.info(s"OTP pending for transaction $transactionId")
-        F.pure(Unit)
+        F.pure(())
     }
 
     val polling = Stream.awakeEvery[F](2.second)

@@ -50,23 +50,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
         }
       }
 
-      //basicAuthSssionStep1 <- redirectToHome(basicAuthSession, maybeValidOtpSession)
-
-      //basicAuthSessionStep2 <- redirectToHome(basicAuthSessionStep1, maybeValidOtpSession)
-
     } yield basicAuthSession
-  }
-
-  private def redirectToHome(basicAuthSession: CMBasicAuthSession, validOtpSession: Option[CMValidOtpSession])(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
-    val cookies = basicAuthSession.cookies ++ validOtpSession.map(_.authClientStateCookie).toList
-    val cookieHeader = headers.Cookie(cookies)
-    val request = GET(settings.homeUri, cookieHeader)
-    httpClient.fetch(request) { response =>
-      F.pure {
-        val otherCookies = basicAuthSession.otherCookies ++ response.cookies.map(c => RequestCookie(c.name, c.content))
-        basicAuthSession.copy(otherCookies = otherCookies)
-      }
-    }
   }
 
   private def refreshBasicAuthSession()(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {

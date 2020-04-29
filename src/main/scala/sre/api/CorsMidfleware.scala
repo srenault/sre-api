@@ -15,7 +15,7 @@ object CorsMiddleware {
     )
   }
 
-  def apply[F[_]: Effect](settings: Settings)(service: HttpService[F]) = {
+  def apply[F[_]: Effect](settings: Settings)(service: HttpRoutes[F]) = {
     if (settings.cors) {
       service.map(addCorsHeader(_))
     } else {

@@ -100,14 +100,14 @@ object OfxStmTrn {
 
       ofxReader.setContentHandler(new DefaultHandler() {
 
-        override def onElement(name: String, value: String) {
+        override def onElement(name: String, value: String): Unit = {
           if (List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "FITID", "NAME").exists(_ == name)) {
             val updated = stack.pop() :+ value
             stack.push(updated)
           }
         }
 
-        override def startAggregate(aggregateName: String) {
+        override def startAggregate(aggregateName: String): Unit = {
           if (aggregateName == "STMTTRN") {
             stack.push(Nil)
           }

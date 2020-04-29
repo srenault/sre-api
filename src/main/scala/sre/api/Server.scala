@@ -2,9 +2,10 @@ package sre.api
 
 import cats.Parallel
 import cats.effect._
-import cats.implicits._
-import org.http4s.server.blaze.BlazeBuilder
+import org.http4s.server.blaze._
 import org.http4s.client.blaze._
+import org.http4s.server.Router
+import org.http4s.implicits._
 import org.http4s.client.middleware.RequestLogger
 import transport.train.TrainClient
 import transport.subway.SubwayClient
@@ -15,10 +16,11 @@ import weather.WeatherClient
 import utils.S3Client
 import energy.EnergyClient
 import releases.{ ApkClient, ReleasesClient }
+import scala.concurrent.ExecutionContext.global
 
 object Server extends IOApp {
 
-  def run(args: List[String]) =
+  def run(args: List[String]): IO[ExitCode] =
     ServerStream.stream[IO].compile.drain.as(ExitCode.Success)
 }
 
@@ -47,26 +49,44 @@ object ServerStream {
       case Right(settings) =>
         for {
           dbClient <- DBClient.stream[F](settings)
-          httpClient <- Http1Client.stream[F]().map(RequestLogger(true, true))
+
+          httpClient <- BlazeClientBuilder(global).stream.map(RequestLogger(true, true))
+
           trainClient <- TrainClient.stream[F](httpClient, settings)
+
           subwayClient = SubwayClient[F](trainClient)
+
           icomptaClient <- IComptaClient.stream[F](settings)
+
           cmClient <- CMClient.stream[F](httpClient, settings)
+
           domoticzClient <- DomoticzClient.stream[F](httpClient, settings.domoticz)
+
           _ <- domoticzClient.wsConnect
+
           energyClient = EnergyClient[F](domoticzClient, settings)
+
           weatherClient = WeatherClient[F](httpClient, settings.weather)
+
           s3Client = S3Client[F](settings.apk.s3)
+
           apkClient = ApkClient(s3Client)
+
           releasesClient = ReleasesClient(apkClient)
-          R <- BlazeBuilder[F].bindHttp(settings.httpPort, "0.0.0.0")
-                              .mountService(trainService(trainClient, settings), "/api/transport/train")
-                              .mountService(subwayService(subwayClient, settings), "/api/transport/subway")
-                              .mountService(financeService(icomptaClient, cmClient, dbClient, settings), "/api/finance")
-                              .mountService(energyService(energyClient, settings), "/api/energy")
-                              .mountService(weatherService(weatherClient, settings), "/api/weather")
-                              .mountService(releasesService(releasesClient, settings), "/api/releases")
-                              .serve
+
+          httpApp = Router(
+            "/api/transport/train" -> trainService(trainClient, settings),
+            "/api/transport/subway" -> subwayService(subwayClient, settings),
+            "/api/finance" -> financeService(icomptaClient, cmClient, dbClient, settings),
+            "/api/energy" -> energyService(energyClient, settings),
+            "/api/weather" -> weatherService(weatherClient, settings),
+            "/api/releases" -> releasesService(releasesClient, settings)
+          ).orNotFound
+
+          R <- BlazeServerBuilder[F](global)
+                 .bindHttp(settings.httpPort, "0.0.0.0")
+                 .withHttpApp(httpApp)
+                 .serve
         } yield R
 
       case Left(error) =>

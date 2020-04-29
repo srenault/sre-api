@@ -1,7 +1,6 @@
 package sre.api.finance.cm
 
 import cats.effect._
-import org.http4s._
 import org.http4s.EntityEncoder
 import org.http4s.circe._
 import io.circe.Encoder

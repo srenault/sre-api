@@ -26,17 +26,23 @@ case class AnalyticsIndexClient[F[_]](
     }
   }
 
-  def computePeriodIndexesFromScrach(): F[List[PeriodIndex]] = {
-    val accountDirs@(accountDir :: _) = settings.finance.accountsDir
-    val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)
-    computePeriodIndexes(accountDirs, ofxFiles)
-  }
+  def computePeriodIndexesFromScrach(): F[List[PeriodIndex]] =
+    settings.finance.accountsDir match {
+      case accountDirs@(accountDir :: _) =>
+        val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)
+        computePeriodIndexes(accountDirs, ofxFiles)
 
-  def computeLatestPeriodIndexes(nmonths: Int = 4): F[List[PeriodIndex]] = {
-    val accountDirs@(accountDir :: _) = settings.finance.accountsDir
-    val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay).take(nmonths)
-    computePeriodIndexes(accountDirs, ofxFiles)
-  }
+      case _ => F.pure(Nil)
+    }
+
+  def computeLatestPeriodIndexes(nmonths: Int = 4): F[List[PeriodIndex]] =
+    settings.finance.accountsDir match {
+      case accountDirs@(accountDir :: _) =>
+        val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay).take(nmonths)
+        computePeriodIndexes(accountDirs, ofxFiles)
+
+      case _ => F.pure(Nil)
+    }
 
   private def computePeriodIndexes(accountDirs: List[File], ofxFiles: List[OfxFile]): F[List[PeriodIndex]] = {
     icomptaClient.buildRulesAst().flatMap { rulesAst =>

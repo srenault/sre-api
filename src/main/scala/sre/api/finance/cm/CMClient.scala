@@ -155,7 +155,7 @@ case class CMClient[F[_]](
               EitherT.right(F.pure(lines.tail.map(CMCsvRecord.parseOrFail)))
 
             case Right(form) =>
-              EitherT.liftT(formCache.set(form)).flatMap { _ =>
+              EitherT.liftF(formCache.set(form)).flatMap { _ =>
                 if (retries > 0) {
                   fetchCSVRecords(accountId, maybeStartDate, maybeEndDate, retries - 1)
                 } else {

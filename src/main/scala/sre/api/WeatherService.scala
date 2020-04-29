@@ -7,8 +7,8 @@ import weather.WeatherClient
 
 class WeatherService[F[_]: Effect](weatherClient: WeatherClient[F], settings: Settings) extends WeatherServiceDsl[F] {
 
-  val service: HttpService[F] = {
-    HttpService[F] {
+  val service: HttpRoutes[F] = {
+    HttpRoutes.of[F] {
       case GET -> Root / "stations" / "search" / term =>
         weatherClient.searchStation(term).flatMap { result =>
           Ok(result)

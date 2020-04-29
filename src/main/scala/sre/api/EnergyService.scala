@@ -16,8 +16,8 @@ import fs2.Stream
 
 class EnergyService[F[_]](energyClient: EnergyClient[F], settings: Settings)(implicit F: Effect[F]) extends EnergyServiceDsl[F] {
 
-  val service: HttpService[F] = CorsMiddleware(settings) {
-    HttpService[F] {
+  val service: HttpRoutes[F] = CorsMiddleware(settings) {
+    HttpRoutes.of[F] {
 
       case GET -> Root / "electricity" / "consumption" :? DateFromQueryParamMatcher(maybeValidDateFrom) +& DateToQueryParamMatcher(maybeValidDateTo) =>
         val maybeValidPeriod = Apply[ValidatedNel[ParseFailure, ?]].map2(maybeValidDateFrom.sequence, maybeValidDateTo.sequence)(_ -> _)

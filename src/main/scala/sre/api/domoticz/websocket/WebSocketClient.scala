@@ -3,14 +3,14 @@ package domoticz
 package websocket
 
 import scala.concurrent.duration._
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.LoggerFactory
 import java.util.Base64
 import java.net.URI
 import org.java_websocket.client.{WebSocketClient => JavaWebSocketClient}
 import org.java_websocket.protocols._
 import org.java_websocket.handshake.ServerHandshake
 import org.java_websocket.drafts._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import org.java_websocket.extensions._
 import cats.effect._
 import cats.effect.concurrent.Ref
@@ -34,8 +34,8 @@ case class WebSocketClient[F[_]](settings: DomoticzSettings)(listener: WebSocket
   private val authorizationHeader = {
     val value = s"${settings.username}:${settings.password}"
     val encodedValue = Base64.getEncoder().encodeToString(value.getBytes("UTF-8"))
-    "Authorization" -> s"Basic $encodedValue",
-    }
+    "Authorization" -> s"Basic $encodedValue"
+  }
 
   private val originHeader = {
     val hostUri = s"${uri.getScheme}://${uri.getHost}"
@@ -57,17 +57,17 @@ case class WebSocketClient[F[_]](settings: DomoticzSettings)(listener: WebSocket
 
   def createInnerClient(): JavaWebSocketClient = {
     new JavaWebSocketClient(uri, draft,  headers.asJava) {
-      override def onOpen(handshakedata: ServerHandshake) {
+      override def onOpen(handshakedata: ServerHandshake): Unit = {
         logger.info("Domoticz websocket connection is opened")
       }
 
-      override def onClose(code: Int, reason: String, remote: Boolean) {
+      override def onClose(code: Int, reason: String, remote: Boolean): Unit = {
         logger.info("Domoticz websocket connection has been closed. Trying to reopen it...")
         val retryStream = Stream.awakeDelay[F](5.seconds).zipRight(Stream.eval(self.connect()))
          F.runAsync(retryStream.compile.drain)(_ => IO.unit).unsafeRunSync
       }
 
-      override def onMessage(message: String) {
+      override def onMessage(message: String): Unit = {
         parse(message).flatMap(_.as[WebSocketMessage]) match {
           case Right(message) =>
             listener.onMessage(message)
@@ -77,7 +77,7 @@ case class WebSocketClient[F[_]](settings: DomoticzSettings)(listener: WebSocket
         }
       }
 
-      override def onError(ex: Exception) {
+      override def onError(ex: Exception): Unit = {
         logger.error(s"Domoticz websocket connection error: ${ex.getMessage}")
         ex.printStackTrace
       }

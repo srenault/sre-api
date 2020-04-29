@@ -1,6 +1,6 @@
 package sre.api.finance.cm
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import cats.implicits._
 
 case class CMAccountInput(index: Int, id: String, label: String, checkId: String, checkName: String)
@@ -33,9 +33,9 @@ object CMAccountInput {
         }
 
         for {
-          checkId <- checkIdOrError.right
-          check <- checkOrError(checkId).right
-          checkName <- checkNameOrError(check).right
+          checkId <- checkIdOrError
+          check <- checkOrError(checkId)
+          checkName <- checkNameOrError(check)
         } yield CMAccountInput(index, id, label, checkId, checkName)
 
     }.toList.sequence

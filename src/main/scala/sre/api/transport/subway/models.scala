@@ -2,7 +2,6 @@ package sre.api.transport.subway
 
 import cats.effect._
 import org.http4s.EntityEncoder
-import io.circe._
 import io.circe.literal._
 import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto._

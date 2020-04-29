@@ -1,6 +1,6 @@
 package sre.api.finance.cm
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import cats.implicits._
 
 case class CMDownloadForm(action: String, inputs: List[CMAccountInput])
@@ -31,9 +31,9 @@ object CMDownloadForm {
       }
 
     for {
-      form <- formOrError.right
-      action <- actionOrError(form).right
-      inputs <- CMAccountInput.parse(doc).right
+      form <- formOrError
+      action <- actionOrError(form)
+      inputs <- CMAccountInput.parse(doc)
     } yield CMDownloadForm(action, inputs)
   }
 

@@ -2,14 +2,13 @@ package sre.api
 
 import cats.effect._
 import cats.implicits._
-import org.http4s.HttpService
+import org.http4s._
 import java.time.ZonedDateTime
-
 import transport.train._
 
 class TrainService[F[_]: Effect](trainClient: TrainClient[F], settings: Settings) extends TrainServiceDsl[F] {
-  val service: HttpService[F] = {
-    HttpService[F] {
+  val service: HttpRoutes[F] = {
+    HttpRoutes.of[F] {
       case GET -> Root / "authenticate" =>
         trainClient.authenticate().flatMap { authResponse =>
           Ok(authResponse)

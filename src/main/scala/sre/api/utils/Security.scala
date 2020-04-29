@@ -1,6 +1,5 @@
 package sre.api.utils
 
-import java.security._
 import java.security.MessageDigest
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec

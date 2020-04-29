@@ -1,20 +1,21 @@
 val projectName = "sre-api"
 
-val Fs2Version = "2.1.0"
-val Http4sVersion = "0.20.15"
+val Fs2Version = "2.3.0"
+val Http4sVersion = "0.21.4"
 val LogbackVersion = "1.2.3"
-val CirceVersion = "0.12.3"
-val CirceConfigVersion = "0.6.1"
+val CirceVersion = "0.13.0"
+val CirceConfigVersion = "0.8.0"
 val AnormVersion = "2.6.5"
 val SqliteJdbcVersion = "3.30.1"
-val Ofx4jVersion = "1.19"
-val JsoupVersion = "1.12.1"
+val Ofx4jVersion = "1.26"
+val JsoupVersion = "1.12.2"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
 val AwsSdkVersion = "1.11.615"
-val ScalaTestVersion = "3.1.0"
+val ScalaTestVersion = "3.1.1"
 val ScalaMockVersion = "4.4.0"
 val CatsEffectTestScalaTestVersion = "0.4.0"
+val EasyMockVersion = "4.2"
 
 val gitVersion = {
   import scala.sys.process._
@@ -30,7 +31,7 @@ lazy val root = (project in file("."))
     organization := "sre",
     name := projectName,
     version := "0.0.1-SNAPSHOT",
-    scalaVersion := "2.12.6",
+    scalaVersion := "2.13.2",
     libraryDependencies ++= Seq(
       "co.fs2"                    %% "fs2-core"                       % Fs2Version,
       "co.fs2"                    %% "fs2-io"                         % Fs2Version,
@@ -53,7 +54,7 @@ lazy val root = (project in file("."))
       "com.amazonaws"             % "aws-java-sdk"                    % AwsSdkVersion,
       "org.java-websocket"        % "Java-WebSocket"                  % "1.4.0",
       "org.scalatest"             %% "scalatest"                      % ScalaTestVersion % "test",
-      "org.easymock"              % "easymock"                         % "4.1" % "test",
+      "org.easymock"              % "easymock"                        % EasyMockVersion % "test",
       "com.codecommit"            %% "cats-effect-testing-scalatest"  % CatsEffectTestScalaTestVersion % "test"
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),

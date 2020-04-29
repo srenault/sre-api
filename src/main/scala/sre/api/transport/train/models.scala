@@ -65,7 +65,6 @@ case class Stop(
 case class NextDepartures(disruptions: List[LineDisruption], board: List[NextDeparture])
 object NextDepartures {
   import io.circe.generic.auto._
-
   implicit val encoder: Encoder[NextDepartures] = deriveEncoder[NextDepartures]
   implicit val decoder: Decoder[NextDepartures] = deriveDecoder[NextDepartures]
   implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, NextDepartures] = jsonEncoderOf[F, NextDepartures]
@@ -78,6 +77,13 @@ case class NextDeparture(
   trainDate: String,
   disruptions: Option[List[StopDisruption]]
 )
+
+object NextDeparture {
+  import io.circe.generic.auto._
+  implicit val encoder: Encoder[NextDeparture] = deriveEncoder[NextDeparture]
+  implicit val decoder: Decoder[NextDeparture] = deriveDecoder[NextDeparture]
+  implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[NextDeparture]] = jsonEncoderOf[F, List[NextDeparture]]
+}
 
 case class StopDisruption(scope: String, `type`: String, description: String)
 

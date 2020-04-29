@@ -19,8 +19,8 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
 
   lazy val analyticsClient = AnalyticsClient(icomptaClient, dbClient, settings)
 
-  val service: HttpService[F] = CorsMiddleware(settings) {
-    HttpService[F] {
+  val service: HttpRoutes[F] = CorsMiddleware(settings) {
+    HttpRoutes.of[F] {
 
       case GET -> Root / "otp" / transactionId / "status" =>
         cmClient.checkOtpStatus(transactionId).flatMap { otpStatus =>

@@ -8,7 +8,7 @@ import java.sql.{ DriverManager, Connection }
 import anorm._
 import finance.analytics.{ PeriodIndex, CompletePeriodIndex }
 
-case class DBClient[F[_]](implicit connection: Connection, F: Effect[F]) {
+case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
 
   def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
     F.delay {
@@ -23,27 +23,29 @@ case class DBClient[F[_]](implicit connection: Connection, F: Effect[F]) {
       }
     }
 
-  def selectAllPeriodIndexes(): F[List[CompletePeriodIndex]] = F.delay {
-    try {
-      SQL"SELECT * FROM FINANCE_PERIODINDEX".as(CompletePeriodIndex.parser.*)
-    } catch {
-      case e: Exception =>
-        e.printStackTrace
-        throw e
+  def selectAllPeriodIndexes(): F[List[CompletePeriodIndex]] =
+    F.delay {
+      try {
+        SQL"SELECT * FROM FINANCE_PERIODINDEX".as(CompletePeriodIndex.parser.*)
+      } catch {
+        case e: Exception =>
+          e.printStackTrace
+          throw e
+      }
     }
-  }
 
-  def selectOnePeriodIndex(periodDate: YearMonth): F[Option[CompletePeriodIndex]] = F.delay {
-    try {
-      SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearmonth = {yearmonth}")
-        .on("yearmonth" -> periodDate.atDay(1))
-        .as(CompletePeriodIndex.parser.singleOpt)
-    } catch {
-      case e: Exception =>
-        e.printStackTrace
-        throw e
+  def selectOnePeriodIndex(periodDate: YearMonth): F[Option[CompletePeriodIndex]] =
+    F.delay {
+      try {
+        SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearmonth = {yearmonth}")
+          .on("yearmonth" -> periodDate.atDay(1))
+          .as(CompletePeriodIndex.parser.singleOpt)
+      } catch {
+        case e: Exception =>
+          e.printStackTrace
+          throw e
+      }
     }
-  }
 }
 
 object DBClient {

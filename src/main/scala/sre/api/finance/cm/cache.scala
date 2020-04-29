@@ -34,7 +34,7 @@ case class CMDownloadFormCache(settings: CMCacheSettings) {
   }
 
   def cached[F[_]](f: EitherT[F, CMOtpRequest, CMDownloadForm])(implicit F: ConcurrentEffect[F]): EitherT[F, CMOtpRequest, CMDownloadForm] = {
-    EitherT.liftT(cache.get(KEY)).flatMap {
+    EitherT.liftF(cache.get(KEY)).flatMap {
       case Some(downloadForm) =>
         EitherT.right(F.pure(downloadForm))
 
@@ -46,7 +46,7 @@ case class CMDownloadFormCache(settings: CMCacheSettings) {
   }
 
   def set[F[_]: ConcurrentEffect](form: CMDownloadForm): F[Unit] = {
-    cache.put(KEY)(form, Some(settings.ttl)).map(_ => Unit)
+    cache.put(KEY)(form, Some(settings.ttl)).map(_ => ())
   }
 }
 
@@ -68,7 +68,7 @@ case class CMCsvExportCache(settings: CMCacheSettings) {
     endDate: Option[LocalDate]
   )(f: EitherT[F, CMOtpRequest, List[CMCsvRecord]])(implicit F: ConcurrentEffect[F]): EitherT[F, CMOtpRequest, List[CMCsvRecord]] = {
     val key = computeKey(accountId, startDate, endDate)
-    EitherT.liftT(cache.get(key)).flatMap {
+    EitherT.liftF(cache.get(key)).flatMap {
       case Some(statements) =>
         EitherT.right(F.pure(statements))
 

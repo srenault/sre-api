@@ -8,20 +8,20 @@ import java.sql.{ DriverManager, Connection }
 import anorm._
 import sre.api.Settings
 
-case class IComptaClient[F[_]](implicit connection: Connection, F: Effect[F]) {
+case class IComptaClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
 
   private def selectRules(): F[List[RuleRecord]] =
-    F.pure {
+    F.delay {
       SQL"SELECT * FROM LARule".as(RuleRecord.parser.*)
     }
 
   private def selectConditions(): F[List[ConditionRecord]] =
-    F.pure {
+    F.delay {
       SQL"SELECT * FROM LACondition".as(ConditionRecord.parser.*)
     }
 
   private def selectParameters(): F[List[ParameterRecord]] =
-    F.pure {
+    F.delay {
       SQL"SELECT * FROM LAParameter".as(ParameterRecord.parser.*)
     }
 
