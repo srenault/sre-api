@@ -1,9 +1,10 @@
 import java.time.LocalDate
-import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
 import sre.api._
 import sre.api.energy.electricity.Electricity
 
-class ElectricitySpec extends FlatSpec with Matchers {
+class ElectricitySpec extends AnyFlatSpec with Matchers {
 
   case class Input(dateFrom: LocalDate, dateTo: LocalDate, hcTotal: Float, hpTotal: Float, expectedCost: Float)
 

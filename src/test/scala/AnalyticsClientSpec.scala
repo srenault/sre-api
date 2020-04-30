@@ -1,4 +1,4 @@
-import org.scalatest._
+import org.scalatest.matchers.should.Matchers
 import cats.effect._
 import cats.implicits._
 import cats.effect.testing.scalatest.AsyncIOSpec
