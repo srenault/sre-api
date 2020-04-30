@@ -4,7 +4,7 @@ scala:
 script:
 - sbt assembly
 - mkdir jar
-- mv $TRAVIS_BUILD_DIR/target/scala-2.12/sre-api.jar $TRAVIS_BUILD_DIR/jar/sre-api-$TRAVIS_COMMIT.jar
+- mv $TRAVIS_BUILD_DIR/target/scala-2.13/sre-api.jar $TRAVIS_BUILD_DIR/jar/sre-api-$TRAVIS_COMMIT.jar
 deploy:
   provider: s3
   access_key_id: "$AWS_ACCESS_KEY_ID"
@@ -17,6 +17,6 @@ deploy:
   on:
     repo: srenault/sre-api
 before_install:
-- openssl aes-256-cbc -K $encrypted_9b506cc28ab7_key -iv $encrypted_9b506cc28ab7_iv
+- openssl aes-256-cbc -K $encrypted_c7bf5c7a6ca1_key -iv $encrypted_c7bf5c7a6ca1_iv
   -in src/test/resources/resources.tar.enc -out resources.tar -d
 - tar xvf resources.tar --directory src/test/resources/
