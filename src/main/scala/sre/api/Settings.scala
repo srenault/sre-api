@@ -81,7 +81,7 @@ case class EnergySettings(electricity: ElectricitySettings)
 
 case class WeatherSettings(endpoint: Uri)
 
-case class S3Settings(bucket: String, publicKey: String, secretKey: String, prefix: Option[String])
+case class S3Settings(region: String, bucket: String, publicKey: String, secretKey: String, prefix: Option[String])
 
 case class ApkSettings(s3: S3Settings)
 

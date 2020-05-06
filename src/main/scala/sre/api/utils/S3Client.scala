@@ -44,6 +44,7 @@ object S3Client {
     val credentials = new BasicAWSCredentials(settings.publicKey, settings.secretKey)
 
     val awsClient = AmazonS3ClientBuilder.standard()
+      .withRegion(settings.region)
       .withCredentials(new AWSStaticCredentialsProvider(credentials))
       .build()
 
