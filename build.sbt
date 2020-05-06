@@ -16,7 +16,7 @@ val ScalaTestVersion = "3.1.1"
 val ScalaMockVersion = "4.4.0"
 val CatsEffectTestScalaTestVersion = "0.4.0"
 val EasyMockVersion = "4.2"
-val JavaWebSocketVersion = "1.4.1"
+val JavaWebSocketVersion = "1.5.0"
 
 val gitVersion = {
   import scala.sys.process._
