@@ -62,7 +62,7 @@ case class WebSocketClient[F[_]](settings: DomoticzSettings)(listener: WebSocket
       }
 
       override def onClose(code: Int, reason: String, remote: Boolean): Unit = {
-        logger.info("Domoticz websocket connection has been closed. Trying to reopen it...")
+        logger.info(s"Domoticz websocket connection has been closed:\n${reason}\n Trying to reopen it...")
         val retryStream = Stream.awakeDelay[F](5.seconds).zipRight(Stream.eval(self.connect()))
          F.runAsync(retryStream.compile.drain)(_ => IO.unit).unsafeRunSync
       }
