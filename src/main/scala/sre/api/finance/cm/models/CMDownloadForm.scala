@@ -17,7 +17,7 @@ object CMDownloadForm {
   def parse(doc: org.jsoup.nodes.Document): Either[String, CMDownloadForm] = {
 
     val formOrError: Either[String, org.jsoup.nodes.Element] =
-      doc.select("""[id="P:F"]""").asScala.headOption match {
+      doc.select("""[id="P1:F"]""").asScala.headOption match {
         case Some(el) => Right(el)
         case None => Left("Unable to get download form")
       }
@@ -44,7 +44,7 @@ object CMDownloadForm {
 
   def parseOrFail(doc: org.jsoup.nodes.Document): CMDownloadForm = {
     parse(doc) match {
-      case Left(error) => sys.error(s"Unable to parse cm form: $doc")
+      case Left(error) => sys.error(s"Unable to parse cm form: $error:\n$doc")
       case Right(form) => form
     }
   }

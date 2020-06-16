@@ -1,13 +1,13 @@
 val projectName = "sre-api"
 
-val Fs2Version = "2.3.0"
+val Fs2Version = "2.4.2"
 val Http4sVersion = "0.21.4"
 val LogbackVersion = "1.2.3"
 val CirceVersion = "0.13.0"
 val CirceConfigVersion = "0.8.0"
 val AnormVersion = "2.6.5"
 val SqliteJdbcVersion = "3.31.1"
-val Ofx4jVersion = "1.26"
+val Ofx4jVersion = "1.27"
 val JsoupVersion = "1.12.2"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
@@ -16,7 +16,7 @@ val ScalaTestVersion = "3.1.1"
 val ScalaMockVersion = "4.4.0"
 val CatsEffectTestScalaTestVersion = "0.4.0"
 val EasyMockVersion = "4.2"
-val JavaWebSocketVersion = "1.4.1"
+val JavaWebSocketVersion = "1.5.1"
 
 val gitVersion = {
   import scala.sys.process._
