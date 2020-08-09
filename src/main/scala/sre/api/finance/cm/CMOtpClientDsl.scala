@@ -27,7 +27,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
 
       request <- GET(settings.validationUri, headers.Cookie(basicAuthSession.cookies))
 
-      pendingOtpSession <- httpClient.fetch(request) { response =>
+      pendingOtpSession <- httpClient.run(request).use { response =>
 
         response.as[String].map { otpPage =>
           val doc = org.jsoup.Jsoup.parse(otpPage)
@@ -105,13 +105,13 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
 
         val request = POST(data, uri, cookieHeader)
 
-        httpClient.fetch(request) { response =>
+        request.flatMap(httpClient.run(_).use { response =>
           println(response.status)
           response.cookies.foreach(println)
           val cookie = response.cookies.find(_.name == CMValidOtpSession.AUTH_CLIENT_STATE) getOrElse sys.error("Unable to get otp session")
           val validOtpSession = pendingOtpSession.validate(cookie)
           F.pure(validOtpSession)
-        }
+        })
       }
 
       //_ <- validateBasicAuthSession(basicAuthSession, validatedOtpSession)
@@ -191,13 +191,13 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
   protected def isOtpSessionExpired(basicAuthSession: CMBasicAuthSession, otpSession: CMValidOtpSession)(implicit F: ConcurrentEffect[F]): F[Boolean] = {
     val cookieHeader = headers.Cookie(otpSession.authClientStateCookie :: basicAuthSession.cookies)
     val request = GET(settings.homeUri, cookieHeader)
-    httpClient.fetch(request) { response =>
+    request.flatMap(httpClient.run(_).use { response =>
       F.pure {
         response.headers.get(headers.Location).exists { location =>
           location.value == settings.validationPath.toString
         }
       }
-    }
+    })
   }
 
   protected def requestOtpSession()(implicit F: ConcurrentEffect[F], timer: Timer[F]): F[CMPendingOtpSession] = {
