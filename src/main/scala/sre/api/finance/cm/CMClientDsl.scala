@@ -42,12 +42,12 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
       basicAuthSession <- {
         val authenticationRequest = POST(body, settings.authenticationUri, maybeAuthClientStateCookie.toList:_*)
-        httpClient.fetch(authenticationRequest) { response =>
+        authenticationRequest.flatMap(httpClient.run(_).use { response =>
           val (maybeIdSesCookie, otherCookies) = response.cookies.partition(_.name == CMBasicAuthSession.IDSES_COOKIE)
           val idSesCookie = maybeIdSesCookie.headOption.getOrElse(sys.error("Unable to get cm basic auth session"))
           val cmBasicAuthSession = CMBasicAuthSession.create(idSesCookie, otherCookies)
           F.pure(cmBasicAuthSession)
-        }
+        })
       }
 
     } yield basicAuthSession
@@ -117,7 +117,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
         }
 
         EitherT[F, CMOtpRequest, A] {
-          httpClient.fetch(authenticatedRequest) { response =>
+          httpClient.run(authenticatedRequest).use { response =>
             val hasExpiredBasicAuthSession = response.headers.get(headers.Location).exists { location =>
               location.value == settings.authenticationUri.toString
             }
