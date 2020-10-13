@@ -7,4 +7,3 @@ application.conf
 .metals/metals.log
 .DS_Store
 src/test/resources/*
-!src/test/resources/resources.tar.enc

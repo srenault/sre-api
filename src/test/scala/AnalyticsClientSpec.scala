@@ -2,11 +2,12 @@ import org.scalatest.matchers.should.Matchers
 import cats.effect._
 import cats.implicits._
 import cats.effect.testing.scalatest.AsyncIOSpec
+import org.scalatest.freespec.AsyncFreeSpec
 import sre.api._
 import sre.api.finance._
 import sre.api.finance.analytics._
 
-class AnalyticsClientSpec extends AsyncIOSpec with Matchers {
+class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
 
   lazy val settings: Settings = Settings.load() match {
     case Right(settings) => settings
