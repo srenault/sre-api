@@ -6,7 +6,7 @@ import org.http4s.server.blaze._
 import org.http4s.client.blaze._
 import org.http4s.server.Router
 import org.http4s.implicits._
-import org.http4s.client.middleware.RequestLogger
+import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
 import transport.train.TrainClient
 import transport.subway.SubwayClient
 import finance.icompta.IComptaClient
@@ -50,7 +50,17 @@ object ServerStream {
         for {
           dbClient <- DBClient.stream[F](settings)
 
-          httpClient <- BlazeClientBuilder(global).stream.map(RequestLogger(true, true))
+          httpClient <- {
+            BlazeClientBuilder(global).stream.map { client =>
+              val updatedClient = if (settings.httpClient.logRequest) {
+                RequestLogger(logHeaders = true, logBody = true)(client)
+              } else client
+
+              if (settings.httpClient.logResponse) {
+                ResponseLogger(logHeaders = true, logBody = true)(updatedClient)
+              } else updatedClient
+            }
+          }
 
           trainClient <- TrainClient.stream[F](httpClient, settings)
 
