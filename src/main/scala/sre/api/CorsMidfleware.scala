@@ -2,22 +2,21 @@ package sre.api
 
 import cats.effect._
 import org.http4s._
+import org.http4s.server.middleware._
+import scala.concurrent.duration._
 
 object CorsMiddleware {
 
-  def addCorsHeader[F[_]: Effect](resp: Response[F]) = {
-    val accessControlOrigin = Header("Access-Control-Allow-Origin", "*")
-    val accessControlAllowMethods = Header("Access-Control-Allow-Methods", "GET, POST")
-
-    resp.putHeaders(
-      accessControlOrigin,
-      accessControlAllowMethods,
-    )
-  }
-
-  def apply[F[_]: Effect](settings: Settings)(service: HttpRoutes[F]) = {
+  def apply[F[_]: Effect](settings: Settings)(service: HttpRoutes[F]): HttpRoutes[F] = {
     if (settings.cors) {
-      service.map(addCorsHeader(_))
+      val config = CORSConfig(
+        anyOrigin = true,
+        anyMethod = false,
+        allowedMethods = Some(Set("GET", "POST")),
+        allowCredentials = true,
+        maxAge = 1.day.toSeconds
+      )
+     CORS(service, config)
     } else {
       service
     }
