@@ -12,7 +12,7 @@ object CorsMiddleware {
       val config = CORSConfig(
         anyOrigin = true,
         anyMethod = false,
-        allowedMethods = Some(Set("GET", "POST")),
+        allowedMethods = Some(Set("GET", "POST", "PUT")),
         allowCredentials = true,
         maxAge = 1.day.toSeconds
       )
