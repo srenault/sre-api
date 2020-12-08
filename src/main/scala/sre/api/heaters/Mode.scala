@@ -1,16 +1,21 @@
 package sre.api
 package heaters
 
-import cats.effect._
-import org.http4s.EntityEncoder
-import org.http4s.circe._
+import scala.collection.SortedSet
 import io.circe._
 import io.circe.literal._
-import io.circe.generic.semiauto._
 
-sealed trait Mode {
+sealed trait Mode /*extends Ordered[ChannelStatus]*/ {
   def id: Int
   def name: String
+
+  // def compare (that: ChannelStatus) = {
+  //   if (this.id == that.id) {
+  //     0
+  //   } else if (this.id > that.id) {
+  //     1
+  //   } else -1
+  // }
 }
 
 object Mode {
@@ -72,55 +77,13 @@ object Mode {
     val name = "Arret"
   }
 
+  implicit val ordering: Ordering[Mode] = Ordering.by(_.id)
+
+  val all: SortedSet[Mode]= SortedSet(Arret, HorsGel, Eco, Confort, ConfortMoins1, ConfortMoins2)
+
   implicit val encoder: Encoder[Mode] = new Encoder[Mode] {
     final def apply(mode: Mode): Json = {
       json"""{ "id": ${mode.id}, "name": ${mode.name} }"""
     }
   }
-}
-
-case class ChannelsStatus(
-  fp0: ChannelStatus,
-  fp1: ChannelStatus,
-  fp2: ChannelStatus,
-  fp3: ChannelStatus
-)
-
-object ChannelsStatus {
-
-  implicit val encoder: Encoder[ChannelsStatus] = deriveEncoder[ChannelsStatus]
-  implicit def entitieEncoder[F[_]: Effect]: EntityEncoder[F, ChannelsStatus] = jsonEncoderOf[F, ChannelsStatus]
-
-  def reads(xml: scala.xml.Elem): ChannelsStatus = {
-    val out = (xml \ "out")
-    val outFP0 = (out \ "FP0").text
-    val outFP1 = (out \ "FP1").text
-    val outFP2 = (out \ "FP2").text
-    val outFP3 = (out \ "FP3").text
-
-    val name = (xml \ "name")
-    val nameFP0 = (name \ "FP0").text
-    val nameFP1 = (name \ "FP1").text
-    val nameFP2 = (name \ "FP2").text
-    val nameFP3 = (name \ "FP3").text
-
-    val fp0 = ChannelStatus(0, nameFP0, outFP0)
-    val fp1 = ChannelStatus(1, nameFP1, outFP1)
-    val fp2 = ChannelStatus(2, nameFP2, outFP2)
-    val fp3 = ChannelStatus(3, nameFP3, outFP3)
-
-    ChannelsStatus(fp0, fp1, fp2, fp3)
-  }
-}
-
-case class ChannelStatus(id: Int, name: String, mode: Mode)
-
-object ChannelStatus {
-
-  def apply(id: Int, name: String, mode: String): ChannelStatus = {
-    val m = Mode.getOrFail(mode.toInt)
-    ChannelStatus(id, name, m)
-  }
-
-  implicit val encoder: Encoder[ChannelStatus] = deriveEncoder[ChannelStatus]
 }
