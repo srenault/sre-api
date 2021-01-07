@@ -1,0 +1,101 @@
+httpPort = 8080
+
+httpClient = {
+  logRequest = false
+  logResponse = false
+}
+
+db = "jdbc:sqlite:src/test/resources/sre.db"
+
+cors = true
+
+advertisedAddress = "http://localhost:8080"
+
+finance = {
+  icompta = {
+    db = "jdbc:sqlite:src/test/resources/icompta.cdb"
+    wageRuleId = "Salaire"
+  }
+
+  transactionsDir = "src/test/resources/transactions"
+
+  cm = {
+    baseUri = "https://www.your-bank-website.fr"
+    authenticationPath = "/authentification"
+    validationPath = "/validation"
+    homePath = "/home"
+    downloadPath = "/download"
+    transactionPath = "/transaction"
+    username = "your-username"
+    password = "your-password"
+    otpSession = ".otp_session"
+    apkId="your-bank-apk-id"
+
+    accounts = []
+
+    cache = {
+      form = {
+        size = 1
+        ttl = "1 days"
+      }
+      balances = {
+        size = 20
+        ttl = "15 minutes"
+      }
+      csv = {
+        size = 20
+        ttl = "15 minutes"
+      }
+    }
+  }
+}
+
+weather = {
+  endpoint = "https://your-weather-api"
+}
+
+transport = {
+  train = {
+    endpoint = "https://your-train-api"
+  }
+}
+
+domoticz = {
+  baseUri = "http://your-domoticz-api"
+  wsUri = "wss://your-domoticz-api"
+  username = "your-domoticz-username"
+  password = "your-domoticz-password"
+}
+
+heaters = {
+  baseUri = "http://your-heaters-api"
+  username = "your-heaters-username"
+  password = "your-heaters-password"
+}
+
+energy = {
+  electricity = {
+    ratio = {
+      hp = 0.0995
+      hc = 0.0703
+      taxeCommunale = 0.00638
+      taxeDepartementale = 0.00319
+      cspe = 0.0225
+      tvaReduite = 0.055
+      tva = 0.2
+      cta = 0.2704
+    }
+    yearlySubscription = 136.08
+    monthlyCta = 9.81
+  }
+}
+
+apk {
+  s3 = {
+     bucket = "your-apk-bucket"
+     region = "us-east-1"
+     publicKey = "your-bucket-publickey"
+     secretKey = "your-bucket-secretkey"
+     prefix = "apk"
+  }
+}
