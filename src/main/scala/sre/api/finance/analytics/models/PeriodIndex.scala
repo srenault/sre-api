@@ -78,7 +78,8 @@ case class CompletePeriodIndex(
   startDate: LocalDate,
   endDate: LocalDate,
   wageStatements: NonEmptyList[CMStatement],
-  balance: Double
+  balance: Double,
+  amount: Option[Double]
 ) extends PeriodIndex {
   def maybeEndDate = Some(endDate)
 
@@ -94,7 +95,15 @@ object CompletePeriodIndex {
     wageStatements: NonEmptyList[CMStatement]
   ): CompletePeriodIndex = {
     val yearMonth = computeYearMonth(startDate, endDate)
-    CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, balance = 0)
+    CompletePeriodIndex(
+      yearMonth,
+      partitions,
+      startDate,
+      endDate,
+      wageStatements,
+      balance = 0,
+      amount = None
+    )
   }
 
   private val SEP = '|'
@@ -153,15 +162,24 @@ object CompletePeriodIndex {
       get[LocalDate]("enddate") ~
       get[String]("partitions") ~
       get[String]("wagestatements") ~
-      get[Double]("balance")
+      get[Double]("balance") ~
+      get[Option[Double]]("amount")
   ) map {
-    case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ balance =>
+    case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ balance ~ amount =>
       val partitions = decodePartitions(partitionsStr)
       val wageStatements = decodeWageStatements(wageStatementsStr)
       NonEmptyList.fromList(wageStatements) match {
         case Some(nonEmptyWageStatements) =>
           val yearMonth = YearMonth.from(yearMonthDate)
-          CompletePeriodIndex(yearMonth, partitions, startDate, endDate, nonEmptyWageStatements, balance)
+          CompletePeriodIndex(
+            yearMonth,
+            partitions,
+            startDate,
+            endDate,
+            nonEmptyWageStatements,
+            balance,
+            amount
+          )
 
         case None =>
           sys.error(s"Invalid period index $yearMonthDate: wageStatements is empty")

@@ -38,7 +38,8 @@ case class OfxStmTrn(
   posted: LocalDate,
   user: LocalDate,
   amount: Float,
-  name: String
+  name: String,
+  balance: Double
 ) {
   def toStatement(accountId: String): CMStatement = {
     CMStatement(fitid, accountId, posted, amount, name, None)
@@ -96,27 +97,37 @@ object OfxStmTrn {
       import scala.collection.mutable.Stack
 
       val ofxReader = new NanoXMLOFXReader()
-      val stack = Stack.empty[List[String]]
+      val stackStatements = Stack.empty[List[String]]
+
+      var maybeBalance: Option[Double] = None
 
       ofxReader.setContentHandler(new DefaultHandler() {
 
         override def onElement(name: String, value: String): Unit = {
           if (List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "FITID", "NAME").exists(_ == name)) {
-            val updated = stack.pop() :+ value
-            stack.push(updated)
+            val updated = stackStatements.pop() :+ value
+            stackStatements.push(updated)
+          }
+
+          if (name == "BALAMT") {
+            maybeBalance = Some(value.toDouble)
           }
         }
 
         override def startAggregate(aggregateName: String): Unit = {
           if (aggregateName == "STMTTRN") {
-            stack.push(Nil)
+            stackStatements.push(Nil)
           }
         }
       })
 
       ofxReader.parse(is)
 
-      stack.map {
+      val balance = maybeBalance getOrElse {
+        sys.error("Unable to get balance")
+      }
+
+      stackStatements.map {
         case typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil =>
           val `type` = OfxStrTrnType(typStr)
           val posted = LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
