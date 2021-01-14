@@ -15,8 +15,9 @@ sealed trait PeriodIndex {
   def startDate: LocalDate
   def maybeEndDate: Option[LocalDate]
   def wageStatements: NonEmptyList[CMStatement]
-  def balance: Double
   def maybeYearMonth: Option[YearMonth]
+  def result: Double
+  def balance: Double
 
   def startWageStatement: CMStatement =
     wageStatements.toList.sortBy(_.date.toEpochDay).head
@@ -28,13 +29,13 @@ sealed trait PeriodIndex {
       case period: CompletePeriodIndex =>
         period.copy(
           partitions = (period.partitions ++ partitions).distinct,
-          balance = balance + amount
+          result = result + amount
         )
 
       case period: IncompletePeriodIndex =>
         period.copy(
           partitions = (period.partitions ++ partitions).distinct,
-          balance = balance + amount
+          result = result + amount
         )
     }
   }
@@ -49,7 +50,7 @@ sealed trait PeriodIndex {
           partitions = (period.partitions ++ partitions).distinct,
           startDate = wageStatement.date,
           wageStatements = updatedWageStatements,
-          balance = balance + amount
+          result = result + amount
         )
 
       case period: IncompletePeriodIndex =>
@@ -57,7 +58,7 @@ sealed trait PeriodIndex {
           partitions = (period.partitions ++ partitions).distinct,
           startDate = wageStatement.date,
           wageStatements = updatedWageStatements,
-          balance = balance + amount
+          result = result + amount
         )
     }
   }
@@ -78,8 +79,8 @@ case class CompletePeriodIndex(
   startDate: LocalDate,
   endDate: LocalDate,
   wageStatements: NonEmptyList[CMStatement],
-  balance: Double,
-  amount: Option[Double]
+  result: Double,
+  balance: Double
 ) extends PeriodIndex {
   def maybeEndDate = Some(endDate)
 
@@ -101,8 +102,8 @@ object CompletePeriodIndex {
       startDate,
       endDate,
       wageStatements,
-      balance = 0,
-      amount = None
+      result = 0,
+      balance = 0
     )
   }
 
@@ -162,10 +163,10 @@ object CompletePeriodIndex {
       get[LocalDate]("enddate") ~
       get[String]("partitions") ~
       get[String]("wagestatements") ~
-      get[Double]("balance") ~
-      get[Option[Double]]("amount")
+      get[Double]("result") ~
+      get[Double]("balance")
   ) map {
-    case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ balance ~ amount =>
+    case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ result ~ balance =>
       val partitions = decodePartitions(partitionsStr)
       val wageStatements = decodeWageStatements(wageStatementsStr)
       NonEmptyList.fromList(wageStatements) match {
@@ -177,8 +178,8 @@ object CompletePeriodIndex {
             startDate,
             endDate,
             nonEmptyWageStatements,
-            balance,
-            amount
+            result,
+            balance
           )
 
         case None =>
@@ -192,6 +193,7 @@ case class IncompletePeriodIndex(
   partitions: List[OfxFile],
   startDate: LocalDate,
   wageStatements: NonEmptyList[CMStatement],
+  result: Double,
   balance: Double
 ) extends PeriodIndex {
   def maybeEndDate = None
@@ -206,6 +208,6 @@ object IncompletePeriodIndex {
     startDate: LocalDate,
     wageStatements: NonEmptyList[CMStatement]
   ): IncompletePeriodIndex = {
-    IncompletePeriodIndex(partitions, startDate, wageStatements, balance = 0)
+    IncompletePeriodIndex(partitions, startDate, wageStatements, result = 0, balance = 0)
   }
 }

@@ -8,18 +8,28 @@ import org.http4s.circe._
 import io.circe.Encoder
 import io.circe.generic.semiauto._
 
-case class Period(startDate: LocalDate, endDate: Option[LocalDate], yearMonth: Option[YearMonth], balance: Long)
+case class Period(
+  startDate: LocalDate,
+  endDate: Option[LocalDate],
+  yearMonth: Option[YearMonth],
+  result: Long,
+  balance: Long
+)
 
 object Period {
+
+  private def round(d: Double): Long = {
+    BigDecimal(d).setScale(0, BigDecimal.RoundingMode.HALF_UP).toLong
+  }
 
   def apply(
     startDate: LocalDate,
     endDate: Option[LocalDate],
     yearMonth: Option[YearMonth],
+    result: Double,
     balance: Double
   ): Period = {
-    val roundBalance = BigDecimal(balance).setScale(0, BigDecimal.RoundingMode.HALF_UP).toLong
-    Period(startDate, endDate, yearMonth, roundBalance)
+    Period(startDate, endDate, yearMonth, round(result), round(balance))
   }
 
   def apply(periodIndex: PeriodIndex): Period =
@@ -27,6 +37,7 @@ object Period {
       periodIndex.startDate,
       periodIndex.maybeEndDate,
       periodIndex.maybeYearMonth,
+      periodIndex.result,
       periodIndex.balance
     )
 

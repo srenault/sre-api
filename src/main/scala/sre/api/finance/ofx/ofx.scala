@@ -99,7 +99,7 @@ object OfxStmTrn {
       val ofxReader = new NanoXMLOFXReader()
       val stackStatements = Stack.empty[List[String]]
 
-      var maybeBalance: Option[Double] = None
+      var maybeBalance: Option[Float] = None
 
       ofxReader.setContentHandler(new DefaultHandler() {
 
@@ -110,7 +110,7 @@ object OfxStmTrn {
           }
 
           if (name == "BALAMT") {
-            maybeBalance = Some(value.toDouble)
+            maybeBalance = Some(value.toFloat)
           }
         }
 
@@ -123,20 +123,26 @@ object OfxStmTrn {
 
       ofxReader.parse(is)
 
-      val balance = maybeBalance getOrElse {
+      val finalBalance = maybeBalance getOrElse {
         sys.error("Unable to get balance")
       }
 
-      stackStatements.map {
-        case typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil =>
+      stackStatements.toList.foldRight[List[OfxStmTrn]](Nil) {
+        case (typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil, acc) =>
+          val amount = amountStr.toFloat
+          val balance = acc match {
+            case (previousStatement :: _) => previousStatement.balance - amount
+            case Nil => finalBalance
+          }
+
           val `type` = OfxStrTrnType(typStr)
           val posted = LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
           val user = LocalDate.parse(userStr, DateTimeFormatter.BASIC_ISO_DATE)
-          OfxStmTrn(fitid, `type`, posted, user, amountStr.toFloat, name)
+          OfxStmTrn(fitid, `type`, posted, user, amount, name, balance.toFloat) :: acc
 
         case x =>
           sys.error(s"Unable to parse OfxStmTrn from $x")
-      }.toList
+      }
     }
 
   def load[F[_]: Effect](file: File): F[List[OfxStmTrn]] = {
