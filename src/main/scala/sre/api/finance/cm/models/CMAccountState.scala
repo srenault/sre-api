@@ -7,7 +7,7 @@ import org.http4s.circe._
 import io.circe.Encoder
 import io.circe.generic.semiauto._
 import sre.api.CMAccountSettings
-import analytics.Period
+import sre.api.finance.models.Period
 
 case class CMAccountState(
   id: String,

@@ -16,7 +16,7 @@ case class AnalyticsIndexClient[F[_]](
   settings: Settings
 )(implicit F: Effect[F]) {
 
-  def computePeriodIndexesFrom(statements: List[CMStatement]): F[List[PeriodIndex]] = {
+  def computePeriodIndexesFrom(statements: List[CMStatement]): F[List[AnalyticsPeriodIndex]] = {
     icomptaClient.buildRulesAst().map { rulesAst =>
       rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).toList.flatMap { wageRuleAst =>
         val segments = AnalyticsIndexClient.computeSegmentIndexesStep(statements, partitions = Nil)(wageRuleAst.test)
@@ -26,7 +26,7 @@ case class AnalyticsIndexClient[F[_]](
     }
   }
 
-  def computePeriodIndexesFromScrach(): F[List[PeriodIndex]] =
+  def computePeriodIndexesFromScrach(): F[List[AnalyticsPeriodIndex]] =
     settings.finance.accountsDir match {
       case accountDirs@(accountDir :: _) =>
         val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)
@@ -35,7 +35,7 @@ case class AnalyticsIndexClient[F[_]](
       case _ => F.pure(Nil)
     }
 
-  def computeLatestPeriodIndexes(nmonths: Int = 4): F[List[PeriodIndex]] =
+  def computeLatestPeriodIndexes(nmonths: Int = 4): F[List[AnalyticsPeriodIndex]] =
     settings.finance.accountsDir match {
       case accountDirs@(accountDir :: _) =>
         val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay).take(nmonths)
@@ -44,7 +44,7 @@ case class AnalyticsIndexClient[F[_]](
       case _ => F.pure(Nil)
     }
 
-  private def computePeriodIndexes(accountDirs: List[File], ofxFiles: List[OfxFile]): F[List[PeriodIndex]] = {
+  private def computePeriodIndexes(accountDirs: List[File], ofxFiles: List[OfxFile]): F[List[AnalyticsPeriodIndex]] = {
     icomptaClient.buildRulesAst().flatMap { rulesAst =>
 
       rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).map { wageRule =>
@@ -58,10 +58,10 @@ case class AnalyticsIndexClient[F[_]](
 
 object AnalyticsIndexClient {
 
-  private def computePeriodIndexesStep(segments: List[SegmentIndex], periods: List[PeriodIndex], pendingSegments: List[SegmentIndex]): (List[PeriodIndex], List[SegmentIndex]) = {
+  private def computePeriodIndexesStep(segments: List[SegmentIndex], periods: List[AnalyticsPeriodIndex], pendingSegments: List[SegmentIndex]): (List[AnalyticsPeriodIndex], List[SegmentIndex]) = {
 
     @annotation.tailrec
-    def step(sortedSegments: List[SegmentIndex], accPeriods: List[PeriodIndex], pendingSegments: List[SegmentIndex]): (List[PeriodIndex], List[SegmentIndex]) = {
+    def step(sortedSegments: List[SegmentIndex], accPeriods: List[AnalyticsPeriodIndex], pendingSegments: List[SegmentIndex]): (List[AnalyticsPeriodIndex], List[SegmentIndex]) = {
       val maybeLastPeriod = accPeriods.headOption
 
       sortedSegments match {
@@ -81,7 +81,7 @@ object AnalyticsIndexClient {
           NonEmptyList.fromList(segmentsForPeriod) match {
             case Some(segmentsForPeriod) =>
 
-              val updatedAccPeriods: List[PeriodIndex] = maybeLastPeriod match {
+              val updatedAccPeriods: List[AnalyticsPeriodIndex] = maybeLastPeriod match {
 
                 case Some(lastPeriod) =>
                   if (scala.math.abs(ChronoUnit.DAYS.between(wageStatement.date, lastPeriod.wageStatements.last.date)) <= 10) { // Include new wage statement
@@ -93,8 +93,8 @@ object AnalyticsIndexClient {
 
                     val updatedLastPeriod = lastPeriod.includeStatements(statementsForLastPeriod, partitions)
 
-                    val newPeriod = CompletePeriodIndex(
-                      partitions,
+                    val newPeriod = CompleteAnalyticsPeriodIndex(
+                      partitions = partitions,
                       startDate = wageStatement.date,
                       endDate = lastPeriod.startDate,
                       wageStatements = NonEmptyList.one(wageStatement),
@@ -104,10 +104,10 @@ object AnalyticsIndexClient {
                   }
 
                 case None =>
-                  val period = IncompletePeriodIndex(
-                    partitions,
+                  val period = IncompleteAnalyticsPeriodIndex(
+                    partitions = partitions,
                     startDate = wageStatement.date,
-                    wageStatements = NonEmptyList.one(wageStatement),
+                    wageStatements = NonEmptyList.one(wageStatement)
                   ).includeStatements(statementsForPeriod)
 
                   period :: accPeriods
@@ -163,9 +163,9 @@ object AnalyticsIndexClient {
     step(statements, acc = Nil).reverse
   }
 
-  def computePeriodIndexes[F[_]](accountDirs: List[File], ofxFiles: List[OfxFile])(isWageStatement: CMStatement => Boolean)(implicit F: Effect[F]): F[List[PeriodIndex]] = {
+  def computePeriodIndexes[F[_]](accountDirs: List[File], ofxFiles: List[OfxFile])(isWageStatement: CMStatement => Boolean)(implicit F: Effect[F]): F[List[AnalyticsPeriodIndex]] = {
 
-    def step(accountDirs: List[File], sortedOfxFiles: List[OfxFile], accSegments: List[SegmentIndex], accPeriods: List[PeriodIndex]): F[List[PeriodIndex]] = {
+    def step(accountDirs: List[File], sortedOfxFiles: List[OfxFile], accSegments: List[SegmentIndex], accPeriods: List[AnalyticsPeriodIndex]): F[List[AnalyticsPeriodIndex]] = {
       sortedOfxFiles match {
         case ofxFile :: remainingOfxFiles =>
           val partitions: List[OfxFile] = accountDirs.map { accountDir =>
@@ -215,7 +215,7 @@ object AnalyticsIndexClient {
               accPeriods
           }
 
-          val ascendantPeriods = periods.sorted(PeriodIndex.ORDER_ASC)
+          val ascendantPeriods = periods.sorted(AnalyticsPeriodIndex.ORDER_ASC)
 
           F.pure(ascendantPeriods)
       }

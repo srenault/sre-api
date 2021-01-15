@@ -4,29 +4,41 @@ import cats.effect._
 import cats.implicits._
 import fs2.Stream
 import java.time.YearMonth
-import java.sql.{ DriverManager, Connection }
+import java.sql.{Connection, DriverManager}
+
 import anorm._
-import finance.analytics.{ PeriodIndex, CompletePeriodIndex }
+import finance.analytics.{AnalyticsPeriodIndex, CompleteAnalyticsPeriodIndex}
+import sre.api.finance.analytics.PeriodIndex
 
 case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
 
-  def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
+  def upsertPeriodIndexes(analyticsPeriodIndexes: List[AnalyticsPeriodIndex]): F[Unit] =
     F.delay {
-      periodIndexes.collect {
-        case CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result, balance) =>
-          val encodedPartitions = CompletePeriodIndex.encodePartitions(partitions)
-          val encodedWageStatements = CompletePeriodIndex.encodeWageStatements(wageStatements)
-          val lastUpdate = java.time.LocalDateTime.now()
+      val periodIndexes = analyticsPeriodIndexes.collect {
+        case p: CompleteAnalyticsPeriodIndex => PeriodIndex(p)
+      }
 
-          SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, result, balance, lastupdate)
-            values (${yearMonth.atDay(1)}, $startDate, $endDate, $encodedPartitions, $encodedWageStatements, $result, $balance, $lastUpdate)""".executeUpdate()
+      periodIndexes.map { periodIndex =>
+        val lastUpdate = java.time.LocalDateTime.now()
+
+        SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, result, balance, lastupdate)
+            values (
+              ${periodIndex.yearMonth.atDay(1)},
+              ${periodIndex.startDate},
+              ${periodIndex.endDate},
+              ${periodIndex.encodedPartitions},
+              ${periodIndex.encodedWageStatements},
+              ${periodIndex.result},
+              ${periodIndex.balance},
+              $lastUpdate
+            )""".executeUpdate()
       }
     }
 
-  def selectAllPeriodIndexes(): F[List[CompletePeriodIndex]] =
+  def selectAllPeriodIndexes(): F[List[PeriodIndex]] =
     F.delay {
       try {
-        SQL"SELECT * FROM FINANCE_PERIODINDEX".as(CompletePeriodIndex.parser.*)
+        SQL"SELECT * FROM FINANCE_PERIODINDEX".as(PeriodIndex.parser.*)
       } catch {
         case e: Exception =>
           e.printStackTrace
@@ -34,12 +46,12 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
       }
     }
 
-  def selectOnePeriodIndex(periodDate: YearMonth): F[Option[CompletePeriodIndex]] =
+  def selectOnePeriodIndex(periodDate: YearMonth): F[Option[PeriodIndex]] =
     F.delay {
       try {
         SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearmonth = {yearmonth}")
           .on("yearmonth" -> periodDate.atDay(1))
-          .as(CompletePeriodIndex.parser.singleOpt)
+          .as(PeriodIndex.parser.singleOpt)
       } catch {
         case e: Exception =>
           e.printStackTrace

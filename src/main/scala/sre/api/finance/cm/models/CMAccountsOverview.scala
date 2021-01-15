@@ -6,7 +6,7 @@ import org.http4s.EntityEncoder
 import org.http4s.circe._
 import io.circe.Encoder
 import io.circe.generic.semiauto._
-import analytics.Period
+import sre.api.finance.models.Period
 
 case class CMAccountsOverview(
   period: Period,

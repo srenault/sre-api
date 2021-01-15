@@ -30,7 +30,7 @@ class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
         periodIndexes <- analyticsClient.reindex(fromScratch = true)
 
         statementsByPeriod <- periodIndexes.collect {
-          case periodIndex: CompletePeriodIndex =>
+          case periodIndex: CompleteAnalyticsPeriodIndex =>
             analyticsClient.getStatementsForPeriod(periodIndex.yearMonth).value.map(periodIndex -> _)
         }.sequence
       } yield {

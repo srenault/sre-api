@@ -2,18 +2,20 @@ package sre.api
 
 import java.time.YearMonth
 import java.time.format.DateTimeFormatterBuilder
+
 import cats._
 import cats.effect._
 import cats.implicits._
-import cats.data.{ Validated, ValidatedNel, EitherT }
-import cats.data.Validated.{ Invalid, Valid }
+import cats.data.{EitherT, Validated, ValidatedNel}
+import cats.data.Validated.{Invalid, Valid}
 import io.circe.literal._
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
-import finance.cm.{ CMClient, CMAccountState, CMAccountsOverview, CMOtpRequest }
-import finance.analytics.{ AnalyticsClient, Period }
+import finance.cm.{CMAccountState, CMAccountsOverview, CMClient, CMOtpRequest}
+import finance.analytics.AnalyticsClient
 import finance.icompta.IComptaClient
+import sre.api.finance.models.Period
 
 trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
 

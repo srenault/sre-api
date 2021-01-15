@@ -3,11 +3,13 @@ package finance
 package analytics
 
 import java.time.YearMonth
+
 import cats.data.OptionT
 import cats.effect._
 import cats.implicits._
-import cm.{ CMAccountState, CMStatement }
+import cm.{CMAccountState, CMStatement}
 import icompta.IComptaClient
+import sre.api.finance.models.Period
 
 case class AnalyticsClient[F[_]](
   indexClient: AnalyticsIndexClient[F],
@@ -16,7 +18,7 @@ case class AnalyticsClient[F[_]](
   settings: Settings
 )(implicit F: Effect[F]) {
 
-  def reindex(fromScratch: Boolean): F[List[PeriodIndex]] = {
+  def reindex(fromScratch: Boolean): F[List[AnalyticsPeriodIndex]] = {
     val eventuallyIndexes = if (fromScratch) {
       indexClient.computePeriodIndexesFromScrach()
     } else {
@@ -97,18 +99,12 @@ case class AnalyticsClient[F[_]](
   }
 
   def getPreviousPeriods(): F[List[Period]] = {
-    dbClient.selectAllPeriodIndexes().map { periodIndexes =>
-      periodIndexes.map { periodIndex =>
-        Period(periodIndex)
-      }
-    }
+    dbClient.selectAllPeriodIndexes().map(periodIndexes => periodIndexes.map(Period.apply))
   }
 
   def computeCurrentPeriod(statements: List[CMStatement]): F[Option[Period]] = {
     indexClient.computePeriodIndexesFrom(statements).map { indexes =>
-      indexes.lastOption.map { periodIndex =>
-        Period(periodIndex)
-      }
+      indexes.lastOption.map(Period.apply)
     }
   }
 }
