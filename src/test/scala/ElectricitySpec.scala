@@ -46,7 +46,6 @@ class ElectricitySpec extends AnyFlatSpec with Matchers {
         input.hcTotal,
         input.hpTotal
       )
-      println(input)
       cost should be (input.expectedCost.toFloat +- 10F)
     }
   }

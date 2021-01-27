@@ -15,7 +15,7 @@ case class CMStatement(
   date: LocalDate,
   amount: Float,
   label: String,
-  balance: Option[Float]
+  balance: Double
 ) {
   def id: String = {
     val v = List(fitid, accountId, date, amount, label).mkString("#")

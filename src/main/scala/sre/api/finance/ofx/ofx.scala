@@ -42,11 +42,11 @@ case class OfxStmTrn(
   balance: Double
 ) {
   def toStatement(accountId: String): CMStatement = {
-    CMStatement(fitid, accountId, posted, amount, name, None)
+    CMStatement(fitid, accountId, posted, amount, name, balance)
   }
 
   def toStatement(ofxFile: OfxFile): CMStatement = {
-    CMStatement(fitid, ofxFile.file.getParentFile.getName, posted, amount, name, None)
+    CMStatement(fitid, ofxFile.file.getParentFile.getName, posted, amount, name, balance)
   }
 }
 

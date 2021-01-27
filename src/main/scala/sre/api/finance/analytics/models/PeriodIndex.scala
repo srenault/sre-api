@@ -19,18 +19,14 @@ case class PeriodIndex(
   startDate: LocalDate,
   endDate: LocalDate,
   wageStatements: NonEmptyList[CMStatement],
-  result: Double,
-  balance: Double
+  result: Option[Double],
+  balance: Option[Double]
 ) {
   val encodedPartitions = PeriodIndex.encodePartitions(partitions)
   val encodedWageStatements = PeriodIndex.encodeWageStatements(wageStatements)
 }
 
 object PeriodIndex {
-
-  def computeResult(): Double = ???
-
-  def computeBalance(): Double = ???
 
   def apply(analyticsPeriodIndex: CompleteAnalyticsPeriodIndex): PeriodIndex = {
    PeriodIndex(
@@ -39,8 +35,8 @@ object PeriodIndex {
      analyticsPeriodIndex.startDate,
      analyticsPeriodIndex.endDate,
      analyticsPeriodIndex.wageStatements,
-     computeResult(),
-     computeBalance()
+     analyticsPeriodIndex.result,
+     analyticsPeriodIndex.balance
    )
   }
 
@@ -84,8 +80,8 @@ object PeriodIndex {
       get[LocalDate]("enddate") ~
       get[String]("partitions") ~
       get[String]("wagestatements") ~
-      get[Double]("result") ~
-      get[Double]("amount")
+      get[Option[Double]]("result") ~
+      get[Option[Double]]("balance")
     ) map {
     case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ balance ~ amount =>
       val partitions = decodePartitions(partitionsStr)

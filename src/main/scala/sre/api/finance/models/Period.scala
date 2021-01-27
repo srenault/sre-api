@@ -13,7 +13,7 @@ case class Period(
   startDate: LocalDate,
   endDate: Option[LocalDate],
   yearMonth: Option[YearMonth],
-  result: Long,
+  result: Option[Long],
   balance: Option[Long]
 )
 
@@ -23,23 +23,13 @@ object Period {
     BigDecimal(d).setScale(0, BigDecimal.RoundingMode.HALF_UP).toLong
   }
 
-  def apply(
-    startDate: LocalDate,
-    endDate: Option[LocalDate],
-    yearMonth: Option[YearMonth],
-    result: Double,
-    balance: Option[Double]
-  ): Period = {
-    Period(startDate, endDate, yearMonth, round(result), balance.map(round(_)))
-  }
-
   def apply(periodIndex: PeriodIndex): Period =
     Period(
       periodIndex.startDate,
       Some(periodIndex.endDate),
       Some(periodIndex.yearMonth),
-      periodIndex.result,
-      Some(periodIndex.balance)
+      periodIndex.result.map(round),
+      periodIndex.balance.map(round)
     )
 
   def apply(periodIndex: AnalyticsPeriodIndex): Period =
@@ -47,8 +37,8 @@ object Period {
       periodIndex.startDate,
       periodIndex.maybeEndDate,
       periodIndex.maybeYearMonth,
-      periodIndex.result,
-      periodIndex.maybeBalance
+      periodIndex.result.map(round),
+      periodIndex.balance.map(round)
     )
 
   implicit val encoder: Encoder[Period] = deriveEncoder[Period]
