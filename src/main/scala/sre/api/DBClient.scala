@@ -13,7 +13,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
   def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
     F.delay {
       periodIndexes.collect {
-        case CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result) =>
+        case period@CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result) =>
           val encodedPartitions = CompletePeriodIndex.encodePartitions(partitions)
           val encodedWageStatements = CompletePeriodIndex.encodeWageStatements(wageStatements)
           val lastUpdate = java.time.LocalDateTime.now()

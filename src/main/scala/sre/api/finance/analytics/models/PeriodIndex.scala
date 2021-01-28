@@ -2,6 +2,7 @@ package sre.api.finance
 package analytics
 
 import java.util.Base64
+import java.time.temporal.ChronoUnit
 import java.time.{ LocalDate, YearMonth }
 import io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
 import anorm._
@@ -28,6 +29,12 @@ sealed trait PeriodIndex {
     statements: List[CMStatement],
     partitions: List[OfxFile]
   ): PeriodIndex
+
+  def isValid: Boolean = {
+    val endDate = maybeEndDate getOrElse LocalDate.now()
+    val nbDays = ChronoUnit.DAYS.between(startDate, endDate)
+    nbDays < 40
+  }
 }
 
 object PeriodIndex {

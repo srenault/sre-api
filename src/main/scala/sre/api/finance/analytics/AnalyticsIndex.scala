@@ -51,7 +51,7 @@ case class AnalyticsIndexClient[F[_]](
 
         AnalyticsIndexClient.computePeriodIndexes(accountDirs, ofxFiles)(wageRule.test)
 
-      }.toList.sequence.map(_.flatten)
+      }.toList.sequence.map(_.flatten.filter(_.isValid))
     }
   }
 }
