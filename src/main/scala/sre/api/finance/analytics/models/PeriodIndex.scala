@@ -21,46 +21,13 @@ sealed trait PeriodIndex {
   def startWageStatement: CMStatement =
     wageStatements.toList.sortBy(_.date.toEpochDay).head
 
-  def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): PeriodIndex = {
-    val amount = statements.foldLeft(0D)(_ + _.amount)
+  def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): PeriodIndex
 
-    this match {
-      case period: CompletePeriodIndex =>
-        period.copy(
-          partitions = (period.partitions ++ partitions).distinct,
-          result = result + amount
-        )
-
-      case period: IncompletePeriodIndex =>
-        period.copy(
-          partitions = (period.partitions ++ partitions).distinct,
-          result = result + amount
-        )
-    }
-  }
-
-  def includeNewWageStatement(wageStatement: CMStatement, statements: List[CMStatement], partitions: List[OfxFile]): PeriodIndex = {
-    val amount = statements.foldLeft(0D)(_ + _.amount)
-    val updatedWageStatements = wageStatement :: wageStatements
-
-    this match {
-      case period: CompletePeriodIndex =>
-        period.copy(
-          partitions = (period.partitions ++ partitions).distinct,
-          startDate = wageStatement.date,
-          wageStatements = updatedWageStatements,
-          result = result + amount
-        )
-
-      case period: IncompletePeriodIndex =>
-        period.copy(
-          partitions = (period.partitions ++ partitions).distinct,
-          startDate = wageStatement.date,
-          wageStatements = updatedWageStatements,
-          result = result + amount
-        )
-    }
-  }
+  def includeNewWageStatement(
+    wageStatement: CMStatement,
+    statements: List[CMStatement],
+    partitions: List[OfxFile]
+  ): PeriodIndex
 }
 
 object PeriodIndex {
@@ -70,6 +37,27 @@ object PeriodIndex {
 
   lazy val ORDER_DESC: scala.math.Ordering[PeriodIndex] =
     ORDER_ASC.reverse
+
+  def computeYearMonth(startDate: LocalDate, endDate: LocalDate): YearMonth = {
+    val period = List.unfold(startDate) {
+      case d if d.isBefore(endDate) || d.isEqual(endDate) =>
+        val nextDay = d.plusDays(1)
+        Some(nextDay -> nextDay)
+
+      case _ =>
+        None
+    }
+
+    val (_, dates) = period.groupBy(_.getMonth).maxBy {
+      case (_, dates) => dates.length
+    }
+
+    YearMonth.from(dates.head)
+  }
+
+  def computeResult(statements: List[CMStatement]): Double = {
+    statements.foldLeft(0D)(_ + _.amount)
+  }
 }
 
 case class CompletePeriodIndex(
@@ -83,6 +71,31 @@ case class CompletePeriodIndex(
   def maybeEndDate = Some(endDate)
 
   def maybeYearMonth = Some(yearMonth)
+
+  def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): CompletePeriodIndex = {
+    val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
+
+    this.copy(
+      partitions = (this.partitions ++ partitions).distinct,
+      result = updatedResult
+    )
+  }
+
+  def includeNewWageStatement(
+    wageStatement: CMStatement,
+    statements: List[CMStatement],
+    partitions: List[OfxFile]
+  ): CompletePeriodIndex = {
+    val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
+    val updatedWageStatements = wageStatement :: wageStatements
+
+    this.copy(
+      partitions = (this.partitions ++ partitions).distinct,
+      startDate = wageStatement.date,
+      wageStatements = updatedWageStatements,
+      result = updatedResult
+    )
+  }
 }
 
 object CompletePeriodIndex {
@@ -93,7 +106,7 @@ object CompletePeriodIndex {
     endDate: LocalDate,
     wageStatements: NonEmptyList[CMStatement]
   ): CompletePeriodIndex = {
-    val yearMonth = computeYearMonth(startDate, endDate)
+    val yearMonth = PeriodIndex.computeYearMonth(startDate, endDate)
     CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result = 0)
   }
 
@@ -132,23 +145,6 @@ object CompletePeriodIndex {
     }.toList
   }
 
-  def computeYearMonth(startDate: LocalDate, endDate: LocalDate): YearMonth = {
-    val period = List.unfold(startDate) {
-      case d if d.isBefore(endDate) || d.isEqual(endDate) =>
-        val nextDay = d.plusDays(1)
-        Some(nextDay -> nextDay)
-
-      case _ =>
-        None
-    }
-
-    val (_, dates) = period.groupBy(_.getMonth).maxBy {
-      case (_, dates) => dates.length
-    }
-
-    YearMonth.from(dates.head)
-  }
-
   implicit lazy val parser: RowParser[CompletePeriodIndex] = (
     get[LocalDate]("yearMonth") ~
       get[LocalDate]("startdate") ~
@@ -181,6 +177,31 @@ case class IncompletePeriodIndex(
   def maybeEndDate = None
 
   def maybeYearMonth = None
+
+  def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): IncompletePeriodIndex = {
+    val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
+
+    this.copy(
+      partitions = (this.partitions ++ partitions).distinct,
+      result = updatedResult
+    )
+  }
+
+  def includeNewWageStatement(
+    wageStatement: CMStatement,
+    statements: List[CMStatement],
+    partitions: List[OfxFile]
+  ): IncompletePeriodIndex = {
+    val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
+    val updatedWageStatements = wageStatement :: wageStatements
+
+    this.copy(
+      partitions = (this.partitions ++ partitions).distinct,
+      startDate = wageStatement.date,
+      wageStatements = updatedWageStatements,
+      result = updatedResult
+    )
+  }
 }
 
 object IncompletePeriodIndex {
