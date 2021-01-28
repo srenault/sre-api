@@ -113,7 +113,7 @@ object AnalyticsIndexClient {
 
             step(restSegments, updatedAccPeriods, pendingSegments = Nil)
           } else {
-              step(restSegments, accPeriods, pendingSegments = Nil)
+            step(restSegments, accPeriods, pendingSegments = Nil)
           }
 
         case (segment :: restSegments) =>

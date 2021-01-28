@@ -11,7 +11,7 @@ case class CMAccountOverview(
   `type`: CMAccountType,
   label: Option[String],
   displayName: Option[String],
-  balance: Float
+  result: Float
 )
 
 object CMAccountOverview {

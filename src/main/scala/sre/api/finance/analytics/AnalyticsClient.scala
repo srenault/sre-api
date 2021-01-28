@@ -103,7 +103,7 @@ case class AnalyticsClient[F[_]](
           startDate = periodIndex.startDate,
           endDate = Some(periodIndex.endDate),
           yearMonth = Some(periodIndex.yearMonth),
-          balance = periodIndex.balance
+          result = periodIndex.result
         )
       }
     }
@@ -116,7 +116,7 @@ case class AnalyticsClient[F[_]](
           startDate = periodIndex.startDate,
           endDate = periodIndex.maybeEndDate,
           yearMonth = None,
-          balance = periodIndex.balance
+          result = periodIndex.result
         )
       }
     }

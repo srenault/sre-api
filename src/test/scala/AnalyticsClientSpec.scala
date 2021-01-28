@@ -36,7 +36,7 @@ class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
       } yield {
         statementsByPeriod.foreach {
           case (period, Some((_, statements))) =>
-            period.balance shouldBe statements.foldLeft(0D)(_ + _.amount)
+            period.result shouldBe statements.foldLeft(0D)(_ + _.amount)
 
           case (period, _) =>
             sys.error(s"Missing period ${period.yearMonth} in database")

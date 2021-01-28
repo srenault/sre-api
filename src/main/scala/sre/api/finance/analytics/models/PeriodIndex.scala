@@ -15,7 +15,7 @@ sealed trait PeriodIndex {
   def startDate: LocalDate
   def maybeEndDate: Option[LocalDate]
   def wageStatements: NonEmptyList[CMStatement]
-  def balance: Double
+  def result: Double
   def maybeYearMonth: Option[YearMonth]
 
   def startWageStatement: CMStatement =
@@ -28,13 +28,13 @@ sealed trait PeriodIndex {
       case period: CompletePeriodIndex =>
         period.copy(
           partitions = (period.partitions ++ partitions).distinct,
-          balance = balance + amount
+          result = result + amount
         )
 
       case period: IncompletePeriodIndex =>
         period.copy(
           partitions = (period.partitions ++ partitions).distinct,
-          balance = balance + amount
+          result = result + amount
         )
     }
   }
@@ -49,7 +49,7 @@ sealed trait PeriodIndex {
           partitions = (period.partitions ++ partitions).distinct,
           startDate = wageStatement.date,
           wageStatements = updatedWageStatements,
-          balance = balance + amount
+          result = result + amount
         )
 
       case period: IncompletePeriodIndex =>
@@ -57,7 +57,7 @@ sealed trait PeriodIndex {
           partitions = (period.partitions ++ partitions).distinct,
           startDate = wageStatement.date,
           wageStatements = updatedWageStatements,
-          balance = balance + amount
+          result = result + amount
         )
     }
   }
@@ -78,7 +78,7 @@ case class CompletePeriodIndex(
   startDate: LocalDate,
   endDate: LocalDate,
   wageStatements: NonEmptyList[CMStatement],
-  balance: Double
+  result: Double
 ) extends PeriodIndex {
   def maybeEndDate = Some(endDate)
 
@@ -94,7 +94,7 @@ object CompletePeriodIndex {
     wageStatements: NonEmptyList[CMStatement]
   ): CompletePeriodIndex = {
     val yearMonth = computeYearMonth(startDate, endDate)
-    CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, balance = 0)
+    CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result = 0)
   }
 
   private val SEP = '|'
@@ -150,20 +150,20 @@ object CompletePeriodIndex {
   }
 
   implicit lazy val parser: RowParser[CompletePeriodIndex] = (
-      get[LocalDate]("yearMonth") ~
+    get[LocalDate]("yearMonth") ~
       get[LocalDate]("startdate") ~
       get[LocalDate]("enddate") ~
       get[String]("partitions") ~
       get[String]("wagestatements") ~
-      get[Double]("balance")
+      get[Double]("result")
   ) map {
-    case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ balance =>
+    case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ result =>
       val partitions = decodePartitions(partitionsStr)
       val wageStatements = decodeWageStatements(wageStatementsStr)
       NonEmptyList.fromList(wageStatements) match {
         case Some(nonEmptyWageStatements) =>
           val yearMonth = YearMonth.from(yearMonthDate)
-          CompletePeriodIndex(yearMonth, partitions, startDate, endDate, nonEmptyWageStatements, balance)
+          CompletePeriodIndex(yearMonth, partitions, startDate, endDate, nonEmptyWageStatements, result)
 
         case None =>
           sys.error(s"Invalid period index $yearMonthDate: wageStatements is empty")
@@ -176,7 +176,7 @@ case class IncompletePeriodIndex(
   partitions: List[OfxFile],
   startDate: LocalDate,
   wageStatements: NonEmptyList[CMStatement],
-  balance: Double
+  result: Double
 ) extends PeriodIndex {
   def maybeEndDate = None
 
@@ -190,6 +190,6 @@ object IncompletePeriodIndex {
     startDate: LocalDate,
     wageStatements: NonEmptyList[CMStatement]
   ): IncompletePeriodIndex = {
-    IncompletePeriodIndex(partitions, startDate, wageStatements, balance = 0)
+    IncompletePeriodIndex(partitions, startDate, wageStatements, result = 0)
   }
 }
