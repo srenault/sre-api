@@ -133,18 +133,20 @@ object CompletePeriodIndex {
   }
 
   def computeYearMonth(startDate: LocalDate, endDate: LocalDate): YearMonth = {
-    if (startDate.getMonth == endDate.getMonth) {
-      YearMonth.from(startDate)
-    } else {
-      val periodA = startDate.lengthOfMonth - startDate.getDayOfMonth
-      val periodB = endDate.getDayOfMonth
+    val period = List.unfold(startDate) {
+      case d if d.isBefore(endDate) || d.isEqual(endDate) =>
+        val nextDay = d.plusDays(1)
+        Some(nextDay -> nextDay)
 
-      if (periodA > periodB)  {
-        YearMonth.from(startDate)
-      } else {
-        YearMonth.from(endDate)
-      }
+      case _ =>
+        None
     }
+
+    val (_, dates) = period.groupBy(_.getMonth).maxBy {
+      case (_, dates) => dates.length
+    }
+
+    YearMonth.from(dates.head)
   }
 
   implicit lazy val parser: RowParser[CompletePeriodIndex] = (

@@ -18,7 +18,7 @@ case class AnalyticsClient[F[_]](
 
   def reindex(fromScratch: Boolean): F[List[PeriodIndex]] = {
     val eventuallyIndexes = if (fromScratch) {
-      indexClient.computePeriodIndexesFromScrach()
+      indexClient.computePeriodIndexesFromScratch()
     } else {
       indexClient.computeLatestPeriodIndexes()
     }

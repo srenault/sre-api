@@ -26,7 +26,7 @@ case class AnalyticsIndexClient[F[_]](
     }
   }
 
-  def computePeriodIndexesFromScrach(): F[List[PeriodIndex]] =
+  def computePeriodIndexesFromScratch(): F[List[PeriodIndex]] =
     settings.finance.accountsDir match {
       case accountDirs@(accountDir :: _) =>
         val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)
@@ -70,7 +70,6 @@ object AnalyticsIndexClient {
 
           val allStatements = segmentsForPeriod
             .flatMap(_.statements.toList)
-            .toList
             .distinct
             .sorted(CMStatement.ORDER_DESC)
 
@@ -78,44 +77,42 @@ object AnalyticsIndexClient {
 
           val partitions = segmentsForPeriod.flatMap(_.partitions)
 
-          NonEmptyList.fromList(segmentsForPeriod) match {
-            case Some(segmentsForPeriod) =>
+          if (segmentsForPeriod.nonEmpty) {
 
-              val updatedAccPeriods: List[PeriodIndex] = maybeLastPeriod match {
+            val updatedAccPeriods: List[PeriodIndex] = maybeLastPeriod match {
 
-                case Some(lastPeriod) =>
-                  if (scala.math.abs(ChronoUnit.DAYS.between(wageStatement.date, lastPeriod.wageStatements.last.date)) <= 10) { // Include new wage statement
-                    val updatedLastPeriod = lastPeriod.includeNewWageStatement(wageStatement, statementsForPeriod, partitions)
-                    updatedLastPeriod :: accPeriods.tail
-                  } else { // Complete last complete period (same day) and create a new complete
+              case Some(lastPeriod) =>
+                if (scala.math.abs(ChronoUnit.DAYS.between(wageStatement.date, lastPeriod.wageStatements.last.date)) <= 10) { // Include new wage statement
+                  val updatedLastPeriod = lastPeriod.includeNewWageStatement(wageStatement, statementsForPeriod, partitions)
+                  updatedLastPeriod :: accPeriods.tail
+                } else { // Complete last complete period (same day) and create a new complete
 
-                    val (statementsForLastPeriod, statementsForCurrentPeriod) = statementsForPeriod.span(_.date.isEqual(lastPeriod.startDate))
+                  val (statementsForLastPeriod, statementsForCurrentPeriod) = statementsForPeriod.span(_.date.isEqual(lastPeriod.startDate))
 
-                    val updatedLastPeriod = lastPeriod.includeStatements(statementsForLastPeriod, partitions)
+                  val updatedLastPeriod = lastPeriod.includeStatements(statementsForLastPeriod, partitions)
 
-                    val newPeriod = CompletePeriodIndex(
-                      partitions,
-                      startDate = wageStatement.date,
-                      endDate = lastPeriod.startDate,
-                      wageStatements = NonEmptyList.one(wageStatement),
-                    ).includeStatements(statementsForCurrentPeriod)
-
-                    newPeriod :: updatedLastPeriod :: accPeriods.tail
-                  }
-
-                case None =>
-                  val period = IncompletePeriodIndex(
+                  val newPeriod = CompletePeriodIndex(
                     partitions,
                     startDate = wageStatement.date,
+                    endDate = lastPeriod.startDate,
                     wageStatements = NonEmptyList.one(wageStatement),
-                  ).includeStatements(statementsForPeriod)
+                  ).includeStatements(statementsForCurrentPeriod)
 
-                  period :: accPeriods
-              }
+                  newPeriod :: updatedLastPeriod :: accPeriods.tail
+                }
 
-              step(restSegments, updatedAccPeriods, pendingSegments = Nil)
+              case None =>
+                val period = IncompletePeriodIndex(
+                  partitions,
+                  startDate = wageStatement.date,
+                  wageStatements = NonEmptyList.one(wageStatement),
+                ).includeStatements(statementsForPeriod)
 
-            case None =>
+                period :: accPeriods
+            }
+
+            step(restSegments, updatedAccPeriods, pendingSegments = Nil)
+          } else {
               step(restSegments, accPeriods, pendingSegments = Nil)
           }
 
