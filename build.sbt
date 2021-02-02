@@ -1,7 +1,7 @@
 val projectName = "sre-api"
 
 val Fs2Version = "2.4.6"
-val Http4sVersion = "0.21.7"
+val Http4sVersion = "0.21.17"
 val LogbackVersion = "1.2.3"
 val CirceVersion = "0.13.0"
 val CirceConfigVersion = "0.8.0"
