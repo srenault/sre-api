@@ -38,14 +38,16 @@ case class OfxStmTrn(
   posted: LocalDate,
   user: LocalDate,
   amount: Float,
-  name: String
+  name: String,
+  balance: Float,
+  accurateBalance: Boolean
 ) {
   def toStatement(accountId: String): CMStatement = {
-    CMStatement(fitid, accountId, posted, amount, name, None)
+    CMStatement(fitid, accountId, posted, amount, name, balance, accurateBalance)
   }
 
   def toStatement(ofxFile: OfxFile): CMStatement = {
-    CMStatement(fitid, ofxFile.file.getParentFile.getName, posted, amount, name, None)
+    CMStatement(fitid, ofxFile.file.getParentFile.getName, posted, amount, name, balance, accurateBalance)
   }
 }
 
@@ -96,32 +98,50 @@ object OfxStmTrn {
       import scala.collection.mutable.Stack
 
       val ofxReader = new NanoXMLOFXReader()
-      val stack = Stack.empty[List[String]]
+      val stackStatements = Stack.empty[List[String]]
+      var maybeEndPeriodBalance: Option[Float] = None
 
       ofxReader.setContentHandler(new DefaultHandler() {
 
         override def onElement(name: String, value: String): Unit = {
           if (List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "FITID", "NAME").exists(_ == name)) {
-            val updated = stack.pop() :+ value
-            stack.push(updated)
+            val updated = stackStatements.pop() :+ value
+            stackStatements.push(updated)
+          }
+
+          if (name == "BALAMT" && maybeEndPeriodBalance.isEmpty) {
+            maybeEndPeriodBalance = Some(value.toFloat)
           }
         }
 
         override def startAggregate(aggregateName: String): Unit = {
           if (aggregateName == "STMTTRN") {
-            stack.push(Nil)
+            stackStatements.push(Nil)
           }
         }
       })
 
       ofxReader.parse(is)
 
-      stack.map {
-        case typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil =>
+      val endPeriodBalance = maybeEndPeriodBalance getOrElse {
+        sys.error("Unable to get end period balance")
+      }
+
+      stackStatements.toList.foldLeft[List[OfxStmTrn]](Nil) {
+        case (acc, typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil) =>
+          val amount = amountStr.toFloat
           val `type` = OfxStrTrnType(typStr)
           val posted = LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
           val user = LocalDate.parse(userStr, DateTimeFormatter.BASIC_ISO_DATE)
-          OfxStmTrn(fitid, `type`, posted, user, amountStr.toFloat, name)
+          val balance = acc match {
+            case (previousStatement :: _) =>
+              previousStatement.balance - previousStatement.amount
+
+            case Nil => endPeriodBalance
+          }
+          val accurateBalance = acc.size != 0// The last one is not accurate
+          val trn = OfxStmTrn(fitid, `type`, posted, user, amount, name, balance, accurateBalance)
+          trn :: acc
 
         case x =>
           sys.error(s"Unable to parse OfxStmTrn from $x")

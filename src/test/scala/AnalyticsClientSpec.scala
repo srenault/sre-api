@@ -24,7 +24,7 @@ class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
 
   "AnalyticsClient" - {
     "should reindex all ofx files" in {
-      (for {
+      for {
         analyticsClient <- streamAnalyticsClient.compile.lastOrError
 
         periodIndexes <- analyticsClient.reindex(fromScratch = true)
@@ -41,7 +41,7 @@ class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
           case (period, _) =>
             sys.error(s"Missing period ${period.yearMonth} in database")
         }
-      })
+      }
     }
   }
 }

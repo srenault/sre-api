@@ -12,7 +12,7 @@ case class Period(startDate: LocalDate, endDate: Option[LocalDate], yearMonth: O
 
 object Period {
 
-  def round(n: Double) = BigDecimal(n).setScale(0, BigDecimal.RoundingMode.HALF_UP).toLong
+  def round(n: Double): Long = BigDecimal(n).setScale(0, BigDecimal.RoundingMode.HALF_UP).toLong
 
   def apply(
    startDate: LocalDate,

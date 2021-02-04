@@ -68,9 +68,7 @@ object AnalyticsIndexClient {
         case (segment@SegmentIndex(_, Some(wageStatement), _)) :: restSegments =>
           val segmentsForPeriod = (segment +: pendingSegments).distinct
 
-          val allStatements = segmentsForPeriod
-            .flatMap(_.statements.toList)
-            .distinct
+          val allStatements = CMStatement.merge(segmentsForPeriod.flatMap(_.statements.toList))
             .sorted(CMStatement.ORDER_DESC)
 
           val statementsForPeriod = allStatements.takeWhile(_.date.isAfter(wageStatement.date.minusDays(1)))
@@ -175,7 +173,7 @@ object AnalyticsIndexClient {
             }
           }.flatMap { statements =>
 
-            val sortedStatements = statements.distinct.sorted(CMStatement.ORDER_DESC)
+            val sortedStatements = CMStatement.merge(statements).sorted(CMStatement.ORDER_DESC)
 
             val maybeLastWageStatement = accPeriods.headOption.map(period => period.startWageStatement)
 
@@ -202,7 +200,7 @@ object AnalyticsIndexClient {
           val periods = accPeriods.headOption match {
             case Some(lastPeriod) => // Complete the last period with remaining statements if needed
               val remainingSegments = accSegments.takeWhile(segment => segment.statements.exists(_.date == lastPeriod.startDate))
-              val remainingStatements = remainingSegments.flatMap(_.statements).toList.distinct.sorted(CMStatement.ORDER_DESC)
+              val remainingStatements = CMStatement.merge(remainingSegments.flatMap(_.statements).toList).sorted(CMStatement.ORDER_DESC)
               val statementsForLastPeriod = remainingStatements.takeWhile(_.date.isEqual(lastPeriod.startDate))
               val partitions = remainingSegments.flatMap(_.partitions)
               val updatedLastPeriod = lastPeriod.includeStatements(statementsForLastPeriod, partitions)
