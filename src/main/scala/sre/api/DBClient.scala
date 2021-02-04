@@ -13,13 +13,23 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
   def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
     F.delay {
       periodIndexes.collect {
-        case period@CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result) =>
+        case period@CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result, balancesByAccount) =>
           val encodedPartitions = CompletePeriodIndex.encodePartitions(partitions)
           val encodedWageStatements = CompletePeriodIndex.encodeWageStatements(wageStatements)
           val lastUpdate = java.time.LocalDateTime.now()
+          val encodedBalancesByAccount = CompletePeriodIndex.encodeBalancesByAccount(balancesByAccount)
 
-          SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, result, lastupdate)
-            values (${yearMonth.atDay(1)}, $startDate, $endDate, $encodedPartitions, $encodedWageStatements, $result, $lastUpdate)""".executeUpdate()
+          SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, result, balancesByAccount, lastupdate)
+            values (
+              ${yearMonth.atDay(1)},
+              $startDate,
+              $endDate,
+              $encodedPartitions,
+              $encodedWageStatements,
+              $result,
+              $encodedBalancesByAccount,
+              $lastUpdate
+            )""".executeUpdate()
       }
     }
 
@@ -59,6 +69,7 @@ object DBClient {
             partitions TEXT,
             wagestatements TEXT,
             result NUMERIC,
+            balancesByAccount TEXT,
             lastupdate NUMERIC
     );""".execute()
     }
