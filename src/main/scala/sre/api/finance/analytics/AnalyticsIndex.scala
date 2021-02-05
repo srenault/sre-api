@@ -158,6 +158,28 @@ object AnalyticsIndexClient {
     step(statements, acc = Nil).reverse
   }
 
+  private def fillMissingBalancesByAccount(periodIndexes: List[PeriodIndex]): List[PeriodIndex] = {
+    periodIndexes.foldLeft(List.empty[PeriodIndex]) {
+      case (acc, periodIndex) =>
+        acc.lastOption match {
+          case Some(previousPeriodIndex) =>
+            val updatedBalancesByAccount = previousPeriodIndex.balancesByAccount ++ periodIndex.balancesByAccount
+            val updatedPeriodIndex: PeriodIndex = periodIndex match {
+              case completePeriod: CompletePeriodIndex =>
+                completePeriod.copy(balancesByAccount = updatedBalancesByAccount)
+
+              case incompletePeriod: IncompletePeriodIndex =>
+                incompletePeriod.copy(balancesByAccount = updatedBalancesByAccount)
+            }
+
+            acc :+ updatedPeriodIndex
+
+          case None =>
+            acc :+ periodIndex
+        }
+    }
+  }
+
   def computePeriodIndexes[F[_]](accountDirs: List[File], ofxFiles: List[OfxFile])(isWageStatement: CMStatement => Boolean)(implicit F: Effect[F]): F[List[PeriodIndex]] = {
 
     def step(accountDirs: List[File], sortedOfxFiles: List[OfxFile], accSegments: List[SegmentIndex], accPeriods: List[PeriodIndex]): F[List[PeriodIndex]] = {
@@ -218,7 +240,10 @@ object AnalyticsIndexClient {
 
     val sortedOfxFiles = ofxFiles.sortBy(-_.date.toEpochDay)
 
-    step(accountDirs, sortedOfxFiles, accSegments = Nil, accPeriods = Nil)
+    step(accountDirs, sortedOfxFiles, accSegments = Nil, accPeriods = Nil).map { result =>
 
+      fillMissingBalancesByAccount(result)
+
+    }
   }
 }
