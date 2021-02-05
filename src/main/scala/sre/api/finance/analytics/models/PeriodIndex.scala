@@ -21,7 +21,11 @@ sealed trait PeriodIndex {
   def balancesByAccount: Map[String, Double]
 
   def startWageStatement: CMStatement =
-    wageStatements.toList.sortBy(_.date.toEpochDay).head
+    wageStatements.toList.sorted(CMStatement.ORDER_ASC).head
+
+  def isWageStatement(statement: CMStatement): Boolean = {
+    wageStatements.exists(_.id == statement.id)
+  }
 
   def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): PeriodIndex
 

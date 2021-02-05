@@ -32,9 +32,11 @@ object CMCsvRecord {
       csvRecord.amount.toFloat,
       csvRecord.label,
       csvRecord.balance.toFloat,
+      downloadedAt = LocalDate.now(),
+      pos = 0,
       accurateBalance = true
     )
-  }
+  } //TODO
 
   def parseOrFail(line: String): CMCsvRecord = {
     line.split(";").toList match {

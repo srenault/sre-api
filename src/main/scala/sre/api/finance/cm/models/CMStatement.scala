@@ -16,8 +16,14 @@ case class CMStatement(
   amount: Float,
   label: String,
   balance: Float,
+  downloadedAt: LocalDate,
+  pos: Int,
   accurateBalance: Boolean
 ) {
+
+  lazy val roundedBalance: Float = CMStatement.round(balance)
+
+  lazy val roundedAmount: Float = CMStatement.round(amount)
 
   def id: String = {
     val value = List(fitid, accountId, date.toString, amount.toString, label)
@@ -25,8 +31,16 @@ case class CMStatement(
   }
 
   def hash: String = {
-    val roundBalance = CMStatement.round(balance)
-    val value = List(fitid, accountId, date.toString, amount.toString, label, roundBalance.toString)
+    val value = List(
+      fitid,
+      accountId,
+      date.toString,
+      amount.toString,
+      label,
+      roundedBalance.toString,
+      downloadedAt.toString,
+      pos.toString
+    )
     CMStatement.computeHash(value)
   }
 
@@ -54,7 +68,9 @@ object CMStatement {
          "amount": ${statement.amount},
          "label": ${statement.label},
          "balance": ${statement.balance},
-         "accurateBalance": ${statement.accurateBalance}
+         "accurateBalance": ${statement.accurateBalance},
+         "downloadedAt": ${statement.downloadedAt},
+         "pos": ${statement.pos}
        }
       """
     }
@@ -62,10 +78,11 @@ object CMStatement {
   implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[CMStatement]] = jsonEncoderOf[F, List[CMStatement]]
 
   lazy val ORDER_ASC: scala.math.Ordering[CMStatement] =
-    scala.math.Ordering.by[CMStatement, Long](_.date.toEpochDay)
+    scala.math.Ordering[(Long, Long, Int)].on(s => (s.date.toEpochDay, s.downloadedAt.toEpochDay, s.pos))
 
   lazy val ORDER_DESC: scala.math.Ordering[CMStatement] =
     ORDER_ASC.reverse
+
 
   def computeHash(value: List[String]): String = {
     val s = value.mkString("#")
@@ -76,29 +93,34 @@ object CMStatement {
 
   def merge(statements: List[CMStatement]): List[CMStatement] = {
     statements.groupBy(_.id).map {
+      case (_, statement :: Nil) =>
+        statement
+
       case (_, statementsById) =>
-        if (statementsById.size > 1) {
-          val (accurateStatements, nonAccurateStatements) = statementsById.distinct.partition(_.accurateBalance)
+        val (accurateStatements, nonAccurateStatements) = statementsById.partition(_.accurateBalance)
 
-          if (accurateStatements.size > 1) {
-            sys.error(s"""
-              |Found more that one accurate statements:
+        if (accurateStatements.size > 1 && (accurateStatements.map(_.roundedBalance).distinct.size > 1)) {
+          sys.error(s"""
+              |Unable to merge statements correctly.
+              |Found more that one accurate statement:
+              |Accurate statements:
               |${accurateStatements.map(_.toString).mkString("\n")}
+              |Non accurate statements:
+              |${nonAccurateStatements.map(_.toString).mkString("\n")}
             """.stripMargin)
-          }
+        }
 
-          if (accurateStatements.size == 0 && nonAccurateStatements.size == 1) {
-            nonAccurateStatements.head
-          } else {
-            accurateStatements.headOption.getOrElse {
-              sys.error(s"""
-                |Unable to find accurateStatements:
-                |${nonAccurateStatements.map(_.toString.mkString("\n"))}
-                |""".stripMargin)
-            }
-          }
+        if (accurateStatements.size == 0) {
+          nonAccurateStatements.sorted(ORDER_DESC).head
         } else {
-          statementsById.head
+          accurateStatements.sorted(ORDER_DESC).headOption.getOrElse {
+            sys.error(s"""
+                |Unable to merge statements correctly.
+                |Expected at least one accurate balance.
+                |Non accurate statements:
+                |${nonAccurateStatements.map(_.toString).mkString("\n")}
+              """.stripMargin)
+          }
         }
     }.toList
   }

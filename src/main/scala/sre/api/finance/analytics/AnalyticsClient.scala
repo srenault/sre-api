@@ -60,10 +60,10 @@ case class AnalyticsClient[F[_]](
           .map(f => finance.ofx.OfxStmTrn.load(f).map(f.accountId -> _))
           .sequence
           .map { transactionsByAccount =>
-            transactionsByAccount.map {
+            CMStatement.merge(transactionsByAccount.map {
               case (accountId, transactions) =>
                 transactions.map(_.toStatement(accountId))
-            }.flatten.distinct.sorted(CMStatement.ORDER_ASC)
+            }.flatten).sorted(CMStatement.ORDER_ASC)
              .dropWhile(_.date.isBefore(periodIndex.startDate))
              .takeWhile(_.date.isBefore(periodIndex.endDate))
           }
@@ -82,11 +82,11 @@ case class AnalyticsClient[F[_]](
           .filter(_.accountId == accountId)
           .map(f => finance.ofx.OfxStmTrn.load(f))
           .sequence.map { ofxStmTrn =>
-            ofxStmTrn
-              .flatten
-              .map(_.toStatement(accountId))
-              .distinct
-              .sorted(CMStatement.ORDER_ASC)
+            CMStatement.merge(
+              ofxStmTrn
+                .flatten
+                .map(_.toStatement(accountId))
+            ).sorted(CMStatement.ORDER_ASC)
               .dropWhile(_.date.isBefore(periodIndex.startDate))
               .takeWhile(_.date.isBefore(periodIndex.endDate))
           }

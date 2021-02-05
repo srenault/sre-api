@@ -175,15 +175,15 @@ object AnalyticsIndexClient {
 
             val sortedStatements = CMStatement.merge(statements).sorted(CMStatement.ORDER_DESC)
 
-            val maybeLastWageStatement = accPeriods.headOption.map(period => period.startWageStatement)
+            val maybeLastPeriod = accPeriods.headOption
 
             // Remove already processed statements
-            val nextStatements = maybeLastWageStatement match {
-              case Some(lastWageStatement) =>
+            val nextStatements = maybeLastPeriod match {
+              case Some(lastPeriod) =>
                 sortedStatements.dropWhile { st =>
-                  st.date.isAfter(lastWageStatement.date) ||
-                  (st.date.isEqual(lastWageStatement.date) && st.id != lastWageStatement.id)
-                }.dropWhile(_.id == lastWageStatement.id)
+                  st.date.isAfter(lastPeriod.startWageStatement.date) ||
+                  (st.date.isEqual(lastPeriod.startWageStatement.date) && !lastPeriod.isWageStatement(st))
+                }.dropWhile(st => lastPeriod.isWageStatement(st))
 
               case None => statements
             }

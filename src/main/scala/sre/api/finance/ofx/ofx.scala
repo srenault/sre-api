@@ -4,7 +4,7 @@ package ofx
 import cats.effect._
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
-import java.io.{ File, InputStream, ByteArrayInputStream, FileInputStream }
+import java.io.{ File, FileInputStream }
 import cm.CMStatement
 
 sealed trait OfxStrTrnType {
@@ -40,14 +40,26 @@ case class OfxStmTrn(
   amount: Float,
   name: String,
   balance: Float,
-  accurateBalance: Boolean
+  accurateBalance: Boolean,
+  downloadedAt: LocalDate,
+  pos: Int
 ) {
   def toStatement(accountId: String): CMStatement = {
-    CMStatement(fitid, accountId, posted, amount, name, balance, accurateBalance)
+    CMStatement(fitid, accountId, posted, amount, name, balance, downloadedAt, pos, accurateBalance)
   }
 
   def toStatement(ofxFile: OfxFile): CMStatement = {
-    CMStatement(fitid, ofxFile.file.getParentFile.getName, posted, amount, name, balance, accurateBalance)
+    CMStatement(
+      fitid,
+      ofxFile.file.getParentFile.getName,
+      posted,
+      amount,
+      name,
+      balance,
+      downloadedAt,
+      pos,
+      accurateBalance
+    )
   }
 }
 
@@ -91,7 +103,9 @@ object OfxDir {
 
 object OfxStmTrn {
 
-  def load[F[_]](is: InputStream)(implicit F: Effect[F]): F[List[OfxStmTrn]] =
+  def load[F[_]](ofxFile: OfxFile)(implicit F: Effect[F]): F[List[OfxStmTrn]] = {
+    val is = new FileInputStream(ofxFile.file)
+
     F.pure {
       import com.webcohesion.ofx4j.io.DefaultHandler
       import com.webcohesion.ofx4j.io.nanoxml.NanoXMLOFXReader
@@ -127,8 +141,8 @@ object OfxStmTrn {
         sys.error("Unable to get end period balance")
       }
 
-      stackStatements.toList.foldLeft[List[OfxStmTrn]](Nil) {
-        case (acc, typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil) =>
+      stackStatements.toList.zipWithIndex.foldLeft[List[OfxStmTrn]](Nil) {
+        case (acc, (typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil, index)) =>
           val amount = amountStr.toFloat
           val `type` = OfxStrTrnType(typStr)
           val posted = LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
@@ -139,27 +153,26 @@ object OfxStmTrn {
 
             case Nil => endPeriodBalance
           }
-          val accurateBalance = acc.size != 0// The last one is not accurate
-          val trn = OfxStmTrn(fitid, `type`, posted, user, amount, name, balance, accurateBalance)
+          val accurateBalance = acc.size != 0 // The last one is not accurate
+          val trn = OfxStmTrn(
+            fitid,
+            `type`,
+            posted,
+            user,
+            amount,
+            name,
+            balance,
+            accurateBalance,
+            downloadedAt = ofxFile.date,
+            pos = stackStatements.size - 1 - index
+          )
+
           trn :: acc
 
         case x =>
           sys.error(s"Unable to parse OfxStmTrn from $x")
-      }.toList
+      }
     }
-
-  def load[F[_]: Effect](file: File): F[List[OfxStmTrn]] = {
-    val is = new FileInputStream(file)
-    load(is)
-  }
-
-  def load[F[_]: Effect](ofxFile: OfxFile): F[List[OfxStmTrn]] = {
-    load(ofxFile.file)
-  }
-
-  def load[F[_]: Effect](s: String): F[List[OfxStmTrn]] = {
-    val is: InputStream = new ByteArrayInputStream(s.getBytes())
-    load(is)
   }
 
   def persist[F[_]: Effect : ContextShift](is: fs2.Stream[F, Byte], accountPath: java.nio.file.Path): F[Unit] = {
