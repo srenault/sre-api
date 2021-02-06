@@ -98,27 +98,13 @@ case class AnalyticsClient[F[_]](
 
   def getPreviousPeriods(): F[List[Period]] = {
     dbClient.selectAllPeriodIndexes().map { periodIndexes =>
-      periodIndexes.map { periodIndex =>
-        Period(
-          startDate = periodIndex.startDate,
-          endDate = Some(periodIndex.endDate),
-          yearMonth = Some(periodIndex.yearMonth),
-          result = periodIndex.result
-        )
-      }
+      periodIndexes.map(Period(_))
     }
   }
 
   def computeCurrentPeriod(statements: List[CMStatement]): F[Option[Period]] = {
     indexClient.computePeriodIndexesFrom(statements).map { indexes =>
-      indexes.lastOption.map { periodIndex =>
-        Period(
-          startDate = periodIndex.startDate,
-          endDate = periodIndex.maybeEndDate,
-          yearMonth = None,
-          result = periodIndex.result
-        )
-      }
+      indexes.lastOption.map(Period(_))
     }
   }
 }
