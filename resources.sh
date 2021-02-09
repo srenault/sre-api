@@ -5,5 +5,5 @@ cd src/test/resources/
 tar hcvf resources.tar application.conf icompta.cdb transactions
 cd $ROOT
 mv src/test/resources/resources.tar .
-travis encrypt-file resources.tar --add
+gpg -c --batch resources.tar
 rm resources.tar

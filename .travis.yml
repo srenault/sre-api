@@ -17,7 +17,10 @@ deploy:
   on:
     repo: srenault/sre-api
 before_install:
+- gpg2 --version
 - mkdir -p src/test/resources/
-- openssl aes-256-cbc -K $encrypted_c7bf5c7a6ca1_key -iv $encrypted_c7bf5c7a6ca1_iv
-  -in resources.tar.enc -out resources.tar -d
+- echo $test_resources_pwd | gpg2 --pinentry-mode loopback --batch --yes --passphrase-fd 0 resources.tar.gpg
 - tar xvf resources.tar --directory src/test/resources/
+env:
+  global:
+    secure: YM8yg5cB9CfC+zjpKplCgoHF7iTS387nFypkbmiXwC44N8lu9EzTAo2T/zuM5XxsnLAG/gNVekPgfL3S2hDlWN1JkT50EwYVvg1uuIbX6WZBSY7a/ZwxQk37npRteuJfEieZBK1/gtQmvmp3C9kLrYm45snJX+2hGj2z3zY1uWeKHrOwGPWSbeAmU7MExwOm+dLt6+G0T1svck4v8iC4rECsm+AjkPIp4LKAgLHjBIHoRZasHkkfUVOS0UFwfuEx9PKKE2c6tOThEt7fO2r9CS5HHa8OEPrIGQpn+ck6lZ/GNK/mB9jPuDW8FY/I4r8R7RYJyw9i3XQPQUFHyQF6qus08/3z1k6SXpsTfhTC9g0AgCRCJGRnTgszIyHRMLFtgvsSaRrrOlIGYCGPAl/yjVLWa9UHe8NZtB+wAYWovTnxo4K/68kTsivGFT1sKGmTlITPdAInXl2dCyiCHTNM9g6sfmgD+5Svncm/VlZHzqwjpblzOgneNE0uSrbVw5hdPqEvfrIZaGONJFxEnVo78TeRArXqkFuKsZ0o4UVfO/eX3nr2xG1Sl4Gg7h1ah3shxK72C579g5sSjvsqzbxCeKCfyjMMs9yeF+j9IYguFIpxCuU3ChZMSd23owfD9xaMdmsayuRrM1zipOk2mmoJPajCFgRjOfIWq2s/3X1SaXA=
