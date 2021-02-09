@@ -41,9 +41,11 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
           }
         }
 
-      case GET -> Root / "analytics" =>
-        analyticsClient.getPreviousPeriods().flatMap { periods =>
-          Ok(json"""{ "result": $periods }""")
+      case GET -> Root / "analytics" :? OptionalBeforePeriodDateQueryParamMatcher(maybeValidatedBeforePeriod) =>
+        WithPeriodDate(maybeValidatedBeforePeriod) { maybeBeforePeriod =>
+          analyticsClient.getPreviousPeriods(maybeBeforePeriod, limit = 10).flatMap { periods =>
+            Ok(json"""{ "result": $periods }""")
+          }
         }
 
       case GET -> Root / "analytics" / "period" / PeriodDateVar(periodDate) =>

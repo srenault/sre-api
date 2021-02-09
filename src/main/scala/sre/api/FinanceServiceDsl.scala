@@ -47,6 +47,8 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
 
   object OptionalPeriodDateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[YearMonth]("periodDate")
 
+  object OptionalBeforePeriodDateQueryParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[YearMonth]("before")
+
   object PeriodDateVar {
     def unapply(str: String): Option[YearMonth] = validatePeriodDate(str).toOption
   }

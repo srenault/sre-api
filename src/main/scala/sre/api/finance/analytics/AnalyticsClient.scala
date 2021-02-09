@@ -96,8 +96,8 @@ case class AnalyticsClient[F[_]](
     }
   }
 
-  def getPreviousPeriods(): F[List[Period]] = {
-    dbClient.selectAllPeriodIndexes().map { periodIndexes =>
+  def getPreviousPeriods(maybeBeforePeriod: Option[YearMonth], limit: Int): F[List[Period]] = {
+    dbClient.selectPeriodIndexes(maybeBeforePeriod, limit).map { periodIndexes =>
       periodIndexes.map(Period(_))
     }
   }

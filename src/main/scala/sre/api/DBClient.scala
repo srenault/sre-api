@@ -33,10 +33,21 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
       }
     }
 
-  def selectAllPeriodIndexes(): F[List[CompletePeriodIndex]] =
+  def selectPeriodIndexes(maybeBeforePeriod: Option[YearMonth], limit: Int): F[List[CompletePeriodIndex]] =
     F.delay {
       try {
-        SQL"SELECT * FROM FINANCE_PERIODINDEX".as(CompletePeriodIndex.parser.*)
+        maybeBeforePeriod match {
+          case Some(beforePeriodDate) =>
+            SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth < {yearmonth} ORDER BY yearmonth DESC LIMIT {limit}")
+              .on("yearmonth" -> beforePeriodDate.atDay(1))
+              .on("limit" -> limit)
+              .as(CompletePeriodIndex.parser.*)
+
+          case None =>
+            SQL("SELECT * FROM FINANCE_PERIODINDEX ORDER BY yearmonth DESC LIMIT {limit}")
+              .on("limit" -> limit)
+              .as(CompletePeriodIndex.parser.*)
+        }
       } catch {
         case e: Exception =>
           e.printStackTrace
