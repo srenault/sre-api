@@ -40,6 +40,10 @@ sealed trait PeriodIndex {
     val nbDays = ChronoUnit.DAYS.between(startDate, endDate)
     nbDays < 40
   }
+
+  def totalBalance: Double = balancesByAccount.foldLeft(0D) {
+    case (acc, (_, amount)) => acc + amount
+  }
 }
 
 object PeriodIndex {
@@ -116,12 +120,14 @@ case class CompletePeriodIndex(
     partitions: List[OfxFile]
   ): CompletePeriodIndex = {
     val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
+    val updatedBalancesByAccount = PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
     val updatedWageStatements = wageStatement :: wageStatements
 
     this.copy(
       partitions = (this.partitions ++ partitions).distinct,
       startDate = wageStatement.date,
       wageStatements = updatedWageStatements,
+      balancesByAccount = updatedBalancesByAccount,
       result = updatedResult
     )
   }
@@ -277,11 +283,13 @@ case class IncompletePeriodIndex(
   ): IncompletePeriodIndex = {
     val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
     val updatedWageStatements = wageStatement :: wageStatements
+    val updatedBalancesByAccount = PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
 
     this.copy(
       partitions = (this.partitions ++ partitions).distinct,
       startDate = wageStatement.date,
       wageStatements = updatedWageStatements,
+      balancesByAccount = updatedBalancesByAccount,
       result = updatedResult
     )
   }
