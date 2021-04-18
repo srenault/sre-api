@@ -15,7 +15,7 @@ val AwsSdkVersion = "1.11.615"
 val ScalaTestVersion = "3.2.3"
 val ScalaMockVersion = "4.4.0"
 val CatsEffectTestScalaTestVersion = "0.4.2"
-val EasyMockVersion = "4.2"
+val EasyMockVersion = "4.3"
 val JavaWebSocketVersion = "1.5.1"
 
 val gitVersion = {
