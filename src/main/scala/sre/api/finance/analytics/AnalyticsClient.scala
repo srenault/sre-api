@@ -96,8 +96,12 @@ case class AnalyticsClient[F[_]](
     }
   }
 
-  def getPreviousPeriods(maybeBeforePeriod: Option[YearMonth], limit: Int): F[List[Period]] = {
-    dbClient.selectPeriodIndexes(maybeBeforePeriod, limit).map { periodIndexes =>
+  def countPeriods(maybeBeforePeriod: Option[YearMonth] = None, maybeAfterPeriod: Option[YearMonth] = None): F[Long] = {
+    dbClient.countPeriodIndexes(maybeBeforePeriod, maybeAfterPeriod)
+  }
+
+  def getPeriods(maybeBeforePeriod: Option[YearMonth], maybeAfterPeriod: Option[YearMonth], limit: Int): F[List[Period]] = {
+    dbClient.selectPeriodIndexes(maybeBeforePeriod, maybeAfterPeriod, limit).map { periodIndexes =>
       periodIndexes.map(Period(_))
     }
   }
