@@ -29,6 +29,8 @@ sealed trait PeriodIndex {
 
   def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): PeriodIndex
 
+  def fillMissingBalancesByAccount(previousBalancesByAccount: Map[String, Double]): PeriodIndex
+
   def includeNewWageStatement(
     wageStatement: CMStatement,
     statements: List[CMStatement],
@@ -130,6 +132,10 @@ case class CompletePeriodIndex(
       balancesByAccount = updatedBalancesByAccount,
       result = updatedResult
     )
+  }
+
+  def fillMissingBalancesByAccount(previousBalancesByAccount: Map[String, Double]): CompletePeriodIndex = {
+    this.copy(balancesByAccount = previousBalancesByAccount ++ this.balancesByAccount)
   }
 
   override def toString(): String = {
@@ -292,6 +298,10 @@ case class IncompletePeriodIndex(
       balancesByAccount = updatedBalancesByAccount,
       result = updatedResult
     )
+  }
+
+  def fillMissingBalancesByAccount(previousBalancesByAccount: Map[String, Double]): IncompletePeriodIndex = {
+    this.copy(balancesByAccount = previousBalancesByAccount ++ this.balancesByAccount)
   }
 
   override def toString(): String = {

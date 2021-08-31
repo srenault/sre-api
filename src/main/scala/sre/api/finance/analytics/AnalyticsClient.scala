@@ -119,7 +119,7 @@ object AnalyticsClient {
     dbClient: DBClient[F],
     settings: Settings
   )(implicit F: Effect[F]): AnalyticsClient[F] = {
-    val indexClient = AnalyticsIndexClient(icomptaClient, settings)
+    val indexClient = AnalyticsIndexClient(icomptaClient, dbClient, settings)
     AnalyticsClient(indexClient, icomptaClient, dbClient, settings)
   }
 }
