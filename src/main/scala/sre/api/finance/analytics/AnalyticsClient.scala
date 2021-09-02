@@ -101,7 +101,9 @@ case class AnalyticsClient[F[_]](
   }
 
   def getPeriods(maybeBeforePeriod: Option[YearMonth], maybeAfterPeriod: Option[YearMonth], limit: Int): F[List[Period]] = {
-    dbClient.selectPeriodIndexes(maybeBeforePeriod, maybeAfterPeriod, limit).map { periodIndexes =>
+    val ordering = if (maybeBeforePeriod.isDefined) DBClient.Ordering.DESC else DBClient.Ordering.ASC
+
+    dbClient.selectPeriodIndexes(maybeBeforePeriod, maybeAfterPeriod, limit, ordering).map { periodIndexes =>
       periodIndexes.map(Period(_))
     }
   }

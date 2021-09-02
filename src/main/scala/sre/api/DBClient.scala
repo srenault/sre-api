@@ -10,6 +10,8 @@ import finance.analytics.{ PeriodIndex, CompletePeriodIndex }
 
 case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
 
+  import DBClient.Ordering
+
   private def utc(period: YearMonth): ZonedDateTime = {
     period.atDay(1).atStartOfDay(ZoneOffset.UTC)
   }
@@ -20,10 +22,6 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
 
   private def utc(dateTime: LocalDateTime): ZonedDateTime = {
     dateTime.atZone(ZoneOffset.UTC)
-  }
-
-  object Ordering extends Enumeration {
-    val ASC,DESC = Value
   }
 
   def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
@@ -130,6 +128,10 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
 }
 
 object DBClient {
+
+  object Ordering extends Enumeration {
+    val ASC,DESC = Value
+  }
 
   def init[F[_]]()(implicit connection: Connection, F: Effect[F]): F[Unit] =
     F.delay {
