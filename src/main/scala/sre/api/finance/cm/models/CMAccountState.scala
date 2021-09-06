@@ -33,7 +33,7 @@ case class CMAccountState(
   }
 
   def toOverview: CMAccountOverview = {
-    val balance = statements.lastOption.flatMap(_.balance).getOrElse {
+    val result = statements.lastOption.map(_.balance).getOrElse {
       sys.error(s"Unable to get balance for account ${id}")
     }
 
@@ -42,7 +42,7 @@ case class CMAccountState(
       `type`,
       label,
       displayName,
-      balance
+      result
     )
   }
 }

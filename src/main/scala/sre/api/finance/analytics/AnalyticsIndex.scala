@@ -2,6 +2,7 @@ package sre.api
 package finance
 package analytics
 
+import java.time.YearMonth
 import java.io.File
 import java.time.temporal.ChronoUnit
 import cats.data.NonEmptyList
@@ -13,6 +14,7 @@ import ofx.{ OfxFile, OfxStmTrn, OfxDir }
 
 case class AnalyticsIndexClient[F[_]](
   icomptaClient: IComptaClient[F],
+  dbClient: DBClient[F],
   settings: Settings
 )(implicit F: Effect[F]) {
 
@@ -26,7 +28,7 @@ case class AnalyticsIndexClient[F[_]](
     }
   }
 
-  def computePeriodIndexesFromScrach(): F[List[PeriodIndex]] =
+  def computePeriodIndexesFromScratch(): F[List[PeriodIndex]] =
     settings.finance.accountsDir match {
       case accountDirs@(accountDir :: _) =>
         val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)
@@ -39,19 +41,27 @@ case class AnalyticsIndexClient[F[_]](
     settings.finance.accountsDir match {
       case accountDirs@(accountDir :: _) =>
         val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay).take(nmonths)
-        computePeriodIndexes(accountDirs, ofxFiles)
+        ofxFiles.lastOption match {
+          case Some(lastOfxFile) =>
+            val yearMonth = YearMonth.from(lastOfxFile.date.minusMonths(1))
+            dbClient.selectOnePeriodIndex(yearMonth).flatMap { seedPeriod =>
+              computePeriodIndexes(accountDirs, ofxFiles, seedPeriod)
+            }
+
+          case None => F.pure(Nil)
+        }
 
       case _ => F.pure(Nil)
     }
 
-  private def computePeriodIndexes(accountDirs: List[File], ofxFiles: List[OfxFile]): F[List[PeriodIndex]] = {
+  private def computePeriodIndexes(accountDirs: List[File], ofxFiles: List[OfxFile], seed: Option[PeriodIndex] = None): F[List[PeriodIndex]] = {
     icomptaClient.buildRulesAst().flatMap { rulesAst =>
 
       rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).map { wageRule =>
 
-        AnalyticsIndexClient.computePeriodIndexes(accountDirs, ofxFiles)(wageRule.test)
+        AnalyticsIndexClient.computePeriodIndexes(accountDirs, ofxFiles, seed)(wageRule.test)
 
-      }.toList.sequence.map(_.flatten)
+      }.toList.sequence.map(_.flatten.filter(_.isValid))
     }
   }
 }
@@ -68,55 +78,54 @@ object AnalyticsIndexClient {
         case (segment@SegmentIndex(_, Some(wageStatement), _)) :: restSegments =>
           val segmentsForPeriod = (segment +: pendingSegments).distinct
 
-          val allStatements = segmentsForPeriod
-            .flatMap(_.statements.toList)
-            .toList
-            .distinct
+          val allStatements = CMStatement.merge(segmentsForPeriod.flatMap(_.statements.toList))
             .sorted(CMStatement.ORDER_DESC)
 
           val statementsForPeriod = allStatements.takeWhile(_.date.isAfter(wageStatement.date.minusDays(1)))
 
           val partitions = segmentsForPeriod.flatMap(_.partitions)
 
-          NonEmptyList.fromList(segmentsForPeriod) match {
-            case Some(segmentsForPeriod) =>
+          if (segmentsForPeriod.nonEmpty) {
 
-              val updatedAccPeriods: List[PeriodIndex] = maybeLastPeriod match {
+            val updatedAccPeriods: List[PeriodIndex] = maybeLastPeriod match {
 
-                case Some(lastPeriod) =>
-                  if (scala.math.abs(ChronoUnit.DAYS.between(wageStatement.date, lastPeriod.wageStatements.last.date)) <= 10) { // Include new wage statement
-                    val updatedLastPeriod = lastPeriod.includeNewWageStatement(wageStatement, statementsForPeriod, partitions)
-                    updatedLastPeriod :: accPeriods.tail
-                  } else { // Complete last complete period (same day) and create a new complete
+              case Some(lastPeriod) =>
+                if (scala.math.abs(ChronoUnit.DAYS.between(wageStatement.date, lastPeriod.wageStatements.last.date)) <= 10) { // Include new wage statement
+                  val updatedLastPeriod = lastPeriod.includeNewWageStatement(wageStatement, statementsForPeriod, partitions)
+                  updatedLastPeriod :: accPeriods.tail
+                } else { // Complete last complete period (same day) and create a new complete
 
-                    val (statementsForLastPeriod, statementsForCurrentPeriod) = statementsForPeriod.span(_.date.isEqual(lastPeriod.startDate))
+                  val (statementsForLastPeriod, statementsForCurrentPeriod) = statementsForPeriod.span(_.date.isEqual(lastPeriod.startDate))
 
-                    val updatedLastPeriod = lastPeriod.includeStatements(statementsForLastPeriod, partitions)
+                  val previousBalancesByAccount = accPeriods.lift(2).map(_.balancesByAccount).getOrElse(Map.empty)
 
-                    val newPeriod = CompletePeriodIndex(
-                      partitions,
-                      startDate = wageStatement.date,
-                      endDate = lastPeriod.startDate,
-                      wageStatements = NonEmptyList.one(wageStatement),
-                    ).includeStatements(statementsForCurrentPeriod)
+                  val updatedLastPeriod = lastPeriod
+                    .includeStatements(statementsForLastPeriod, partitions)
+                    .fillMissingBalancesByAccount(previousBalancesByAccount)
 
-                    newPeriod :: updatedLastPeriod :: accPeriods.tail
-                  }
-
-                case None =>
-                  val period = IncompletePeriodIndex(
+                  val newPeriod = CompletePeriodIndex(
                     partitions,
                     startDate = wageStatement.date,
+                    endDate = lastPeriod.startDate,
                     wageStatements = NonEmptyList.one(wageStatement),
-                  ).includeStatements(statementsForPeriod)
+                  ).includeStatements(statementsForCurrentPeriod)
 
-                  period :: accPeriods
-              }
+                  newPeriod :: updatedLastPeriod :: accPeriods.tail
+                }
 
-              step(restSegments, updatedAccPeriods, pendingSegments = Nil)
+              case None =>
+                val period = IncompletePeriodIndex(
+                  partitions,
+                  startDate = wageStatement.date,
+                  wageStatements = NonEmptyList.one(wageStatement),
+                ).includeStatements(statementsForPeriod)
 
-            case None =>
-              step(restSegments, accPeriods, pendingSegments = Nil)
+                period :: accPeriods
+            }
+
+            step(restSegments, updatedAccPeriods, pendingSegments = Nil)
+          } else {
+            step(restSegments, accPeriods, pendingSegments = Nil)
           }
 
         case (segment :: restSegments) =>
@@ -163,7 +172,29 @@ object AnalyticsIndexClient {
     step(statements, acc = Nil).reverse
   }
 
-  def computePeriodIndexes[F[_]](accountDirs: List[File], ofxFiles: List[OfxFile])(isWageStatement: CMStatement => Boolean)(implicit F: Effect[F]): F[List[PeriodIndex]] = {
+  private def fillMissingBalancesByAccount(periodIndexes: List[PeriodIndex]): List[PeriodIndex] = {
+    periodIndexes.foldLeft(List.empty[PeriodIndex]) {
+      case (acc, periodIndex) =>
+        acc.lastOption match {
+          case Some(previousPeriodIndex) =>
+            val updatedBalancesByAccount = previousPeriodIndex.balancesByAccount ++ periodIndex.balancesByAccount
+            val updatedPeriodIndex: PeriodIndex = periodIndex match {
+              case completePeriod: CompletePeriodIndex =>
+                completePeriod.copy(balancesByAccount = updatedBalancesByAccount)
+
+              case incompletePeriod: IncompletePeriodIndex =>
+                incompletePeriod.copy(balancesByAccount = updatedBalancesByAccount)
+            }
+
+            acc :+ updatedPeriodIndex
+
+          case None =>
+            acc :+ periodIndex
+        }
+    }
+  }
+
+  def computePeriodIndexes[F[_]](accountDirs: List[File], ofxFiles: List[OfxFile], seed: Option[PeriodIndex] = None)(isWageStatement: CMStatement => Boolean)(implicit F: Effect[F]): F[List[PeriodIndex]] = {
 
     def step(accountDirs: List[File], sortedOfxFiles: List[OfxFile], accSegments: List[SegmentIndex], accPeriods: List[PeriodIndex]): F[List[PeriodIndex]] = {
       sortedOfxFiles match {
@@ -178,17 +209,17 @@ object AnalyticsIndexClient {
             }
           }.flatMap { statements =>
 
-            val sortedStatements = statements.distinct.sorted(CMStatement.ORDER_DESC)
+            val sortedStatements = CMStatement.merge(statements).sorted(CMStatement.ORDER_DESC)
 
-            val maybeLastWageStatement = accPeriods.headOption.map(period => period.startWageStatement)
+            val maybeLastPeriod = accPeriods.headOption
 
             // Remove already processed statements
-            val nextStatements = maybeLastWageStatement match {
-              case Some(lastWageStatement) =>
+            val nextStatements = maybeLastPeriod match {
+              case Some(lastPeriod) =>
                 sortedStatements.dropWhile { st =>
-                  st.date.isAfter(lastWageStatement.date) ||
-                  (st.date.isEqual(lastWageStatement.date) && st.id != lastWageStatement.id)
-                }.dropWhile(_.id == lastWageStatement.id)
+                  st.date.isAfter(lastPeriod.startWageStatement.date) ||
+                  (st.date.isEqual(lastPeriod.startWageStatement.date) && !lastPeriod.isWageStatement(st))
+                }.dropWhile(st => lastPeriod.isWageStatement(st))
 
               case None => statements
             }
@@ -205,7 +236,7 @@ object AnalyticsIndexClient {
           val periods = accPeriods.headOption match {
             case Some(lastPeriod) => // Complete the last period with remaining statements if needed
               val remainingSegments = accSegments.takeWhile(segment => segment.statements.exists(_.date == lastPeriod.startDate))
-              val remainingStatements = remainingSegments.flatMap(_.statements).toList.distinct.sorted(CMStatement.ORDER_DESC)
+              val remainingStatements = CMStatement.merge(remainingSegments.flatMap(_.statements).toList).sorted(CMStatement.ORDER_DESC)
               val statementsForLastPeriod = remainingStatements.takeWhile(_.date.isEqual(lastPeriod.startDate))
               val partitions = remainingSegments.flatMap(_.partitions)
               val updatedLastPeriod = lastPeriod.includeStatements(statementsForLastPeriod, partitions)
@@ -223,7 +254,10 @@ object AnalyticsIndexClient {
 
     val sortedOfxFiles = ofxFiles.sortBy(-_.date.toEpochDay)
 
-    step(accountDirs, sortedOfxFiles, accSegments = Nil, accPeriods = Nil)
+    step(accountDirs, sortedOfxFiles, accSegments = Nil, accPeriods = seed.toList).map { result =>
 
+      fillMissingBalancesByAccount(result)
+
+    }
   }
 }

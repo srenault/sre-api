@@ -25,8 +25,18 @@ object CMCsvRecord {
 
   def toStatement(id: String, accountId: String, csvRecord: CMCsvRecord): CMStatement = {
     val date = parseDateOrFail(csvRecord.date)
-    CMStatement(id, accountId, date, csvRecord.amount.toFloat, csvRecord.label, Some(csvRecord.balance.toFloat))
-  }
+    CMStatement(
+      id,
+      accountId,
+      date,
+      csvRecord.amount.toFloat,
+      csvRecord.label,
+      csvRecord.balance.toFloat,
+      downloadedAt = LocalDate.now(),
+      pos = 0,
+      accurateBalance = true
+    )
+  } //TODO
 
   def parseOrFail(line: String): CMCsvRecord = {
     line.split(";").toList match {

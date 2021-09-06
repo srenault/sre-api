@@ -10,12 +10,12 @@ import finance.icompta.IComptaClient
 import finance.cm.CMClient
 import finance.analytics.AnalyticsClient
 
-case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
+case class FinanceService[F[_]: Timer : ContextShift](
   icomptaClient: IComptaClient[F],
   cmClient: CMClient[F],
   dbClient: DBClient[F],
   settings: Settings
-) extends FinanceServiceDsl[F] {
+)(implicit F: ConcurrentEffect[F]) extends FinanceServiceDsl[F] {
 
   lazy val analyticsClient = AnalyticsClient(icomptaClient, dbClient, settings)
 
@@ -41,9 +41,45 @@ case class FinanceService[F[_]: ConcurrentEffect : Timer : ContextShift](
           }
         }
 
-      case GET -> Root / "analytics" =>
-        analyticsClient.getPreviousPeriods().flatMap { periods =>
-          Ok(json"""{ "result": $periods }""")
+      case GET -> Root / "analytics" :? OptionalBeforePeriodDateQueryParamMatcher(maybeValidatedBeforePeriod) +& OptionalAfterPeriodDateQueryParamMatcher(maybeValidatedAfterPeriod) =>
+        WithPeriodDate(maybeValidatedBeforePeriod) { maybeBeforePeriod =>
+          WithPeriodDate(maybeValidatedAfterPeriod) { maybeAfterPeriod =>
+            for {
+              periods <- analyticsClient.getPeriods(maybeBeforePeriod, maybeAfterPeriod, limit = 10)
+
+              lastPeriod = periods.lastOption.flatMap(_.yearMonth)
+
+              headPeriod = periods.headOption.flatMap(_.yearMonth)
+
+              (hasPreviousPage, hasNextPage) <- (maybeBeforePeriod, maybeAfterPeriod) match {
+                case (Some(_), Some(_)) =>
+                  F.pure(false -> false)
+
+                case (Some(beforePeriod), None) =>
+                  analyticsClient.countPeriods(maybeBeforePeriod = None, maybeAfterPeriod = Some(beforePeriod)).flatMap { countPrevious =>
+                    analyticsClient.countPeriods(maybeBeforePeriod = lastPeriod, maybeAfterPeriod = None).map { countNext =>
+                      (countPrevious > 0) -> (countNext > 0)
+                    }
+                  }
+
+                case (None, Some(afterPeriod)) =>
+                  analyticsClient.countPeriods(maybeBeforePeriod = Some(afterPeriod), maybeAfterPeriod = None).flatMap { countPrevious =>
+                    analyticsClient.countPeriods(maybeBeforePeriod = None, maybeAfterPeriod = lastPeriod).map { countNext =>
+                      (countPrevious > 0) -> (countNext > 0)
+                    }
+                  }
+
+                case (None, None) =>
+                  analyticsClient.countPeriods(maybeBeforePeriod = None, maybeAfterPeriod = headPeriod).flatMap { countPrevious =>
+                    analyticsClient.countPeriods(maybeBeforePeriod = lastPeriod, maybeAfterPeriod = None).map { countNext =>
+                      (countPrevious > 0) -> (countNext > 0)
+                    }
+                  }
+              }
+
+              result <- Ok(json"""{ "result": $periods, "hasPreviousPage": $hasPreviousPage, "hasNextPage": $hasNextPage }""")
+            } yield result
+          }
         }
 
       case GET -> Root / "analytics" / "period" / PeriodDateVar(periodDate) =>

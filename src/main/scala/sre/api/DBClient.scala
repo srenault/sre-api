@@ -3,30 +3,109 @@ package sre.api
 import cats.effect._
 import cats.implicits._
 import fs2.Stream
-import java.time.YearMonth
-import java.sql.{ DriverManager, Connection }
+import java.time._
+import java.sql._
 import anorm._
 import finance.analytics.{ PeriodIndex, CompletePeriodIndex }
 
 case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
 
+  import DBClient.Ordering
+
+  private def utc(period: YearMonth): ZonedDateTime = {
+    period.atDay(1).atStartOfDay(ZoneOffset.UTC)
+  }
+
+  private def utc(date: LocalDate): ZonedDateTime = {
+    date.atStartOfDay(ZoneOffset.UTC)
+  }
+
+  private def utc(dateTime: LocalDateTime): ZonedDateTime = {
+    dateTime.atZone(ZoneOffset.UTC)
+  }
+
   def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
     F.delay {
       periodIndexes.collect {
-        case CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, balance) =>
+        case period@CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result, balancesByAccount) =>
           val encodedPartitions = CompletePeriodIndex.encodePartitions(partitions)
           val encodedWageStatements = CompletePeriodIndex.encodeWageStatements(wageStatements)
           val lastUpdate = java.time.LocalDateTime.now()
+          val encodedBalancesByAccount = CompletePeriodIndex.encodeBalancesByAccount(balancesByAccount)
 
-          SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, balance, lastupdate)
-            values (${yearMonth.atDay(1)}, $startDate, $endDate, $encodedPartitions, $encodedWageStatements, $balance, $lastUpdate)""".executeUpdate()
+          SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, result, balancesByAccount, lastupdate)
+            values (
+              ${utc(yearMonth)},
+              ${utc(startDate)},
+              ${utc(endDate)},
+              $encodedPartitions,
+              $encodedWageStatements,
+              $result,
+              $encodedBalancesByAccount,
+              ${utc(lastUpdate)}
+            )""".executeUpdate()
       }
     }
 
-  def selectAllPeriodIndexes(): F[List[CompletePeriodIndex]] =
+  def selectPeriodIndexes(maybeBeforePeriod: Option[YearMonth], maybeAfterPeriod: Option[YearMonth], limit: Int, yearMonthOrdering: Ordering.Value = Ordering.DESC): F[List[CompletePeriodIndex]] =
     F.delay {
       try {
-        SQL"SELECT * FROM FINANCE_PERIODINDEX".as(CompletePeriodIndex.parser.*)
+        (maybeBeforePeriod, maybeAfterPeriod) match {
+          case (Some(beforePeriodDate), None) =>
+            SQL(s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth < {yearmonth} ORDER BY yearmonth ${yearMonthOrdering} LIMIT {limit}")
+              .on("yearmonth" -> utc(beforePeriodDate))
+              .on("limit" -> limit)
+              .as(CompletePeriodIndex.parser.*)
+
+          case (None, Some(afterPeriodDate)) =>
+            SQL(s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth > {yearmonth} ORDER BY yearmonth ${yearMonthOrdering} LIMIT {limit}")
+              .on("yearmonth" -> utc(afterPeriodDate))
+              .on("limit" -> limit)
+              .as(CompletePeriodIndex.parser.*)
+
+          case (Some(beforePeriodDate), Some(afterPeriodDate)) =>
+            SQL(s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth > {yearmonthAfter} AND yearMonth < {yearmonthBefore} ORDER BY yearmonth ${yearMonthOrdering} LIMIT {limit}")
+              .on("yearmonthBefore" -> utc(beforePeriodDate))
+              .on("yearmonthAfter" -> utc(afterPeriodDate))
+              .on("limit" -> limit)
+              .as(CompletePeriodIndex.parser.*)
+
+          case (None, None) =>
+            SQL("SELECT * FROM FINANCE_PERIODINDEX ORDER BY yearmonth DESC LIMIT {limit}")
+              .on("limit" -> limit)
+              .as(CompletePeriodIndex.parser.*)
+        }
+      } catch {
+        case e: Exception =>
+          e.printStackTrace
+          throw e
+      }
+    }
+
+  def countPeriodIndexes(maybeBeforePeriod: Option[YearMonth] = None, maybeAfterPeriod: Option[YearMonth] = None): F[Long] =
+    F.delay {
+      try {
+        (maybeBeforePeriod, maybeAfterPeriod) match {
+          case (Some(beforePeriodDate), None) =>
+            SQL("SELECT COUNT(*) FROM FINANCE_PERIODINDEX WHERE yearMonth < {yearmonth}")
+              .on("yearmonth" -> utc(beforePeriodDate))
+              .as(SqlParser.scalar[Long].single)
+
+          case (None, Some(afterPeriodDate)) =>
+            SQL("SELECT COUNT(*) as COUNT FROM FINANCE_PERIODINDEX WHERE yearMonth > {yearmonth}")
+              .on("yearmonth" -> utc(afterPeriodDate))
+              .as(SqlParser.scalar[Long].single)
+
+          case (Some(beforePeriodDate), Some(afterPeriodDate)) =>
+            SQL("SELECT COUNT(*) as COUNT FROM FINANCE_PERIODINDEX WHERE yearMonth > {yearmonthAfter} AND yearMonth < {yearmonthBefore}")
+              .on("yearmonthBefore" -> utc(beforePeriodDate))
+              .on("yearmonthAfter" -> utc(afterPeriodDate))
+              .as(SqlParser.scalar[Long].single)
+
+          case (None, None) =>
+            SQL("SELECT COUNT(*) FROM FINANCE_PERIODINDEX")
+              .as(SqlParser.scalar[Long].single)
+        }
       } catch {
         case e: Exception =>
           e.printStackTrace
@@ -38,7 +117,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
     F.delay {
       try {
         SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearmonth = {yearmonth}")
-          .on("yearmonth" -> periodDate.atDay(1))
+          .on("yearmonth" -> utc(periodDate.atDay(1)))
           .as(CompletePeriodIndex.parser.singleOpt)
       } catch {
         case e: Exception =>
@@ -50,6 +129,10 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
 
 object DBClient {
 
+  object Ordering extends Enumeration {
+    val ASC,DESC = Value
+  }
+
   def init[F[_]]()(implicit connection: Connection, F: Effect[F]): F[Unit] =
     F.delay {
       SQL"""CREATE TABLE IF NOT EXISTS FINANCE_PERIODINDEX (
@@ -58,7 +141,8 @@ object DBClient {
             enddate NUMERIC UNIQUE,
             partitions TEXT,
             wagestatements TEXT,
-            balance NUMERIC,
+            result NUMERIC,
+            balancesByAccount TEXT,
             lastupdate NUMERIC
     );""".execute()
     }
