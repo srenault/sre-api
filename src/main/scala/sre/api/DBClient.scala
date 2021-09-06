@@ -117,7 +117,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
     F.delay {
       try {
         SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearmonth = {yearmonth}")
-          .on("yearmonth" -> periodDate.atDay(1))
+          .on("yearmonth" -> utc(periodDate.atDay(1)))
           .as(CompletePeriodIndex.parser.singleOpt)
       } catch {
         case e: Exception =>
