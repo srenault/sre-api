@@ -28,6 +28,7 @@ jobs:
 
     - name: Upload to s3
       uses: prewk/s3-cp-action@v2
+      if: github.ref == 'refs/heads/master'
       with:
         aws_access_key_id: ${{ secrets.AWS_KEY_ID }}
         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
