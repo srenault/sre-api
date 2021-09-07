@@ -1,0 +1,36 @@
+name: CI
+on:
+  pull_request:
+  push:
+jobs:
+  test:
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Decrypt test resources
+      run: |
+        mkdir -p src/test/resources/
+        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output resources.tar resources.tar.gpg
+        tar xvf resources.tar --directory src/test/resources/
+
+    - name: Setup Scala
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: "adopt@1.8"
+
+    - name: Test & package
+      run: |
+        sbt -Dfile.encoding=UTF-8 -v assembly
+        mkdir jar
+        mv target/scala-2.13/sre-api.jar jar/sre-api-$GITHUB_SHA.jar
+
+    - name: Upload to s3
+      uses: prewk/s3-cp-action@v2
+      with:
+        aws_access_key_id: ${{ secrets.AWS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        source: 'jar'
+        dest: 's3://${{ secrets.AWS_BUCKET }}/jar'
+        flags: --recursive

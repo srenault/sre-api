@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/srenault/sre-api.svg?branch=master)](https://travis-ci.com/srenault/sre-api)
+[![CI](https://github.com/srenault/sre-api/actions/workflows/ci.yml/badge.svg)](https://github.com/srenault/sre-api/actions/workflows/ci.yml)
 
 # sre-api
 My personal api

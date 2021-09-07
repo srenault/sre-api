@@ -18,8 +18,8 @@ class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
 
   lazy val streamAnalyticsClient = for {
     icomptaClient <- icompta.IComptaClient.stream[IO](settings)
-    indexClient = AnalyticsIndexClient[IO](icomptaClient, settings)
     dbClient <- DBClient.stream[IO](settings)
+    indexClient = AnalyticsIndexClient[IO](icomptaClient, dbClient, settings)
   } yield {
     AnalyticsClient[IO](indexClient, icomptaClient, dbClient, settings)
   }

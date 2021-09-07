@@ -8,3 +8,5 @@ application.conf
 .DS_Store
 src/test/resources/*
 .idea/
+.bsp/sbt.json
+resources.tar
