@@ -1,0 +1,21 @@
+name: ci-compile
+on:
+  push:
+    tags-ignore:
+     - "v.**"
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Setup Scala
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: "adopt@1.8"
+
+    - name: Compile
+      run: |
+        sbt -Dfile.encoding=UTF-8 -v compile
