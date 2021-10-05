@@ -25,13 +25,19 @@ class EnergyService[F[_]](energyClient: EnergyClient[F], settings: Settings)(imp
         maybeValidPeriod match {
           case Invalid(errors) =>
             val json = errors.map(_.message)
-
             BadRequest(json""" { "errors" : $json }""")
 
           case Valid((None, None)) =>
-            energyClient.electricity.getMontlyConsumption().flatMap { consumption =>
-              val totalCost = Electricity.computeCost(settings.energy.electricity, consumption)
-              Ok(json"""{ "consumption": $consumption, "totalCost": $totalCost }""")
+            energyClient.electricity.getLastMonthConsumption().flatMap { consumption =>
+              val totalCost = Electricity.computeCost(
+                settings.energy.electricity,
+                hcTotal = consumption.hcTotalUsage,
+                hpTotal = consumption.hpTotalUsage
+              )
+
+              val totalCostWithTaxes = Electricity.computeCostWithTaxes(settings.energy.electricity, consumption)
+
+              Ok(json"""{ "consumption": $consumption, "totalCost": $totalCost, "totalCostWithTaxes": $totalCostWithTaxes }""")
             }
 
           case Valid((maybeDateFrom, maybeDateTo)) =>
@@ -40,7 +46,8 @@ class EnergyService[F[_]](energyClient: EnergyClient[F], settings: Settings)(imp
 
             energyClient.electricity.getDailyConsumption(dateFrom, dateTo).flatMap { consumption =>
               val totalCost = Electricity.computeCost(settings.energy.electricity, consumption)
-              Ok(json"""{ "consumption": $consumption, "totalCost": $totalCost }""")
+              val totalCostWithTaxes = Electricity.computeCostWithTaxes(settings.energy.electricity, consumption)
+              Ok(json"""{ "consumption": $consumption, "totalCost": $totalCost, "totalCostWithTaxes": $totalCostWithTaxes }""")
             }
         }
 

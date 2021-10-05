@@ -3,73 +3,122 @@ package energy
 package electricity
 
 import java.time.temporal.ChronoUnit
-import java.time.LocalDate
+import java.time.{LocalDate, Year, Month}
 import cats.effect._
 import cats.Parallel
 import cats.implicits._
 import fs2.Stream
 import domoticz._
 
-case class ElectricityClient[F[_]: Effect : Parallel](domoticzClient: DomoticzClient[F], implicit val settings: Settings) {
+case class ElectricityClient[F[_] : Effect: Parallel](domoticzClient: DomoticzClient[F], implicit val settings: Settings) {
 
-  def getDailyConsumption(dateFrom: LocalDate, dateTo: LocalDate): F[List[PowerConsumption]] = {
+  def getDailyConsumption(dateFrom: LocalDate, dateTo: LocalDate): F[PowerConsumption] = {
+    val eventuallyCountersByDate = if (dateFrom.getYear == dateTo.getYear) {
+      val year = Year.from(dateFrom)
+      getYearlyConsumption(maybeYear = Some(year)).map { yearConsumption =>
+        yearConsumption.map(consumption => consumption.date -> consumption).toMap
+      }
+    } else {
+      val startYear = Year.from(dateFrom)
+      val endYear = Year.from(dateTo)
+
+      val eventuallyStartYear = getYearlyConsumption(maybeYear = Some(startYear))
+      val eventuallyEndYear = getYearlyConsumption(maybeYear = Some(endYear))
+
+      (eventuallyStartYear, eventuallyEndYear).parMapN {
+        case (startYearConsumption, endYearConsumption) =>
+          val startYearConsumptionByDate = startYearConsumption.map { consumption =>
+            consumption.date -> consumption
+          }.toMap
+
+
+          val endYearConsumptionByDate = endYearConsumption.map { consumption =>
+            consumption.date -> consumption
+          }.toMap
+
+          startYearConsumptionByDate ++ endYearConsumptionByDate
+      }
+    }
+
     val range = Range.Period(dateFrom, dateTo)
 
     val eventuallyHcValues = domoticzClient.graph[PowerMeter1](
       sensor = domoticz.Sensor.Counter,
       idx = 1,
       range = range
-    )
+    ).map(_.dropRight(1))
 
     val eventuallyHpValues = domoticzClient.graph[PowerMeter1](
       sensor = domoticz.Sensor.Counter,
       idx = 2,
       range = range
-    )
+    ).map(_.dropRight(1))
 
-    (eventuallyHcValues, eventuallyHpValues).parMapN { (hcValues, hpValues) =>
-      val hcConsumption = hcValues.map {
-        case PowerMeter1(date, hc) =>
-          val hcCost = Electricity.computeHcCost(settings.energy.electricity, hc)
-          PowerConsumption(date, hp = 0, hc, hpCost = 0, hcCost)
-      }
+    (eventuallyCountersByDate, eventuallyHcValues, eventuallyHpValues).parMapN {
+      case (countersByDate, hcValues, hpValues) =>
+        val dailyUsage: List[PowerUsage] = hcValues.zip(hpValues).map {
+          case (hcUsage, hpUsage) =>
+            PowerUsage(hpUsage.date, hpUsage = hpUsage.value, hcUsage = hcUsage.value)
+        }
 
-      val hpConsumption = hpValues.map {
-        case PowerMeter1(date, hp) =>
-          val hpCost = Electricity.computeHpCost(settings.energy.electricity, hp)
-          PowerConsumption(date, hp, hc = 0, hpCost, hcCost = 0)
-      }
+        (for {
+          firstUsage <- dailyUsage.headOption
 
-      (hcConsumption ++ hpConsumption).groupBy(_.date).flatMap {
-        case (_, consumptions) =>
-          consumptions.foldLeft[Option[PowerConsumption]](None) {
-            case (None, consumption) => Some(consumption)
-            case (Some(consumptionA), consumptionB) =>
-              Some(
-                consumptionA.copy(
-                  hc = consumptionA.hc + consumptionB.hc,
-                  hp = consumptionA.hp + consumptionB.hp,
-                  hpCost = consumptionA.hpCost + consumptionB.hpCost,
-                  hcCost = consumptionA.hcCost + consumptionB.hcCost
-                )
-              )
+          (startHcCounter, startHpCounter) <- countersByDate.get(firstUsage.date).map {
+            usage => usage.hcCounter -> usage.hpCounter
           }
-      }.toList
+
+          lastUsage <- dailyUsage.lastOption
+
+          (endHcCounter, endHpCounter) <- countersByDate.get(lastUsage.date).map { usage =>
+            usage.hcCounter -> usage.hpCounter
+          }
+        } yield {
+          val hcTotal = endHcCounter + lastUsage.hcUsage - startHcCounter
+          val hpTotal = endHpCounter + lastUsage.hpUsage - startHpCounter
+          PowerConsumption(hpTotalUsage = hpTotal, hcTotalUsage = hcTotal, dailyUsage)
+        }) getOrElse PowerConsumption.empty
     }
   }
 
-  def getMontlyConsumption(): F[List[PowerConsumption]] = {
-    domoticzClient.graph[PowerMeter2](
+  def getLastYearConsumption(): F[List[PowerConsumption]] = ???
+
+  private def getYearlyConsumption(maybeYear: Option[Year]): F[List[PowerMeter3]] = {
+    domoticzClient.graph[PowerMeter3](
       sensor = domoticz.Sensor.Counter,
       idx = 3,
-      range = Range.Month
-    ).map { values =>
-      values.map {
-        case PowerMeter2(date, hp, hc) =>
-          val hpCost = Electricity.computeHpCost(settings.energy.electricity, hp)
-          val hcCost = Electricity.computeHcCost(settings.energy.electricity, hc)
-          PowerConsumption(date, hp, hc, hpCost, hcCost)
+      range = Range.Year,
+      maybeActYear = maybeYear,
+      maybeActMonth = None
+    )
+  }
+
+  def getLastMonthConsumption(): F[PowerConsumption] = {
+    val now = LocalDate.now();
+    val month = Month.from(now)
+
+    domoticzClient.graph[PowerMeter3](
+      sensor = domoticz.Sensor.Counter,
+      idx = 3,
+      range = Range.Month,
+      maybeActYear = None,
+      maybeActMonth = Some(month)
+    ).map { consumption =>
+      val dailyUsage = consumption.map {
+        case PowerMeter3(date, _, hpUsage, _, hcUsage) =>
+          PowerUsage(date, hpUsage, hcUsage)
       }
+
+      val (hpTotal, hcTotal) =   (for {
+        first <- consumption.headOption
+        last <- consumption.lastOption
+      } yield {
+        val hcTotal = last.hcCounter + last.hcUsage - first.hcCounter
+        val hpTotal = last.hpCounter + last.hpUsage - first.hpCounter
+        hpTotal -> hcTotal
+      }).getOrElse(0F -> 0F)
+
+      PowerConsumption(hpTotalUsage = hpTotal, hcTotalUsage = hcTotal, dailyUsage)
     }
   }
 
@@ -97,20 +146,6 @@ object Electricity {
 
   private def round(n: Float): Float = scala.math.round(n * 100F) / 100F
 
-  def computeCost(settings: ElectricitySettings, consumption: List[PowerConsumption]): Float = {
-    (for {
-      dateFrom <- consumption.headOption.map(_.date)
-      dateTo <- consumption.lastOption.map(_.date)
-    } yield {
-      val (hcTotal, hpTotal) = consumption.foldLeft(0F -> 0F) {
-        case ((hcAcc, hpAcc), consumption) =>
-          (hcAcc + consumption.hc) -> (hpAcc + consumption.hp)
-      }
-
-      computeCost(settings, dateFrom, dateTo, hcTotal, hpTotal)
-    }) getOrElse 0F
-  }
-
   def computeHcCost(settings: ElectricitySettings, hcTotal: Float): Float = {
     val hcCost = round(hcTotal * settings.ratio.hc)
     round(hcCost)
@@ -121,7 +156,11 @@ object Electricity {
     round(hpCost)
   }
 
-  def computeConsumptionCost(settings: ElectricitySettings, hcTotal: Float, hpTotal: Float): Float = {
+  def computeCost(settings: ElectricitySettings, consumption: PowerConsumption): Float = {
+    computeCost(settings, consumption.hcTotalUsage, consumption.hpTotalUsage)
+  }
+
+  def computeCost(settings: ElectricitySettings, hcTotal: Float, hpTotal: Float): Float = {
     val hcCost = computeHcCost(settings, hcTotal)
 
     val hpCost = computeHpCost(settings, hpTotal)
@@ -129,8 +168,19 @@ object Electricity {
     round(hcCost + hpCost)
   }
 
-  def computeCost(settings: ElectricitySettings, dateFrom: LocalDate, dateTo: LocalDate, hcTotal: Float, hpTotal: Float): Float = {
-    val consumptionCost = computeConsumptionCost(settings, hcTotal, hpTotal)
+  def computeCostWithTaxes(settings: ElectricitySettings, consumption: PowerConsumption): Float = {
+    (for {
+      first <- consumption.dailyUsage.headOption
+      last <- consumption.dailyUsage.lastOption
+    } yield {
+      val dateFrom = first.date
+      val dateTo = last.date
+      computeCostWithTaxes(settings, dateFrom, dateTo, consumption.hcTotalUsage, consumption.hpTotalUsage)
+    }) getOrElse 0F
+  }
+
+  def computeCostWithTaxes(settings: ElectricitySettings, dateFrom: LocalDate, dateTo: LocalDate, hcTotal: Float, hpTotal: Float): Float = {
+    val consumptionCost = computeCost(settings, hcTotal, hpTotal)
 
     val nbMonths = scala.math.round(ChronoUnit.DAYS.between(dateFrom, dateTo).toFloat / 30F).toInt
 
