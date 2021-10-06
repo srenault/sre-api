@@ -58,7 +58,7 @@ case class ElectricityClient[F[_] : Effect: Parallel](domoticzClient: DomoticzCl
       case (countersByDate, hcValues, hpValues) =>
         val dailyUsage: List[PowerUsage] = hcValues.zip(hpValues).map {
           case (hcUsage, hpUsage) =>
-            PowerUsage(hpUsage.date, hpUsage = hpUsage.value, hcUsage = hcUsage.value)
+            PowerUsage(hpUsage.date, hp = hpUsage.value, hc = hcUsage.value)
         }
 
         (for {
@@ -74,8 +74,8 @@ case class ElectricityClient[F[_] : Effect: Parallel](domoticzClient: DomoticzCl
             usage.hcCounter -> usage.hpCounter
           }
         } yield {
-          val hcTotal = endHcCounter + lastUsage.hcUsage - startHcCounter
-          val hpTotal = endHpCounter + lastUsage.hpUsage - startHpCounter
+          val hcTotal = endHcCounter + lastUsage.hc - startHcCounter
+          val hpTotal = endHpCounter + lastUsage.hp - startHpCounter
           PowerConsumption(hpTotalUsage = hpTotal, hcTotalUsage = hcTotal, dailyUsage)
         }) getOrElse PowerConsumption.empty
     }

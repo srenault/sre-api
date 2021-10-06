@@ -9,7 +9,7 @@ import org.http4s.EntityEncoder
 import io.circe.generic.semiauto._
 import org.http4s.circe._
 
-case class PowerUsage(date: LocalDate, hpUsage: Float, hcUsage: Float)
+case class PowerUsage(date: LocalDate, hp: Float, hc: Float)
 
 object PowerUsage {
   implicit val encoder: Encoder[PowerUsage] = deriveEncoder[PowerUsage]
