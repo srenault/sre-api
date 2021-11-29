@@ -74,9 +74,13 @@ case class ElectricityClient[F[_] : Effect: Parallel](domoticzClient: DomoticzCl
             usage.hcCounter -> usage.hpCounter
           }
         } yield {
-          val hcTotal = endHcCounter + lastUsage.hc - startHcCounter
-          val hpTotal = endHpCounter + lastUsage.hp - startHpCounter
-          PowerConsumption(hpTotalUsage = hpTotal, hcTotalUsage = hcTotal, dailyUsage)
+          PowerConsumption(
+            startHcCounter = startHcCounter,
+            endHcCounter = endHcCounter + lastUsage.hc,
+            startHpCounter = startHpCounter,
+            endHpCounter = endHpCounter + lastUsage.hp,
+            dailyUsage
+          )
         }) getOrElse PowerConsumption.empty
     }
   }
@@ -109,16 +113,27 @@ case class ElectricityClient[F[_] : Effect: Parallel](domoticzClient: DomoticzCl
           PowerUsage(date, hpUsage, hcUsage)
       }
 
-      val (hpTotal, hcTotal) =   (for {
+      val (startHcCounter, endHcCounter, startHpCounter, endHpCounter) =   (for {
         first <- consumption.headOption
         last <- consumption.lastOption
       } yield {
-        val hcTotal = last.hcCounter + last.hcUsage - first.hcCounter
-        val hpTotal = last.hpCounter + last.hpUsage - first.hpCounter
-        hpTotal -> hcTotal
-      }).getOrElse(0F -> 0F)
+        val startHc = first.hcCounter
+        val endHc = last.hcCounter + last.hcUsage
 
-      PowerConsumption(hpTotalUsage = hpTotal, hcTotalUsage = hcTotal, dailyUsage)
+        val startHp = first.hpCounter
+        val endHp = last.hpCounter + last.hpUsage
+
+        (startHc, endHc, startHp, endHp)
+
+      }).getOrElse((0F, 0F, 0F, 0F))
+
+      PowerConsumption(
+        startHcCounter = startHcCounter,
+        endHcCounter = endHpCounter,
+        startHpCounter = startHpCounter,
+        endHpCounter = endHpCounter,
+        dailyUsage
+      )
     }
   }
 

@@ -64,7 +64,7 @@ case class FinanceService[F[_]: Timer : ContextShift](
 
                 case (None, Some(afterPeriod)) =>
                   analyticsClient.countPeriods(maybeBeforePeriod = Some(afterPeriod), maybeAfterPeriod = None).flatMap { countPrevious =>
-                    analyticsClient.countPeriods(maybeBeforePeriod = None, maybeAfterPeriod = lastPeriod).map { countNext =>
+                    analyticsClient.countPeriods(maybeBeforePeriod = None, maybeAfterPeriod = headPeriod).map { countNext =>
                       (countPrevious > 0) -> (countNext > 0)
                     }
                   }

@@ -15,11 +15,26 @@ object PowerUsage {
   implicit val encoder: Encoder[PowerUsage] = deriveEncoder[PowerUsage]
 }
 
-case class PowerConsumption(hpTotalUsage: Float, hcTotalUsage: Float, dailyUsage: List[PowerUsage])
+case class PowerConsumption(
+  startHcCounter: Float,
+  endHcCounter: Float,
+  startHpCounter: Float,
+  endHpCounter: Float,
+  dailyUsage: List[PowerUsage]
+) {
+  val hcTotalUsage = endHcCounter - startHcCounter
+  val hpTotalUsage = endHpCounter - startHpCounter
+}
 
 object PowerConsumption {
 
-  def empty = PowerConsumption(hpTotalUsage = 0F, hcTotalUsage = 0F, dailyUsage = Nil)
+  def empty = PowerConsumption(
+    startHcCounter = 0F,
+    endHcCounter = 0F,
+    startHpCounter = 0F,
+    endHpCounter = 0F,
+    dailyUsage = Nil
+  )
 
   implicit val encoder: Encoder[PowerConsumption] = deriveEncoder[PowerConsumption]
   implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, PowerConsumption] = jsonEncoderOf[F, PowerConsumption]
