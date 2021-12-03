@@ -206,7 +206,6 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       _ <- resetOtpSession()
       d <- Deferred[F, CMOtpSession]
       _ <- otpSessionRef.set(Some(d))
-      basicAuthSession <- getOrCreateBasicAuthSession()
       pendingOtpSession <- startOtpValidation()
       _ <- d.complete(pendingOtpSession)
       _ <- checkPeriodicallyOtpTransaction(pendingOtpSession.transactionId)
