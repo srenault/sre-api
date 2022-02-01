@@ -104,7 +104,7 @@ case class AnalyticsClient[F[_]](
     val ordering = if (maybeBeforePeriod.isDefined) DBClient.Ordering.DESC else DBClient.Ordering.ASC
 
     dbClient.selectPeriodIndexes(maybeBeforePeriod, maybeAfterPeriod, limit, ordering).map { periodIndexes =>
-      periodIndexes.map(Period(_))
+      periodIndexes.map(Period(_)).sortBy(-_.startDate.toEpochDay)
     }
   }
 

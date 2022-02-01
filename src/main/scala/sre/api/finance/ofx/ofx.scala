@@ -83,7 +83,7 @@ object OfxFile {
 
   def fromFile(file: File): Option[OfxFile] = {
     file.getName match {
-      case Reg(dateStr) =>
+      case Reg(dateStr) if file.exists =>
         scala.util.control.Exception.nonFatalCatch[OfxFile].opt {
           val date = LocalDate.parse(dateStr, formatter)
           OfxFile(file, date)

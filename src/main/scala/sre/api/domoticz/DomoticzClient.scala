@@ -1,7 +1,7 @@
 package sre.api
 package domoticz
 
-import java.time.LocalDate
+import java.time.{LocalDate, Year, Month}
 import java.time.format.DateTimeFormatter
 import cats.effect._
 import cats.implicits._
@@ -25,14 +25,28 @@ case class DomoticzClient[F[_]](
     Stream.eval(wsClient.connect())
   }
 
-  def graph[A : Decoder](sensor: Sensor, idx: Int, range: Range): F[List[A]] = {
+  def graph[A : Decoder](
+    sensor: Sensor,
+    idx: Int,
+    range: Range,
+    maybeActYear: Option[Year] = None,
+    maybeActMonth: Option[Month] = None
+  ): F[List[A]] = {
     val uri = (settings.baseUri / "json.htm")
       .withQueryParam("type", "graph")
       .withQueryParam("sensor", sensor.value)
       .withQueryParam("idx", idx)
       .withQueryParam("range", range.value)
 
-    val request = AuthenticatedGET(uri)
+    val uri1 = maybeActYear.fold(uri) { year =>
+      uri.withQueryParam("actyear", year.getValue)
+    }
+
+    val uri2 = maybeActMonth.fold(uri1) { month =>
+      uri1.withQueryParam("actmonth", month.getValue)
+    }
+
+    val request = AuthenticatedGET(uri2)
 
     httpClient.expect[Json](request).map { response =>
       response.hcursor.downField("result").as[List[A]] match {

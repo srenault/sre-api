@@ -60,15 +60,6 @@ case class CMClient[F[_]](
     }
   }
 
-  def fetchAccountState(accountId: String): EitherT[F, CMOtpRequest, Option[CMAccountState]] = {
-    fetchDownloadForm().flatMap { downloadForm =>
-      downloadForm.inputs.find(_.id == accountId) match {
-        case Some(input) => fetchAccountStateByInput(input).map(account => Some(account))
-        case None => EitherT.right(F.pure(None))
-      }
-    }
-  }
-
   def fetchAccountsState(): EitherT[F, CMOtpRequest, List[CMAccountState]] = {
     fetchDownloadForm().flatMap { downloadForm =>
       downloadForm.inputs.grouped(4).toList.map { group =>

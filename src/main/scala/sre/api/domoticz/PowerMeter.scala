@@ -38,3 +38,28 @@ object PowerMeter2 {
       }
   }
 }
+
+case class PowerMeter3(
+  date: LocalDate,
+  hpCounter: Float,
+  hpUsage: Float,
+  hcCounter: Float,
+  hcUsage: Float
+)
+
+object PowerMeter3 {
+
+  implicit val decoder = new Decoder[PowerMeter3] {
+
+    final def apply(c: HCursor): Decoder.Result[PowerMeter3] =
+      for {
+        date <- c.downField("d").as[LocalDate]
+        hpUsage <- c.downField("v").as[String].map(_.toFloat)
+        hcUsage <- c.downField("v2").as[String].map(_.toFloat)
+        hpCounter <- c.downField("c1").as[String].map(_.toFloat)
+        hcCounter <- c.downField("c3").as[String].map(_.toFloat)
+      } yield {
+        PowerMeter3(date, hpCounter, hpUsage, hcCounter, hcUsage)
+      }
+  }
+}

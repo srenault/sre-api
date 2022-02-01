@@ -101,7 +101,6 @@ object AnalyticsIndexClient {
 
                   val updatedLastPeriod = lastPeriod
                     .includeStatements(statementsForLastPeriod, partitions)
-                    .fillMissingBalancesByAccount(previousBalancesByAccount)
 
                   val newPeriod = CompletePeriodIndex(
                     partitions,

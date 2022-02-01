@@ -1,3 +1,4 @@
+import java.time.YearMonth
 import org.scalatest.matchers.should.Matchers
 import cats.effect._
 import cats.implicits._
@@ -9,7 +10,7 @@ import sre.api.finance.analytics._
 
 class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
 
-  private def round(n: Double): Float = BigDecimal(2).setScale(0, BigDecimal.RoundingMode.HALF_UP).toFloat
+  private def round(n: Double): Float = BigDecimal(n).setScale(0, BigDecimal.RoundingMode.HALF_UP).toFloat
 
   lazy val settings: Settings = Settings.load() match {
     case Right(settings) => settings
@@ -49,12 +50,26 @@ class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
             sys.error(s"Missing period ${period.yearMonth} in database")
         }
 
-        // Check balances
-        val balancesFromResults = completePeriodIndexes.map(periodIndex => periodIndex.totalBalance - periodIndex.result)
-        val balancesFromStatements = completePeriodIndexes.tail.map(_.totalBalance)
-        balancesFromResults.zip(balancesFromStatements).foreach {
-          case (balanceFromResult, balanceFromStatement) =>
-            round(balanceFromResult) shouldBe round(balanceFromStatement)
+        val computedBalancesByYearMonth = completePeriodIndexes.map { periodIndex =>
+          val balance = (periodIndex.totalBalance - periodIndex.result)
+          periodIndex.yearMonth.minusMonths(1) -> balance
+        }.toMap
+
+        val balancesByYearMonth = completePeriodIndexes.map { periodIndex =>
+          periodIndex.yearMonth -> periodIndex.totalBalance
+        }.toMap
+
+        balancesByYearMonth.toSeq.sortBy(_._1).foreach {
+          case (yearMonth, balance) if yearMonth != YearMonth.of(2018, 8)=>
+            computedBalancesByYearMonth.get(yearMonth) match {
+              case Some(computedBalance) =>
+                round(computedBalance) shouldBe round(balance)
+
+              case None =>
+                println(s"#> Period $yearMonth ignored")
+            }
+
+          case _ =>
         }
       }
     }
