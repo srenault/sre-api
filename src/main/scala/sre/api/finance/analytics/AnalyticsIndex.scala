@@ -97,8 +97,6 @@ object AnalyticsIndexClient {
 
                   val (statementsForLastPeriod, statementsForCurrentPeriod) = statementsForPeriod.span(_.date.isEqual(lastPeriod.startDate))
 
-                  val previousBalancesByAccount = accPeriods.lift(2).map(_.balancesByAccount).getOrElse(Map.empty)
-
                   val updatedLastPeriod = lastPeriod
                     .includeStatements(statementsForLastPeriod, partitions)
 

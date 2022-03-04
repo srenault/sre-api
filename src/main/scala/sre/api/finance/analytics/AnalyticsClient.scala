@@ -24,8 +24,8 @@ case class AnalyticsClient[F[_]](
     }
 
     eventuallyIndexes.flatMap { indexes =>
-      dbClient.upsertPeriodIndexes(indexes)
-    } *> eventuallyIndexes
+      dbClient.upsertPeriodIndexes(indexes).map(_ => indexes)
+    }
   }
 
   def computeExpensesByCategory(account: CMAccountState): OptionT[F, List[ExpensesByCategory]] = {
