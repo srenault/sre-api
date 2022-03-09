@@ -16,6 +16,12 @@ case class SegmentIndex(
   lazy val startDate: LocalDate = sortedStatements.head.date
 
   lazy val endDate: LocalDate = sortedStatements.last.date
+
+  override def toString(): String = {
+    s"""|[Segment $startDate - $endDate]
+        |Wage statement: $wageStatement
+        |""".stripMargin
+  }
 }
 
 object SegmentIndex {

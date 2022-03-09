@@ -71,7 +71,7 @@ object AnalyticsIndexClient {
   private def computePeriodIndexesStep(segments: List[SegmentIndex], periods: List[PeriodIndex], pendingSegments: List[SegmentIndex]): (List[PeriodIndex], List[SegmentIndex]) = {
 
     @annotation.tailrec
-    def step(sortedSegments: List[SegmentIndex], accPeriods: List[PeriodIndex], pendingSegments: List[SegmentIndex]): (List[PeriodIndex], List[SegmentIndex]) = {
+    def step(sortedSegments: List[SegmentIndex], accPeriods: List[PeriodIndex], pendingSegments: List[SegmentIndex], lastIncludedStatements: List[CMStatement]): (List[PeriodIndex], List[SegmentIndex]) = {
       val maybeLastPeriod = accPeriods.headOption
 
       sortedSegments match {
@@ -87,12 +87,13 @@ object AnalyticsIndexClient {
 
           if (segmentsForPeriod.nonEmpty) {
 
-            val updatedAccPeriods: List[PeriodIndex] = maybeLastPeriod match {
+            val (updatedAccPeriods, updatedLastIncludedStatements) = maybeLastPeriod match {
 
               case Some(lastPeriod) =>
                 if (scala.math.abs(ChronoUnit.DAYS.between(wageStatement.date, lastPeriod.wageStatements.last.date)) <= 10) { // Include new wage statement
-                  val updatedLastPeriod = lastPeriod.includeNewWageStatement(wageStatement, statementsForPeriod, partitions)
-                  updatedLastPeriod :: accPeriods.tail
+                  val newStatements = statementsForPeriod.filterNot(s1 => lastIncludedStatements.exists(s2 => s1.id == s2.id))
+                  val updatedLastPeriod = lastPeriod.includeNewWageStatement(wageStatement, newStatements, partitions)
+                  (updatedLastPeriod :: accPeriods.tail) -> newStatements
                 } else { // Complete last complete period (same day) and create a new complete
 
                   val (statementsForLastPeriod, statementsForCurrentPeriod) = statementsForPeriod.span(_.date.isEqual(lastPeriod.startDate))
@@ -107,7 +108,7 @@ object AnalyticsIndexClient {
                     wageStatements = NonEmptyList.one(wageStatement),
                   ).includeStatements(statementsForCurrentPeriod)
 
-                  newPeriod :: updatedLastPeriod :: accPeriods.tail
+                  (newPeriod :: updatedLastPeriod :: accPeriods.tail) -> statementsForCurrentPeriod
                 }
 
               case None =>
@@ -117,16 +118,16 @@ object AnalyticsIndexClient {
                   wageStatements = NonEmptyList.one(wageStatement),
                 ).includeStatements(statementsForPeriod)
 
-                period :: accPeriods
+                (period :: accPeriods) -> statementsForPeriod
             }
 
-            step(restSegments, updatedAccPeriods, pendingSegments = Nil)
+            step(restSegments, updatedAccPeriods, pendingSegments = Nil, updatedLastIncludedStatements)
           } else {
-            step(restSegments, accPeriods, pendingSegments = Nil)
+            step(restSegments, accPeriods, pendingSegments = Nil, lastIncludedStatements)
           }
 
         case (segment :: restSegments) =>
-          step(restSegments, accPeriods, segment :: pendingSegments)
+          step(restSegments, accPeriods, segment :: pendingSegments, lastIncludedStatements)
 
         case Nil =>
           (accPeriods, pendingSegments)
@@ -135,7 +136,7 @@ object AnalyticsIndexClient {
 
     val sortedSegments = segments.sorted(SegmentIndex.ORDER_DESC)
 
-    step(sortedSegments, accPeriods = periods, pendingSegments)
+    step(sortedSegments, accPeriods = periods, pendingSegments, lastIncludedStatements = Nil)
   }
 
   private def computeSegmentIndexesStep(statements: List[CMStatement], partitions: List[OfxFile])(isWageStatement: CMStatement => Boolean): List[SegmentIndex] = {
