@@ -144,10 +144,17 @@ case class CompletePeriodIndex(
         acc + s"- $accountId: $balance" + "\n"
     }
 
+    val wageStatementsSummary = wageStatements.foldLeft("") {
+      case (acc, wageStatement) =>
+        acc + s"- $wageStatement" + "\n"
+    }
+
     s"""|[Period $yearMonth]
         |Start date: $startDate
         |End date: $endDate
         |result: $result
+        |wage statements:
+        |$wageStatementsSummary
         |balances by account:
         |$balancesSummary""".stripMargin
   }
@@ -310,10 +317,16 @@ case class IncompletePeriodIndex(
         acc + s"- $accountId: $balance" + "\n"
     }
 
+    val wageStatementsSummary = wageStatements.foldLeft("") {
+      case (acc, wageStatement) =>
+        acc + s"- $wageStatement" + "\n"
+    }
+
     s"""|[Period incomplete]
         |Start date: $startDate
         |End date: N/A
         |result: $result
+        |$wageStatementsSummary
         |balances by account:
         |$balancesSummary""".stripMargin
   }

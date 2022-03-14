@@ -2,7 +2,7 @@ val projectName = "sre-api"
 
 val Fs2Version = "2.5.10"
 val Http4sVersion = "0.21.31"
-val LogbackVersion = "1.2.7"
+val LogbackVersion = "1.2.10"
 val CirceVersion = "0.13.0"
 val CirceConfigVersion = "0.8.0"
 val AnormVersion = "2.6.8"
@@ -12,7 +12,7 @@ val JsoupVersion = "1.12.2"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
 val AwsSdkVersion = "1.11.615"
-val ScalaTestVersion = "3.2.3"
+val ScalaTestVersion = "3.2.11"
 val ScalaMockVersion = "4.4.0"
 val CatsEffectTestScalaTestVersion = "0.4.2"
 val EasyMockVersion = "4.2"
@@ -32,7 +32,7 @@ lazy val root = (project in file("."))
     organization := "sre",
     name := projectName,
     version := "0.0.1-SNAPSHOT",
-    scalaVersion := "2.13.7",
+    scalaVersion := "2.13.8",
     libraryDependencies ++= Seq(
       "co.fs2"                    %% "fs2-core"                       % Fs2Version,
       "co.fs2"                    %% "fs2-io"                         % Fs2Version,
