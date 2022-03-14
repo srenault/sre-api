@@ -5,7 +5,6 @@ import org.http4s.headers._
 import cats.effect._
 import cats.implicits._
 import releases.ReleasesClient
-import org.typelevel.ci._
 
 class ReleasesService[F[_]: Effect](releasesClient: ReleasesClient[F], settings: Settings) extends ReleaseServiceDsl[F] {
 
@@ -24,9 +23,9 @@ class ReleasesService[F[_]: Effect](releasesClient: ReleasesClient[F], settings:
         if (download) {
           val stream = releasesClient.apkClient.download(key)
           Ok(stream).map(_.putHeaders(
-            Header.Raw(ci"Content-Disposition", "attachment"),
-            Header.Raw(ci"filename", name),
-            Header.Raw(ci"Content-Type", "application/vnd.android.package-archive")
+            Header("Content-Disposition", "attachment"),
+            Header("filename", name),
+            Header("Content-Type", "application/vnd.android.package-archive")
           ))
         } else {
           val url = s"${settings.advertisedAddress}/api/releases/download/$key?download=true"

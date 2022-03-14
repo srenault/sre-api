@@ -2,8 +2,8 @@ package sre.api
 
 import cats.Parallel
 import cats.effect._
-import org.http4s.blaze.server._
-import org.http4s.blaze.client._
+import org.http4s.server.blaze._
+import org.http4s.client.blaze._
 import org.http4s.server.Router
 import org.http4s.implicits._
 import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
