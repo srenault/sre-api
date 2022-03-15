@@ -1,10 +1,7 @@
-package sre.api
-package heaters
+package sre.api.heaters
 
 import scala.collection.SortedSet
 import cats.effect._
-import org.http4s.EntityEncoder
-import org.http4s.circe._
 import io.circe._
 import io.circe.literal._
 
@@ -20,8 +17,6 @@ object ChannelStatus {
       json"""{ "id": ${channelStatus.id}, "name": ${channelStatus.name}, "mode": ${channelStatus.mode.id} }"""
     }
   }
-
-  implicit def entitieEncoder[F[_]: Effect]: EntityEncoder[F, SortedSet[ChannelStatus]] = jsonEncoderOf[F, SortedSet[ChannelStatus]]
 
   implicit val ordering: Ordering[ChannelStatus] = Ordering.by(_.id)
 

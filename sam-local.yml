@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Timeout: 30
+
+Resources:
+  HeatersApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./heaters-api/target/scala-2.13/heaters-api.jar
+      Handler: sre.api.heaters.Handler::handleRequest
+      Runtime: java11
+      MemorySize: 1024
+      Events:
+        heatersEvent:
+          Type: HttpApi
+          Properties:
+            Path: /heaters/{proxy+}
+            PayloadFormatVersion: "2.0"
+            Method: ANY
+
+      Environment:
+        Variables:
+          httpclient.logrequest: true
+          httpclient.logresponse: true
+          heaters.baseuri: https://srepi.casa/heaters
+          heaters.username: sre
+          heaters.password: 3cKZnJpIuwpnja0QEbbQH73km

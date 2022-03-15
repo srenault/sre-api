@@ -1,5 +1,4 @@
-package sre.api
-package heaters
+package sre.api.heaters
 
 import scala.collection.SortedSet
 import io.circe._

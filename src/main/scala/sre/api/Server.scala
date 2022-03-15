@@ -12,7 +12,6 @@ import transport.subway.SubwayClient
 import finance.icompta.IComptaClient
 import finance.cm.CMClient
 import domoticz.DomoticzClient
-import heaters.HeatersClient
 import weather.WeatherClient
 import utils.S3Client
 import energy.EnergyClient
@@ -38,9 +37,6 @@ object ServerStream {
 
   def energyService[F[_]: Effect](energyClient: EnergyClient[F], settings: Settings) =
     new EnergyService[F](energyClient, settings).service
-
-  def heatersService[F[_]: Effect](heatersClient: HeatersClient[F], settings: Settings) =
-    new HeatersService[F](heatersClient, settings).service
 
   def weatherService[F[_]: Effect](weatherClient: WeatherClient[F], settings: Settings) =
     new WeatherService[F](weatherClient, settings).service
@@ -80,8 +76,6 @@ object ServerStream {
 
           energyClient = EnergyClient[F](domoticzClient, settings)
 
-          heatersClient = HeatersClient[F](httpClient, settings.heaters)
-
           weatherClient = WeatherClient[F](httpClient, settings.weather)
 
           s3Client = S3Client[F](settings.apk.s3)
@@ -95,7 +89,6 @@ object ServerStream {
             "/api/transport/subway" -> subwayService(subwayClient, settings),
             "/api/finance" -> financeService(icomptaClient, cmClient, dbClient, settings),
             "/api/energy" -> energyService(energyClient, settings),
-            "/api/heaters" -> heatersService(heatersClient, settings),
             "/api/weather" -> weatherService(weatherClient, settings),
             "/api/releases" -> releasesService(releasesClient, settings)
           ).orNotFound

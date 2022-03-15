@@ -1,5 +1,4 @@
-package sre.api
-package heaters
+package sre.api.heaters
 
 import scala.collection.SortedSet
 import scala.xml.Elem
@@ -8,7 +7,7 @@ import cats.implicits._
 import org.http4s.client._
 import org.http4s.scalaxml._
 
-case class HeatersClient[F[_]: ConcurrentEffect](httpClient: Client[F], settings: HeatersSettings) extends HeatersClientDsl[F] {
+case class HeatersClient[F[_]: Concurrent](httpClient: Client[F], settings: HeatersSettings) extends HeatersClientDsl[F] {
 
   def getStatus(): F[SortedSet[ChannelStatus]] = {
     val uri = (settings.baseUri / "Q")

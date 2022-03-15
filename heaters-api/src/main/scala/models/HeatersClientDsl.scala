@@ -6,7 +6,6 @@ import org.http4s._
 import org.http4s.client._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.Http4sClientDsl
-import sre.api.HeatersSettings
 
 trait HeatersClientDsl[F[_]] extends Http4sClientDsl[F] {
 
@@ -14,7 +13,7 @@ trait HeatersClientDsl[F[_]] extends Http4sClientDsl[F] {
 
   def settings: HeatersSettings
 
-  def AuthenticatedGET(uri: Uri)(implicit F: Monad[F]): F[Request[F]] = {
+  def AuthenticatedGET(uri: Uri): Request[F] = {
     val authHeader = {
       val value = s"${settings.username}:${settings.password}"
       val encodedValue = Base64.getEncoder().encodeToString(value.getBytes("UTF-8"))
