@@ -13,7 +13,6 @@ import org.http4s.client._
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.circe._
 import sre.api.utils.Security
-import org.typelevel.ci._
 
 trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
 
@@ -23,9 +22,9 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
 
   def authInfoRef: Ref[F, Option[Deferred[F, AuthResponse]]]
 
-  val USER_AGENT_HEADER = Header.Raw(ci"User-Agent", "SncfFusion Android")
+  val USER_AGENT_HEADER = Header("User-Agent", "SncfFusion Android")
 
-  val CONTENT_TYPE_HEADER = Header.Raw(ci"Content-Type", "application/json")
+  val CONTENT_TYPE_HEADER = Header("Content-Type", "application/json")
 
   val DEFAULT_HEADERS = USER_AGENT_HEADER :: CONTENT_TYPE_HEADER :: Nil
 
@@ -68,18 +67,18 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
     } yield res)
   }
 
-  def AuthenticatedPOST[A](uri: Uri, body: A, authInfo: AuthResponse, headers: Header.Raw*)(implicit F: Monad[F], jsonEncoder: Encoder[A], w: EntityEncoder[F, A]): F[Request[F]] = {
+  def AuthenticatedPOST[A](uri: Uri, body: A, authInfo: AuthResponse, headers: Header*)(implicit F: Monad[F], jsonEncoder: Encoder[A], w: EntityEncoder[F, A]): F[Request[F]] = {
     val bodyAsString = body.asJson.noSpaces
     val authHeader = buildAuthHeader(uri, POST, Some(bodyAsString), authInfo)
     POST(body, uri, authHeader +: DEFAULT_HEADERS ++: headers:_*)
   }
 
-  def AuthenticatedGET(uri: Uri, authInfo: AuthResponse, headers: Header.Raw*)(implicit F: Monad[F]): F[Request[F]] = {
+  def AuthenticatedGET(uri: Uri, authInfo: AuthResponse, headers: Header*)(implicit F: Monad[F]): F[Request[F]] = {
     val authHeader = buildAuthHeader(uri, GET, body = None, authInfo)
     GET(uri, authHeader +: headers:_*)
   }
 
-  private def buildAuthHeader[A](uri: Uri, method: Method, body: Option[String], authInfo: AuthResponse): Header.Raw = {
+  private def buildAuthHeader[A](uri: Uri, method: Method, body: Option[String], authInfo: AuthResponse): Header = {
     val token = authInfo.token
     val secret = authInfo.secret
     val data = body getOrElse ""
@@ -93,6 +92,6 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
       "nonce" -> nonce,
       "mac" -> signature
     ).map { case (name, value) => s"""$name="$value"""" }.mkString(", ")
-    Header.Raw(ci"Authorization", value)
+    Header("Authorization", value)
   }
 }
