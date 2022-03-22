@@ -81,12 +81,6 @@ case class EnergySettings(electricity: ElectricitySettings)
 
 case class WeatherSettings(endpoint: Uri)
 
-case class HeatersSettings(
-  baseUri: Uri,
-  username: String,
-  password: String
-)
-
 case class S3Settings(
   region: String,
   bucket: String,
@@ -112,7 +106,6 @@ case class Settings(
   finance: FinanceSettings,
   domoticz: DomoticzSettings,
   energy: EnergySettings,
-  heaters: HeatersSettings,
   weather: WeatherSettings,
   apk: ApkSettings
 )
@@ -134,7 +127,6 @@ object Settings {
       financeSettings <- AppConfig.as[FinanceSettings]("finance")
       domoticzSettings <- AppConfig.as[DomoticzSettings]("domoticz")
       energySettings <- AppConfig.as[EnergySettings]("energy")
-      heatersSettings <- AppConfig.as[HeatersSettings]("heaters")
       weatherSettings <- AppConfig.as[WeatherSettings]("weather")
       apkSettings <- AppConfig.as[ApkSettings]("apk")
     } yield Settings(
@@ -147,7 +139,6 @@ object Settings {
       financeSettings,
       domoticzSettings,
       energySettings,
-      heatersSettings,
       weatherSettings,
       apkSettings
     )

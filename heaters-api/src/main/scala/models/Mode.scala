@@ -1,5 +1,4 @@
-package sre.api
-package heaters
+package sre.api.heaters
 
 import scala.collection.SortedSet
 import io.circe._
@@ -8,14 +7,6 @@ import io.circe.literal._
 sealed trait Mode /*extends Ordered[ChannelStatus]*/ {
   def id: Int
   def name: String
-
-  // def compare (that: ChannelStatus) = {
-  //   if (this.id == that.id) {
-  //     0
-  //   } else if (this.id > that.id) {
-  //     1
-  //   } else -1
-  // }
 }
 
 object Mode {

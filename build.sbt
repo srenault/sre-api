@@ -1,5 +1,6 @@
 val projectName = "sre-api"
 
+val ScalaVersion = "2.13.8"
 val Fs2Version = "2.5.10"
 val Http4sVersion = "0.21.31"
 val LogbackVersion = "1.2.10"
@@ -27,12 +28,15 @@ val gitVersion = {
   }.filterNot(_.isEmpty).getOrElse("x-SNAPSHOT")
 }
 
-lazy val root = (project in file("."))
+scalacOptions ++= Seq("-Xlint")
+logBuffered in Test := false
+
+lazy val server = (project in file("."))
   .settings(
     organization := "sre",
     name := projectName,
     version := "0.0.1-SNAPSHOT",
-    scalaVersion := "2.13.8",
+    scalaVersion := ScalaVersion,
     libraryDependencies ++= Seq(
       "co.fs2"                    %% "fs2-core"                       % Fs2Version,
       "co.fs2"                    %% "fs2-io"                         % Fs2Version,
@@ -71,6 +75,34 @@ lazy val root = (project in file("."))
   )
 
 scalacOptions ++= Seq("-Xlint")
+val Http4sVersionNext = "0.23.10"
+val CirceVersionNext = "0.15.0-M1"
+val FeralVersion = "0.1.0-M1"
+val natchezVersion = "0.1.6"
 
-// ScalaTest
-logBuffered in Test := false
+val heaterApiProjectName = "heaters-api"
+
+lazy val heatersApi = (project in file("heaters-api"))
+  .settings(
+    organization := "sre",
+    name := "heaters-api",
+    version := "0.0.1-SNAPSHOT",
+    scalaVersion := ScalaVersion,
+    libraryDependencies ++= Seq(
+      "org.typelevel"             %% "feral-lambda"                  % FeralVersion,
+      "org.typelevel"             %% "feral-lambda-http4s"           % FeralVersion,
+      "org.http4s"                %% "http4s-scala-xml"              % Http4sVersionNext,
+      "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
+      "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
+      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
+      "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
+      "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
+      "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
+      "ch.qos.logback"            %  "logback-classic"               % LogbackVersion,
+      "org.tpolecat"              %% "natchez-xray"                  % natchezVersion,
+      "org.tpolecat"              %% "natchez-http4s"                % "0.3.2"
+    )
+  ). settings(
+    assemblyJarName in assembly := s"$heaterApiProjectName.jar",
+  )
+

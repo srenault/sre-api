@@ -10,3 +10,8 @@ src/test/resources/*
 .idea/
 .bsp/sbt.json
 resources.tar
+node_modules
+.bloop
+sam-local.yml
+.metals/metals.mv.db
+.vscode/settings.json
