@@ -1,13 +1,11 @@
-package sre.api
-package releases
+package sre.api.releases
 
 import java.time.ZoneId
 import cats.effect._
 import cats.implicits._
 import fs2.Stream
-import utils.S3Client
 
-case class ApkClient[F[_]: Effect](s3Client: S3Client[F]) {
+case class ApkClient[F[_]: Async](s3Client: S3Client[F]) {
 
   private lazy val KeyReg = {
     val prefix = "^" + s3Client.prefix.map(p => p + "/").getOrElse("")

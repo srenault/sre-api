@@ -74,7 +74,6 @@ lazy val server = (project in file("."))
     assemblyJarName in assembly := s"$projectName.jar",
   )
 
-scalacOptions ++= Seq("-Xlint")
 val Http4sVersionNext = "0.23.10"
 val CirceVersionNext = "0.15.0-M1"
 val FeralVersion = "0.1.0-M1"
@@ -106,3 +105,30 @@ lazy val heatersApi = (project in file("heaters-api"))
     assemblyJarName in assembly := s"$heaterApiProjectName.jar",
   )
 
+
+val releasesApiProjectName = "releases-api"
+
+lazy val releasesApi = (project in file("releases-api"))
+  .settings(
+    organization := "sre",
+    name := "releases-api",
+    version := "0.0.1-SNAPSHOT",
+    scalaVersion := ScalaVersion,
+    libraryDependencies ++= Seq(
+      "org.typelevel"             %% "feral-lambda"                  % FeralVersion,
+      "org.typelevel"             %% "feral-lambda-http4s"           % FeralVersion,
+      "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
+      "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
+      "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
+      "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
+      "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
+      "ch.qos.logback"            %  "logback-classic"               % LogbackVersion,
+      "com.amazonaws"             % "aws-java-sdk"                    % AwsSdkVersion
+    )
+  ). settings(
+    assemblyJarName in assembly := s"$releasesApiProjectName.jar",
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    }
+  )

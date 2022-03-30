@@ -1,10 +1,9 @@
-package sre.api
-package releases
+package sre.api.releases
 
 import cats.effect._
 import cats.implicits._
 
-case class ReleasesClient[F[_]: Effect](apkClient: ApkClient[F]) {
+case class ReleasesClient[F[_]: Async](apkClient: ApkClient[F]) {
 
   def list()(implicit settings: Settings): F[List[Release]] = {
     apkClient.list().map { apkFiles =>

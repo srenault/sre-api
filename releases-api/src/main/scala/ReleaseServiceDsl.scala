@@ -1,4 +1,4 @@
-package sre.api
+package sre.api.releases
 
 import org.http4s.dsl.Http4sDsl
 

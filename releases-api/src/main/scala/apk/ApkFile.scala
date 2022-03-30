@@ -1,5 +1,4 @@
-package sre.api
-package releases
+package sre.api.releases
 
 import java.time.LocalDateTime
 import cats.effect._
@@ -19,5 +18,5 @@ object ApkFile {
   val SHA1Reg = """^sreapp-(.+)\.apk$""".r
 
   implicit val encoder: Encoder[ApkFile] = deriveEncoder[ApkFile]
-  implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[ApkFile]] = jsonEncoderOf[F, List[ApkFile]]
+  implicit def entitiesEncoder[F[_]: Sync]: EntityEncoder[F, List[ApkFile]] = jsonEncoderOf[F, List[ApkFile]]
 }

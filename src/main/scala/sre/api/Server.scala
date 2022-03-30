@@ -38,13 +38,11 @@ object ServerStream {
   def energyService[F[_]: Effect](energyClient: EnergyClient[F], settings: Settings) =
     new EnergyService[F](energyClient, settings).service
 
-
   def weatherService[F[_]: Effect](weatherClient: WeatherClient[F], settings: Settings) =
     new WeatherService[F](weatherClient, settings).service
 
   def releasesService[F[_]: Effect](releasesClient: ReleasesClient[F], settings: Settings) =
     new ReleasesService[F](releasesClient, settings).service
-
   def stream[F[_] : Timer : ContextShift : ConcurrentEffect : Parallel] = {
     Settings.load() match {
       case Right(settings) =>
@@ -77,7 +75,6 @@ object ServerStream {
 
           energyClient = EnergyClient[F](domoticzClient, settings)
 
-
           weatherClient = WeatherClient[F](httpClient, settings.weather)
 
           s3Client = S3Client[F](settings.apk.s3)
@@ -91,8 +88,8 @@ object ServerStream {
             "/api/transport/subway" -> subwayService(subwayClient, settings),
             "/api/finance" -> financeService(icomptaClient, cmClient, dbClient, settings),
             "/api/energy" -> energyService(energyClient, settings),
-            "/api/weather" -> weatherService(weatherClient, settings),
             "/api/releases" -> releasesService(releasesClient, settings)
+            "/api/weather" -> weatherService(weatherClient, settings)
           ).orNotFound
 
           R <- BlazeServerBuilder[F](global)
