@@ -18,6 +18,6 @@ object CMAccountsOverview {
   implicit val encoder: Encoder[CMAccountsOverview] =
     deriveEncoder[CMAccountsOverview]
 
-  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, CMAccountsOverview] =
+  implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMAccountsOverview] =
     jsonEncoderOf[F, CMAccountsOverview]
 }

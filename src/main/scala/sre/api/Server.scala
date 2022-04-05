@@ -9,8 +9,6 @@ import org.http4s.implicits._
 import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
 import transport.train.TrainClient
 import transport.subway.SubwayClient
-import finance.icompta.IComptaClient
-import finance.cm.CMClient
 import domoticz.DomoticzClient
 import weather.WeatherClient
 import utils.S3Client
@@ -32,9 +30,6 @@ object ServerStream {
   def subwayService[F[_]: Effect](subwayClient: SubwayClient[F], settings: Settings) =
     new SubwayService[F](subwayClient, settings).service
 
-  def financeService[F[_]: ConcurrentEffect : Timer : ContextShift](icomptaClient: IComptaClient[F], cmClient: CMClient[F], dbClient: DBClient[F], settings: Settings) =
-    new FinanceService[F](icomptaClient, cmClient, dbClient, settings).service
-
   def energyService[F[_]: Effect](energyClient: EnergyClient[F], settings: Settings) =
     new EnergyService[F](energyClient, settings).service
 
@@ -49,8 +44,6 @@ object ServerStream {
     Settings.load() match {
       case Right(settings) =>
         for {
-          dbClient <- DBClient.stream[F](settings)
-
           httpClient <- {
             BlazeClientBuilder(global).stream.map { client =>
               val updatedClient = if (settings.httpClient.logRequest) {
@@ -66,10 +59,6 @@ object ServerStream {
           trainClient <- TrainClient.stream[F](httpClient, settings)
 
           subwayClient = SubwayClient[F](trainClient)
-
-          icomptaClient <- IComptaClient.stream[F](settings)
-
-          cmClient <- CMClient.stream[F](httpClient, settings)
 
           domoticzClient <- DomoticzClient.stream[F](httpClient, settings.domoticz)
 
@@ -89,7 +78,6 @@ object ServerStream {
           httpApp = Router(
             "/api/transport/train" -> trainService(trainClient, settings),
             "/api/transport/subway" -> subwayService(subwayClient, settings),
-            "/api/finance" -> financeService(icomptaClient, cmClient, dbClient, settings),
             "/api/energy" -> energyService(energyClient, settings),
             "/api/weather" -> weatherService(weatherClient, settings),
             "/api/releases" -> releasesService(releasesClient, settings)

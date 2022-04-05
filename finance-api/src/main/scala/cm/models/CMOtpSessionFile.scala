@@ -8,7 +8,7 @@ import cats.implicits._
 import io.circe.Error
 import io.circe.parser._
 
-case class CMOtpSessionFile[F[_]: Sync](path: Path) {
+case class CMOtpSessionFile[F[_] : Sync](path: Path) {
 
   def ensurePath: Path = {
     val f = path.toFile
@@ -32,7 +32,7 @@ case class CMOtpSessionFile[F[_]: Sync](path: Path) {
 
   def get: OptionT[F, Either[Error, CMValidOtpSession]] =
     OptionT(resourceReader.use { reader =>
-      Sync[F].delay {
+      Sync[F].blocking {
         Option(reader.readLine).filterNot(_.trim.isEmpty).map { line =>
           parse(line).flatMap(_.as[CMValidOtpSession])
         }
@@ -41,11 +41,11 @@ case class CMOtpSessionFile[F[_]: Sync](path: Path) {
 
   def set(otpSession: CMValidOtpSession): F[Unit] =
     resourceWriter.use { writer =>
-      Sync[F].delay(writer.write(CMValidOtpSession.encoder(otpSession).noSpaces))
+      Sync[F].blocking(writer.write(CMValidOtpSession.encoder(otpSession).noSpaces))
     }
 
   def delete(): F[Boolean] = {
-    Sync[F].delay(Files.deleteIfExists(path))
+    Sync[F].blocking(Files.deleteIfExists(path))
   }
 }
 

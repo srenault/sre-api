@@ -1,15 +1,15 @@
-package sre.api.finance.cm
+package sre.api.finance
+package cm
 
 import cats.data.EitherT
 import cats.effect._
 import cats.implicits._
-import cats.effect.concurrent.{ Ref, Deferred }
 import org.http4s._
+import org.http4s.headers._
 import org.http4s.dsl.io._
 import org.http4s.client._
 import org.http4s.client.dsl.Http4sClientDsl
 import org.slf4j.Logger
-import sre.api.CMSettings
 
 trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
@@ -23,7 +23,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
   def otpSessionRef: Ref[F, Option[Deferred[F, CMOtpSession]]]
 
-  protected def doBasicAuth()(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
+  protected def doBasicAuth()(implicit F: Concurrent[F]): F[CMBasicAuthSession] = {
 
     val body = UrlForm(
       "_cm_user" -> settings.username,
@@ -41,19 +41,19 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
       maybeAuthClientStateCookie = maybeValidOtpSession.map(otpSession => headers.Cookie(otpSession.authClientStateCookie))
 
       basicAuthSession <- {
-        val authenticationRequest = POST(body, settings.authenticationUri, maybeAuthClientStateCookie.toList:_*)
-        authenticationRequest.flatMap(httpClient.run(_).use { response =>
+        val authenticationRequest = POST(body, settings.authenticationUri, maybeAuthClientStateCookie.toList)
+        httpClient.run(authenticationRequest).use { response =>
           val (maybeIdSesCookie, otherCookies) = response.cookies.partition(_.name == CMBasicAuthSession.IDSES_COOKIE)
           val idSesCookie = maybeIdSesCookie.headOption.getOrElse(sys.error("Unable to get cm basic auth session"))
           val cmBasicAuthSession = CMBasicAuthSession.create(idSesCookie, otherCookies)
           F.pure(cmBasicAuthSession)
-        })
+        }
       }
 
     } yield basicAuthSession
   }
 
-  private def refreshBasicAuthSession()(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
+  private def refreshBasicAuthSession()(implicit F: Concurrent[F]): F[CMBasicAuthSession] = {
     logger.info("Requesting cm basic auth session...")
     for {
       d <- Deferred[F, CMBasicAuthSession]
@@ -66,7 +66,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     }
   }
 
-  protected def getOrCreateBasicAuthSession()(implicit F: ConcurrentEffect[F]): F[CMBasicAuthSession] = {
+  protected def getOrCreateBasicAuthSession()(implicit F: Concurrent[F]): F[CMBasicAuthSession] = {
     for {
       maybeBasicAuthSession <- basicAuthSessionRef.get
       basicAuthSession <- maybeBasicAuthSession match {
@@ -76,7 +76,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     } yield basicAuthSession
   }
 
-  private def refreshSession()(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, CMSession] = {
+  private def refreshSession()(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, CMSession] = {
     for {
       basicAuthSession <- EitherT.liftF(refreshBasicAuthSession())
 
@@ -96,14 +96,14 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     } yield CMSession(basicAuthSession, otpSession)
   }
 
-  private def getSession()(implicit F: ConcurrentEffect[F], timer: Timer[F]): F[CMSession] = {
+  private def getSession()(implicit F: Concurrent[F]): F[CMSession] = {
     for {
       basicAuthSession <- getOrCreateBasicAuthSession()
       otpSession <- getOrRequestOtpSession()
     } yield CMSession(basicAuthSession, otpSession)
   }
 
-  def authenticatedFetch[A](request: Request[F], retries: Int = 1)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
+  def authenticatedFetch[A](request: Request[F], retries: Int = 1)(f: Response[F] => F[A])(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
     logger.info(s"Performing request ${request.uri} with retries = $retries")
 
     EitherT.liftF(getSession()).flatMap {
@@ -118,12 +118,12 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
         EitherT[F, CMOtpRequest, A] {
           httpClient.run(authenticatedRequest).use { response =>
-            val hasExpiredBasicAuthSession = response.headers.get(headers.Location).exists { location =>
-              location.value == settings.authenticationUri.toString
+            val hasExpiredBasicAuthSession = response.headers.get[Location].exists { location =>
+              location.uri == settings.authenticationUri
             }
 
-            val hasExpiredOtpSession = response.headers.get(headers.Location).exists { location =>
-              location.value.endsWith(settings.validationPath.toString)
+            val hasExpiredOtpSession = response.headers.get[Location].exists { location =>
+              location.uri.toString.endsWith(settings.validationPath.toString)
             }
 
             if (hasExpiredBasicAuthSession && retries > 0) {
@@ -143,15 +143,13 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     }
   }
 
-  def authenticatedGet[A](uri: Uri)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
-    EitherT.liftF(GET(uri)).flatMap { request =>
-      authenticatedFetch(request)(f)
-    }
+  def authenticatedGet[A](uri: Uri)(f: Response[F] => F[A])(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
+    val request = GET(uri)
+    authenticatedFetch(request)(f)
   }
 
-  def authenticatedPost[A](uri: Uri, data: UrlForm)(f: Response[F] => F[A])(implicit F: ConcurrentEffect[F], timer: Timer[F]): EitherT[F, CMOtpRequest, A] = {
-    EitherT.liftF(POST(data, uri)).flatMap { request =>
-      authenticatedFetch(request)(f)
-    }
+  def authenticatedPost[A](uri: Uri, data: UrlForm)(f: Response[F] => F[A])(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
+    val request = POST(data, uri)
+    authenticatedFetch(request)(f)
   }
 }

@@ -8,33 +8,25 @@ import cats.Parallel
 import cats.data.EitherT
 import cats.implicits._
 import cats.effect._
-import cats.effect.concurrent.{Ref, Deferred}
 import org.http4s._
 import org.http4s.client._
 import fs2.concurrent.SignallingRef
 import org.slf4j.{LoggerFactory, Logger}
-import sre.api.{Settings, CMSettings}
 
 case class CMClient[F[_]](
   httpClient: Client[F],
   settings: CMSettings,
   basicAuthSessionRef: Ref[F, Option[Deferred[F, CMBasicAuthSession]]],
   otpSessionRef: Ref[F, Option[Deferred[F, CMOtpSession]]],
-  otpPollingInterrupter: SignallingRef[F, Boolean],
   otpSessionFile: CMOtpSessionFile[F],
-  formCache: CMDownloadFormCache,
-  balancesCache: CMBalancesCache,
-  csvCache: CMCsvExportCache,
   logger: Logger
-)(implicit F: ConcurrentEffect[F], timer: Timer[F], parallel: Parallel[F]) extends CMClientDsl[F] {
+)(implicit F: Concurrent[F], parallel: Parallel[F]) extends CMClientDsl[F] {
 
   private val FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
   def fetchDownloadForm(): EitherT[F, CMOtpRequest, CMDownloadForm] = {
-    formCache.cached {
-      authenticatedGet(settings.downloadUri) { response =>
-        response.as[String].map(CMDownloadForm.parseOrFail)
-      }
+    authenticatedGet(settings.downloadUri) { response =>
+      response.as[String].map(CMDownloadForm.parseOrFail)
     }
   }
 
@@ -113,47 +105,43 @@ case class CMClient[F[_]](
     }
 
   def fetchCSVRecords(accountId: String, maybeStartDate: Option[LocalDate] = None, maybeEndDate: Option[LocalDate] = None, retries: Int = 1): EitherT[F, CMOtpRequest, List[CMCsvRecord]] =
-    csvCache.cached(accountId, maybeStartDate, maybeEndDate) {
-      fetchDownloadForm().flatMap { downloadForm =>
-        val uri = settings.baseUri.withPath(downloadForm.action)
+    fetchDownloadForm().flatMap { downloadForm =>
+      val uri = settings.baseUri.withPath(downloadForm.action)
 
-        val input = downloadForm.inputs.find(_.id == accountId) getOrElse {
-          sys.error(s"Unknown account $accountId")
-        }
+      val input = downloadForm.inputs.find(_.id == accountId) getOrElse {
+        sys.error(s"Unknown account $accountId")
+      }
 
-        val startDate = maybeStartDate map(_.format(FORMATTER)) getOrElse ""
-        val endDate = maybeEndDate map(_.format(FORMATTER)) getOrElse ""
+      val startDate = maybeStartDate map(_.format(FORMATTER)) getOrElse ""
+      val endDate = maybeEndDate map(_.format(FORMATTER)) getOrElse ""
 
-        val data = UrlForm(
-          "data_formats_selected" -> "csv",
-          "data_formats_options_csv_fileformat" -> "2",
-          "data_formats_options_csv_dateformat" -> "0",
-          "data_formats_options_csv_fieldseparator" -> "0",
-          "data_formats_options_csv_amountcolnumber" -> "0",
-          "data_formats_options_csv_decimalseparator" -> "1",
-          "data_daterange_value" -> "1",
-          "[t:dbt%3adate;]data_daterange_startdate_value" -> startDate,
-          "[t:dbt%3adate;]data_daterange_enddate_value"-> endDate,
-          input.checkName -> "on",
-          "_FID_DoDownload.x" -> "0",
-          "_FID_DoDownload.y" -> "0"
-        )
+      val data = UrlForm(
+        "data_formats_selected" -> "csv",
+        "data_formats_options_csv_fileformat" -> "2",
+        "data_formats_options_csv_dateformat" -> "0",
+        "data_formats_options_csv_fieldseparator" -> "0",
+        "data_formats_options_csv_amountcolnumber" -> "0",
+        "data_formats_options_csv_decimalseparator" -> "1",
+        "data_daterange_value" -> "1",
+        "[t:dbt%3adate;]data_daterange_startdate_value" -> startDate,
+        "[t:dbt%3adate;]data_daterange_enddate_value"-> endDate,
+        input.checkName -> "on",
+        "_FID_DoDownload.x" -> "0",
+        "_FID_DoDownload.y" -> "0"
+      )
 
-        authenticatedPost(uri, data)(_.as[String]).flatMap { body =>
-          CMDownloadForm.parse(body) match {
-            case Left(_) =>
-              val lines = body.split("\n").toList
-              EitherT.right(F.pure(lines.tail.map(CMCsvRecord.parseOrFail)))
+      authenticatedPost(uri, data)(_.as[String]).flatMap { body =>
+        CMDownloadForm.parse(body) match {
+          case Left(_) =>
+            val lines = body.split("\n").toList
+            EitherT.right(F.pure(lines.tail.map(CMCsvRecord.parseOrFail)))
 
-            case Right(form) =>
-              EitherT.liftF(formCache.set(form)).flatMap { _ =>
-                if (retries > 0) {
-                  fetchCSVRecords(accountId, maybeStartDate, maybeEndDate, retries - 1)
-                } else {
-                  sys.error("Unable to export csv")
-                }
-              }
-          }
+          case Right(form) =>
+            if (retries > 0) {
+              fetchCSVRecords(accountId, maybeStartDate, maybeEndDate, retries - 1)
+            } else {
+              sys.error("Unable to export csv")
+            }
         }
       }
     }
@@ -161,15 +149,13 @@ case class CMClient[F[_]](
 
 object CMClient {
 
-  def stream[F[_]: ConcurrentEffect : Timer : Parallel](httpClient: Client[F], settings: Settings): Stream[F, CMClient[F]] = {
+  def resource[F[_] : Async : Concurrent : Parallel](httpClient: Client[F], settings: Settings): Resource[F, CMClient[F]] = {
     val logger = LoggerFactory.getLogger("sre.api.finance.CmClient")
 
-    val otpSessionFile = settings.finance.cm.otpSessionFile
+    val otpSessionFile = settings.finance.cm.getOtpSessionFile
 
     val client = for {
-      basicAuthSessionRef <- Ref.of[F, Option[Deferred[F, CMBasicAuthSession]]](None)
-
-      otpPollingInterrupter <- SignallingRef[F, Boolean](false)
+      basicAuthSessionRef <- Ref[F].of[Option[Deferred[F, CMBasicAuthSession]]](None)
 
       maybeValidOptSession <- otpSessionFile.get.map {
         case Left(error) =>
@@ -185,25 +171,17 @@ object CMClient {
         Deferred[F, CMOtpSession].flatMap { d => d.complete(otpSession).map(_ => d) }
       }.sequence
 
-      otpSessionRef <- Ref.of[F, Option[Deferred[F, CMOtpSession]]](maybeDeferredOptSessionRef)
+      otpSessionRef <- Ref.of(maybeDeferredOptSessionRef)
     } yield {
-      val formCache = CMDownloadFormCache(settings.finance.cm.cache.form)
-      val balancesCache = CMBalancesCache(settings.finance.cm.cache.balances)
-      val csvCache = CMCsvExportCache(settings.finance.cm.cache.csv)
-
       CMClient[F](
         httpClient,
         settings.finance.cm,
         basicAuthSessionRef,
         otpSessionRef,
-        otpPollingInterrupter,
         otpSessionFile,
-        formCache,
-        balancesCache,
-        csvCache,
         logger
       )
     }
-    Stream.eval(client)
+    Resource.eval(client)
   }
 }

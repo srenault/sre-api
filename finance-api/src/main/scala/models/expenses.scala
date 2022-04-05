@@ -10,6 +10,6 @@ case class ExpensesByCategory(id: String, label: String, amount: Float, threshol
 
 object ExpensesByCategory {
   implicit val encoder: Encoder[ExpensesByCategory] = deriveEncoder[ExpensesByCategory]
-  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, ExpensesByCategory] = jsonEncoderOf[F, ExpensesByCategory]
-  implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[ExpensesByCategory]] = jsonEncoderOf[F, List[ExpensesByCategory]]
+  implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, ExpensesByCategory] = jsonEncoderOf[F, ExpensesByCategory]
+  implicit def entitiesEncoder[F[_]: Sync]: EntityEncoder[F, List[ExpensesByCategory]] = jsonEncoderOf[F, List[ExpensesByCategory]]
 }

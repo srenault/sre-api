@@ -1,4 +1,4 @@
-package sre.api
+package sre.api.finance
 
 import cats.effect._
 import cats.implicits._
@@ -6,9 +6,9 @@ import fs2.Stream
 import java.time._
 import java.sql._
 import anorm._
-import finance.analytics.{ PeriodIndex, CompletePeriodIndex }
+import analytics.{ PeriodIndex, CompletePeriodIndex }
 
-case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
+case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
 
   import DBClient.Ordering
 
@@ -25,7 +25,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
   }
 
   def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
-    F.delay {
+    F.blocking {
       periodIndexes.collect {
         case period@CompletePeriodIndex(yearMonth, partitions, startDate, endDate, wageStatements, result, balancesByAccount) =>
           val encodedPartitions = CompletePeriodIndex.encodePartitions(partitions)
@@ -48,7 +48,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
     }
 
   def selectPeriodIndexes(maybeBeforePeriod: Option[YearMonth], maybeAfterPeriod: Option[YearMonth], limit: Int, yearMonthOrdering: Ordering.Value = Ordering.DESC): F[List[CompletePeriodIndex]] =
-    F.delay {
+    F.blocking {
       try {
         (maybeBeforePeriod, maybeAfterPeriod) match {
           case (Some(beforePeriodDate), None) =>
@@ -83,7 +83,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
     }
 
   def countPeriodIndexes(maybeBeforePeriod: Option[YearMonth] = None, maybeAfterPeriod: Option[YearMonth] = None): F[Long] =
-    F.delay {
+    F.blocking {
       try {
         (maybeBeforePeriod, maybeAfterPeriod) match {
           case (Some(beforePeriodDate), None) =>
@@ -114,7 +114,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Effect[F]) {
     }
 
   def selectOnePeriodIndex(periodDate: YearMonth): F[Option[CompletePeriodIndex]] =
-    F.delay {
+    F.blocking {
       try {
         SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearmonth = {yearmonth}")
           .on("yearmonth" -> utc(periodDate.atDay(1)))
@@ -133,8 +133,8 @@ object DBClient {
     val ASC,DESC = Value
   }
 
-  def init[F[_]]()(implicit connection: Connection, F: Effect[F]): F[Unit] =
-    F.delay {
+  private def init[F[_]]()(implicit connection: Connection, F: Sync[F]): F[Unit] =
+    F.blocking {
       SQL"""CREATE TABLE IF NOT EXISTS FINANCE_PERIODINDEX (
             yearmonth NUMERIC PRIMARY_KEY,
             startdate NUMERIC UNIQUE,
@@ -147,10 +147,10 @@ object DBClient {
     );""".execute()
     }
 
-  def stream[F[_]: Effect](settings: Settings): Stream[F, DBClient[F]] = {
+  def resource[F[_]: Sync](settings: Settings): Resource[F, DBClient[F]] = {
     Class.forName("org.sqlite.JDBC")
     implicit val connection = DriverManager.getConnection(settings.db)
     val dbClient = DBClient()
-    Stream.eval(init().map(_ => dbClient))
+    Resource.eval(init().map(_ => dbClient))
   }
 }

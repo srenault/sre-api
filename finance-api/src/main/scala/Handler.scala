@@ -1,4 +1,4 @@
-package sre.api.heaters
+package sre.api.finance
 
 import cats.effect.syntax.all._
 import io.circe.Decoder
@@ -24,12 +24,14 @@ object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructure
     for {
       entrypoint <- Resource.eval(Random.scalaUtilRandom[IO]).flatMap(implicit r => XRay.entryPoint[IO]())
       httpClient <- EmberClientBuilder.default[IO].build
+      dbClient <- DBClient.resource[IO](settings)
     } yield { implicit env =>
       TracedHandler(entrypoint) { implicit trace =>
         val tracedHttpClient = NatchezMiddleware.client(httpClient)
-        val heatersClient = HeatersClient(tracedHttpClient, settings.heaters)
-        val service = new HeatersService(heatersClient, settings.heaters)
-        ApiGatewayProxyHandler(service.routes)
+        cm.CMClient.resource(tracedHttpClient, settings).use { cmClient =>
+          val service = new FinanceService(cmClient, dbClient, settings)
+          ApiGatewayProxyHandler(service.routes)
+        }
       }
     }
   }

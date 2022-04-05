@@ -14,49 +14,6 @@ case class TransportSettings(train: TrainSettings)
 
 case class IComptaCategorySettings(label: String, rulePath: List[String], threshold: Int)
 
-case class IComptaSettings(db: String, wageRuleId: String)
-
-case class CMCacheSettings(size: Int, ttl: FiniteDuration)
-
-case class CMCachesSettings(
-  form: CMCacheSettings,
-  balances: CMCacheSettings,
-  csv: CMCacheSettings
-)
-
-case class CMAccountSettings(
-  id: String,
-  `type`: finance.cm.CMAccountType,
-  label: String,
-  categories: Map[String, IComptaCategorySettings]
-)
-
-case class CMSettings(
-  baseUri: Uri,
-  authenticationPath: String,
-  validationPath: String,
-  homePath: String,
-  downloadPath: String,
-  transactionPath: String,
-  username: String,
-  password: String,
-  accounts: List[CMAccountSettings],
-  cache: CMCachesSettings,
-  otpSession: String,
-  apkId: String
-) {
-  val authenticationUri: Uri = baseUri.withPath(authenticationPath)
-  val validationUri: Uri = baseUri.withPath(validationPath)
-  val homeUri: Uri = baseUri.withPath(homePath)
-  val downloadUri: Uri = baseUri.withPath(downloadPath)
-  val transactionUri: Uri = baseUri.withPath(transactionPath)
-  def otpSessionFile[F[_]: Sync] = finance.cm.CMOtpSessionFile(otpSession)
-}
-
-case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transactionsDir: File) {
-  def accountsDir: List[File] = transactionsDir.listFiles.toList.filter(_.isDirectory)
-}
-
 case class DomoticzSettings(
   baseUri: Uri,
   wsUri: Uri,
@@ -103,7 +60,6 @@ case class Settings(
   db: String,
   cors: Boolean,
   transport: TransportSettings,
-  finance: FinanceSettings,
   domoticz: DomoticzSettings,
   energy: EnergySettings,
   weather: WeatherSettings,
@@ -124,7 +80,6 @@ object Settings {
       httpClientSettings <- AppConfig.as[HttpClientSettings]("httpClient")
       trainSettings <- AppConfig.as[TrainSettings]("transport.train")
       transportSettings = TransportSettings(trainSettings)
-      financeSettings <- AppConfig.as[FinanceSettings]("finance")
       domoticzSettings <- AppConfig.as[DomoticzSettings]("domoticz")
       energySettings <- AppConfig.as[EnergySettings]("energy")
       weatherSettings <- AppConfig.as[WeatherSettings]("weather")
@@ -136,7 +91,6 @@ object Settings {
       db,
       cors,
       transportSettings,
-      financeSettings,
       domoticzSettings,
       energySettings,
       weatherSettings,
@@ -160,23 +114,6 @@ object Settings {
         if (f.exists) Right(f) else Left {
           DecodingFailure(s"$s file doesn't exists", c.history)
         }
-      }
-  }
-
-  implicit val CMAccountTypeDecoder: Decoder[finance.cm.CMAccountType] = new Decoder[finance.cm.CMAccountType] {
-    final def apply(c: HCursor): Decoder.Result[finance.cm.CMAccountType] =
-      c.as[String].flatMap {
-        case id if id == finance.cm.CMAccountType.Saving.id =>
-          Right(finance.cm.CMAccountType.Saving)
-
-        case id if id == finance.cm.CMAccountType.Current.id =>
-          Right(finance.cm.CMAccountType.Current)
-
-        case id if id == finance.cm.CMAccountType.Joint.id =>
-          Right(finance.cm.CMAccountType.Joint)
-
-        case id =>
-          Left(DecodingFailure(s"Can't parse $id as CMAccountType", c.history))
       }
   }
 }

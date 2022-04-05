@@ -40,6 +40,6 @@ object Period {
     )
 
   implicit val encoder: Encoder[Period] = deriveEncoder[Period]
-  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, Period] = jsonEncoderOf[F, Period]
-  implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[Period]] = jsonEncoderOf[F, List[Period]]
+  implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, Period] = jsonEncoderOf[F, Period]
+  implicit def entitiesEncoder[F[_]: Sync]: EntityEncoder[F, List[Period]] = jsonEncoderOf[F, List[Period]]
 }

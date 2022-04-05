@@ -11,5 +11,5 @@ case class CMOtpRequest(transactionId: String, requestedAt: LocalDateTime, apkId
 
 object CMOtpRequest {
   implicit val encoder: Encoder[CMOtpRequest] = deriveEncoder[CMOtpRequest]
-  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, CMOtpRequest] = jsonEncoderOf[F, CMOtpRequest]
+  implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMOtpRequest] = jsonEncoderOf[F, CMOtpRequest]
 }

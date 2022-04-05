@@ -5,27 +5,24 @@ import scala.xml.Elem
 import scala.jdk.CollectionConverters._
 import cats.effect._
 import cats.implicits._
-import cats.effect.concurrent.Deferred
 import org.http4s._
+import org.http4s.headers._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.scalaxml._
 import fs2.Stream
-import fs2.concurrent.SignallingRef
 
 trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
 
   self: CMClientDsl[F] =>
 
-  def otpPollingInterrupter: SignallingRef[F, Boolean]
-
   def otpSessionFile: CMOtpSessionFile[F]
 
-  private def startOtpValidation()(implicit F: ConcurrentEffect[F]): F[CMPendingOtpSession] = {
+  private def startOtpValidation()(implicit F: Concurrent[F]): F[CMPendingOtpSession] = {
     for {
       basicAuthSession <- getOrCreateBasicAuthSession()
 
-      request <- GET(settings.validationUri, headers.Cookie(basicAuthSession.cookies))
+      request = GET(settings.validationUri, headers.Cookie(basicAuthSession.cookies))
 
       pendingOtpSession <- httpClient.run(request).use { response =>
 
@@ -64,13 +61,13 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     } yield pendingOtpSession
   }
 
-  private def checkOtpTransaction(transactionId: String)(implicit F: ConcurrentEffect[F]): F[Boolean] = {
+  private def checkOtpTransaction(transactionId: String)(implicit F: Concurrent[F]): F[Boolean] = {
     logger.info(s"Checking OTP status for transaction $transactionId")
     val data = UrlForm("transactionId" -> transactionId)
     val uri = settings.transactionUri
     for {
       basicAuthSession <- getOrCreateBasicAuthSession()
-      request <- POST(data, uri, headers.Cookie(basicAuthSession.idSesCookie))
+      request = POST(data, uri, headers.Cookie(basicAuthSession.idSesCookie))
       xml <- httpClient.expect[Elem](request)
     } yield {
       val isValidated = (xml \ "transactionState").exists(_.text === "VALIDATED")
@@ -79,7 +76,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     }
   }
 
-  private def validateOtpSession(pendingOtpSession: CMPendingOtpSession)(implicit F: ConcurrentEffect[F]): F[CMValidOtpSession] = {
+  private def validateOtpSession(pendingOtpSession: CMPendingOtpSession)(implicit F: Concurrent[F]): F[CMValidOtpSession] = {
     logger.info(s"Validating OTP session for transaction ${pendingOtpSession.transactionId}")
 
     for {
@@ -105,24 +102,21 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
 
         val request = POST(data, uri, cookieHeader)
 
-        request.flatMap(httpClient.run(_).use { response =>
+        httpClient.run(request).use { response =>
           println(response.status)
           response.cookies.foreach(println)
           val cookie = response.cookies.find(_.name == CMValidOtpSession.AUTH_CLIENT_STATE) getOrElse sys.error("Unable to get otp session")
           val validOtpSession = pendingOtpSession.validate(cookie)
           F.pure(validOtpSession)
-        })
+        }
       }
-
-      //_ <- validateBasicAuthSession(basicAuthSession, validatedOtpSession)
-
     } yield {
       logger.info(s"Otp session for transaction ${pendingOtpSession.transactionId} validated")
       validatedOtpSession
     }
   }
 
-  private def validateOtpTransaction(transactionId: String)(implicit F: ConcurrentEffect[F]): F[Unit] = {
+  private def validateOtpTransaction(transactionId: String)(implicit F: Concurrent[F]): F[Unit] = {
     logger.info(s"Validating OTP for transactionId $transactionId ...")
     otpSessionRef.access.flatMap {
       case (value, set) =>
@@ -136,7 +130,6 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
                   _ <- d.complete(validatedOtpSession)
                   result <- set(Some(d))
                   _ <- otpSessionFile.set(validatedOtpSession)
-                  _ <- otpPollingInterrupter.set(true)
                 } yield {
                   logger.info(s"Otp session with transactionId $transactionId validated")
                   ()
@@ -150,57 +143,25 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     }
   }
 
-  private def checkPeriodicallyOtpTransaction(transactionId: String)(implicit F: Concurrent[F], P: ConcurrentEffect[F], timer: Timer[F]): F[Fiber[F, Unit]] = {
-    val f: F[Unit] = checkOtpTransaction(transactionId).flatMap {
-      case true =>
-        logger.info(s"OTP validated for transaction $transactionId")
-        validateOtpTransaction(transactionId)
-
-      case false =>
-        logger.info(s"OTP pending for transaction $transactionId")
-        F.pure(())
-    }
-
-    val polling = Stream.awakeEvery[F](2.second)
-      .zipRight(Stream.eval(f).repeat)
-      .interruptWhen(otpPollingInterrupter)
-      .interruptAfter(2.minutes)
-      .onFinalizeCase {
-        case ExitCase.Canceled | ExitCase.Completed =>
-          getOtpSession().flatMap {
-            case Some(otpSession: CMPendingOtpSession) => // TIMEOUT
-              resetOtpSession()
-
-            case _ => Sync[F].unit // VALIDATED
-          }
-
-        case ExitCase.Error(e) =>
-          logger.warn(s"Unexpected error while polling pending OTP status with transaction $transactionId:\n${e.getMessage}")
-          resetOtpSession()
-      }
-
-    F.start(polling.compile.drain)
-  }
-
-  private def resetOtpSession()(implicit F: Effect[F]): F[Unit] =
-    F.defer {
+  private def resetOtpSession()(implicit F: Concurrent[F]): F[Unit] =
+    F.pure {
       logger.info(s"Pending OTP session has been reset.")
-      otpSessionFile.delete() *> otpSessionRef.set(None) *> otpPollingInterrupter.set(false)
+      otpSessionFile.delete() *> otpSessionRef.set(None)
     }
 
-  protected def isOtpSessionExpired(basicAuthSession: CMBasicAuthSession, otpSession: CMValidOtpSession)(implicit F: ConcurrentEffect[F]): F[Boolean] = {
+  protected def isOtpSessionExpired(basicAuthSession: CMBasicAuthSession, otpSession: CMValidOtpSession)(implicit F: Concurrent[F]): F[Boolean] = {
     val cookieHeader = headers.Cookie(otpSession.authClientStateCookie :: basicAuthSession.cookies)
     val request = GET(settings.homeUri, cookieHeader)
-    request.flatMap(httpClient.run(_).use { response =>
+    httpClient.run(request).use { response =>
       F.pure {
-        response.headers.get(headers.Location).exists { location =>
-          location.value == settings.validationPath.toString
+        response.headers.get[Location].exists { location =>
+          location.uri.toString == settings.validationPath
         }
       }
-    })
+    }
   }
 
-  protected def requestOtpSession()(implicit F: ConcurrentEffect[F], timer: Timer[F]): F[CMPendingOtpSession] = {
+  protected def requestOtpSession()(implicit F: Concurrent[F]): F[CMPendingOtpSession] = {
     logger.info(s"Requesting new cm OTP session ...")
     for {
       _ <- resetOtpSession()
@@ -208,28 +169,28 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       _ <- otpSessionRef.set(Some(d))
       pendingOtpSession <- startOtpValidation()
       _ <- d.complete(pendingOtpSession)
-      _ <- checkPeriodicallyOtpTransaction(pendingOtpSession.transactionId)
+      //_ <- checkPeriodicallyOtpTransaction(pendingOtpSession.transactionId)
     } yield {
       logger.info(s"A new pending OTP session created with transactionId ${pendingOtpSession.transactionId}")
       pendingOtpSession
     }
   }
 
-  protected def getOtpSession()(implicit F: ConcurrentEffect[F]): F[Option[CMOtpSession]] = {
+  protected def getOtpSession()(implicit F: Concurrent[F]): F[Option[CMOtpSession]] = {
     otpSessionRef.get.flatMap {
       case Some(deferredOtpsession) => deferredOtpsession.get.map(Option(_))
       case None => F.pure(None)
     }
   }
 
-  protected def getOrRequestOtpSession()(implicit F: ConcurrentEffect[F], timer: Timer[F]): F[CMOtpSession] = {
+  protected def getOrRequestOtpSession()(implicit F: Concurrent[F]): F[CMOtpSession] = {
     getOtpSession().flatMap {
       case Some(otpSession) => F.pure(otpSession)
       case None => requestOtpSession().widen[CMOtpSession]
     }
   }
 
-  def checkOtpStatus(transactionId: String)(implicit F: ConcurrentEffect[F]): F[CMOtpStatus] = {
+  def checkOtpStatus(transactionId: String)(implicit F: Concurrent[F]): F[CMOtpStatus] = {
     otpSessionRef.get.flatMap {
       case Some(deferredOtpSession) =>
         deferredOtpSession.get.flatMap {

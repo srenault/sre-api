@@ -6,7 +6,6 @@ import org.http4s.EntityEncoder
 import org.http4s.circe._
 import io.circe.Encoder
 import io.circe.generic.semiauto._
-import sre.api.CMAccountSettings
 import analytics.Period
 
 case class CMAccountState(
@@ -66,9 +65,9 @@ object CMAccountState {
   implicit val encoder: Encoder[CMAccountState] =
     deriveEncoder[CMAccountState]
 
-  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, CMAccountState] =
+  implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMAccountState] =
     jsonEncoderOf[F, CMAccountState]
 
-  implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[CMAccountState]] =
+  implicit def entitiesEncoder[F[_]: Sync]: EntityEncoder[F, List[CMAccountState]] =
     jsonEncoderOf[F, List[CMAccountState]]
 }

@@ -30,5 +30,5 @@ object CMOtpStatus {
     }
   }
 
-  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, CMOtpStatus] = jsonEncoderOf[F, CMOtpStatus]
+  implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMOtpStatus] = jsonEncoderOf[F, CMOtpStatus]
 }

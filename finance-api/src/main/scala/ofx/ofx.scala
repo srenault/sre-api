@@ -103,7 +103,7 @@ object OfxDir {
 
 object OfxStmTrn {
 
-  def load[F[_]](ofxFile: OfxFile)(implicit F: Effect[F]): F[List[OfxStmTrn]] = {
+  def load[F[_]](ofxFile: OfxFile)(implicit F: Sync[F]): F[List[OfxStmTrn]] = {
     val is = new FileInputStream(ofxFile.file)
 
     F.pure {
@@ -175,15 +175,12 @@ object OfxStmTrn {
     }
   }
 
-  def persist[F[_]: Effect : ContextShift](is: fs2.Stream[F, Byte], accountPath: java.nio.file.Path): F[Unit] = {
-    fs2.Stream.resource(Blocker[F]).flatMap { blocker =>
+  def persist[F[_]: Async](is: fs2.Stream[F, Byte], accountPath: java.nio.file.Path): F[Unit] = {
       val filename = OfxFile.filename(LocalDate.now)
       val path = accountPath.resolve(filename)
 
       java.nio.file.Files.deleteIfExists(path)
 
-      is.through(fs2.io.file.writeAll(path, blocker, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil))
-
-    }.compile.drain
+      is.through(fs2.io.file.writeAll(path, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil)).compile.drain
   }
 }

@@ -1,5 +1,4 @@
-package sre.api
-package finance
+package sre.api.finance
 package analytics
 
 import java.time.YearMonth
@@ -8,24 +7,18 @@ import java.time.temporal.ChronoUnit
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
-import icompta.IComptaClient
 import cm.CMStatement
 import ofx.{ OfxFile, OfxStmTrn, OfxDir }
 
 case class AnalyticsIndexClient[F[_]](
-  icomptaClient: IComptaClient[F],
   dbClient: DBClient[F],
   settings: Settings
-)(implicit F: Effect[F]) {
+)(implicit F: Sync[F]) {
 
-  def computePeriodIndexesFrom(statements: List[CMStatement]): F[List[PeriodIndex]] = {
-    icomptaClient.buildRulesAst().map { rulesAst =>
-      rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).toList.flatMap { wageRuleAst =>
-        val segments = AnalyticsIndexClient.computeSegmentIndexesStep(statements, partitions = Nil)(wageRuleAst.test)
-        val (periods, _) = AnalyticsIndexClient.computePeriodIndexesStep(segments, periods = Nil, pendingSegments = Nil)
-        periods
-      }.toList
-    }
+  def computePeriodIndexesFrom(statements: List[CMStatement]): List[PeriodIndex] = {
+    val segments = AnalyticsIndexClient.computeSegmentIndexesStep(statements, partitions = Nil)(_ => ???)
+    val (periods, _) = AnalyticsIndexClient.computePeriodIndexesStep(segments, periods = Nil, pendingSegments = Nil)
+    periods
   }
 
   def computePeriodIndexesFromScratch(): F[List[PeriodIndex]] =
@@ -55,14 +48,7 @@ case class AnalyticsIndexClient[F[_]](
     }
 
   private def computePeriodIndexes(accountDirs: List[File], ofxFiles: List[OfxFile], seed: Option[PeriodIndex] = None): F[List[PeriodIndex]] = {
-    icomptaClient.buildRulesAst().flatMap { rulesAst =>
-
-      rulesAst.traverse(settings.finance.icompta.wageRuleId :: Nil).map { wageRule =>
-
-        AnalyticsIndexClient.computePeriodIndexes(accountDirs, ofxFiles, seed)(wageRule.test)
-
-      }.toList.sequence.map(_.flatten.filter(_.isValid))
-    }
+    AnalyticsIndexClient.computePeriodIndexes(accountDirs, ofxFiles, seed)(_ => ???).map(_.filter(_.isValid))
   }
 }
 
@@ -192,7 +178,7 @@ object AnalyticsIndexClient {
     }
   }
 
-  def computePeriodIndexes[F[_]](accountDirs: List[File], ofxFiles: List[OfxFile], seed: Option[PeriodIndex] = None)(isWageStatement: CMStatement => Boolean)(implicit F: Effect[F]): F[List[PeriodIndex]] = {
+  def computePeriodIndexes[F[_]](accountDirs: List[File], ofxFiles: List[OfxFile], seed: Option[PeriodIndex] = None)(isWageStatement: CMStatement => Boolean)(implicit F: Sync[F]): F[List[PeriodIndex]] = {
 
     def step(accountDirs: List[File], sortedOfxFiles: List[OfxFile], accSegments: List[SegmentIndex], accPeriods: List[PeriodIndex]): F[List[PeriodIndex]] = {
       sortedOfxFiles match {

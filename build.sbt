@@ -53,7 +53,6 @@ lazy val server = (project in file("."))
       "org.xerial"                % "sqlite-jdbc"                     % SqliteJdbcVersion,
       "org.playframework.anorm"   %% "anorm"                          % AnormVersion,
       "com.webcohesion.ofx4j"     % "ofx4j"                           % Ofx4jVersion,
-      "org.jsoup"                 % "jsoup"                           % JsoupVersion,
       "com.github.cb372"          %% "scalacache-guava"               % ScalaCacheVersion,
       "com.github.cb372"          %% "scalacache-cats-effect"         % ScalaCacheCatsVersion,
       "com.amazonaws"             % "aws-java-sdk"                    % AwsSdkVersion,
@@ -106,3 +105,32 @@ lazy val heatersApi = (project in file("heaters-api"))
     assemblyJarName in assembly := s"$heaterApiProjectName.jar",
   )
 
+val financeApiProjectName = "finance-api"
+
+lazy val financeApi = (project in file("finance-api"))
+  .settings(
+    organization := "sre",
+    name := "finance-api",
+    version := "0.0.1-SNAPSHOT",
+    scalaVersion := ScalaVersion,
+    libraryDependencies ++= Seq(
+      "org.typelevel"             %% "feral-lambda"                  % FeralVersion,
+      "org.typelevel"             %% "feral-lambda-http4s"           % FeralVersion,
+      "org.http4s"                %% "http4s-scala-xml"              % Http4sVersionNext,
+      "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
+      "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
+      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
+      "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
+      "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
+      "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
+      "ch.qos.logback"            %  "logback-classic"               % LogbackVersion,
+      "org.playframework.anorm"   %% "anorm"                         % AnormVersion,
+      "org.jsoup"                 % "jsoup"                          % JsoupVersion,
+      "com.webcohesion.ofx4j"     % "ofx4j"                          % Ofx4jVersion,
+      "org.tpolecat"              %% "natchez-xray"                  % natchezVersion,
+      "org.tpolecat"              %% "natchez-http4s"                % "0.3.2"
+    ),
+    addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
+  ). settings(
+    assemblyJarName in assembly := s"$financeApiProjectName.jar",
+  )
