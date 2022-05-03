@@ -67,10 +67,12 @@ object CMValidOtpSession {
 }
 
 case class CMPendingOtpSession(
+  action: String,
   otpHidden: String,
   globalBackup: String,
+  inAppSendNew1: String,
+  inAppSendNew2: String,
   transactionId: String,
-  antiForgeryToken: String,
   otpAuthCookie: RequestCookie,
   otherCookies: List[RequestCookie],
   requestedAt: LocalDateTime,
@@ -94,24 +96,30 @@ case class CMPendingOtpSession(
 object CMPendingOtpSession {
   val OTPAUTH_COOKIE = "%5Fwirt%5Fsosddmzsiwfcmcicfr%5FSOSD%5FOTPAUTH%5Fsaguid"
   val OTP_HIDDEN_FIELD_ID = "otp_hidden"
+  val IN_APP_SEND_NEW1_FIELD_ID = "InputHiddenKeyInAppSendNew1"
+  val IN_APP_SEND_NEW2_FIELD_ID = "InputHiddenKeyInAppSendNew2"
   val GLOBAL_BACKUP_FIELD_ID = "global_backup_hidden_key"
   val FID_DO_VALIDATE_X_FIELD = "_FID_DoValidate.x" -> "0"
   val FID_DO_VALIDATE_Y_FIELD = "_FID_DoValidate.y" -> "0"
   val WXF2_CC_FIELD = "_wxf2_cc" -> "fr-FR"
 
   def create(
+    action: String,
     otpHidden: String,
     globalBackup: String,
+    inAppSendNew1: String,
+    inAppSendNew2: String,
     transactionId: String,
-    antiForgeryToken: String,
     otpAuthCookie: ResponseCookie,
     otherCookies: List[ResponseCookie]
   ): CMPendingOtpSession = {
     CMPendingOtpSession(
+      action,
       otpHidden,
       globalBackup,
+      inAppSendNew1,
+      inAppSendNew2,
       transactionId,
-      antiForgeryToken,
       otpAuthCookie = RequestCookie(otpAuthCookie.name, otpAuthCookie.content),
       otherCookies = otherCookies.map( c => RequestCookie(c.name, c.content)),
       requestedAt = LocalDateTime.now
