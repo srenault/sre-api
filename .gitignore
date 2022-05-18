@@ -15,3 +15,5 @@ node_modules
 sam-local.yml
 .metals/metals.mv.db
 .vscode/settings.json
+scripts/finance-event.json
+scripts/finance.sh

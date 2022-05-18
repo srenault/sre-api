@@ -1,20 +1,23 @@
-package sre.api.finance
+package sre.api
+package finance
 
 import java.io.File
 import scala.concurrent.duration.FiniteDuration
 import cats.effect._
 import org.http4s.Uri
-
-case class IComptaCategorySettings(label: String, rulePath: List[String], threshold: Int)
-
-case class IComptaSettings(db: String, wageRuleId: String)
+import io.circe._
+import io.circe.generic.semiauto._
 
 case class CMAccountSettings(
   id: String,
   `type`: cm.CMAccountType,
-  label: String,
-  categories: Map[String, IComptaCategorySettings]
+  label: String
 )
+
+object CMAccountSettings {
+
+  implicit val decoder: Decoder[CMAccountSettings] = deriveDecoder[CMAccountSettings]
+}
 
 case class CMSettings(
   baseUri: Uri,
@@ -37,7 +40,7 @@ case class CMSettings(
   def getOtpSessionFile[F[_]: Sync] = cm.CMOtpSessionFile(otpSession)
 }
 
-case class FinanceSettings(icompta: IComptaSettings, cm: CMSettings, transactionsDir: File) {
+case class FinanceSettings(cm: CMSettings, transactionsDir: File, wageStatements: List[String]) {
   def accountsDir: List[File] = transactionsDir.listFiles.toList.filter(_.isDirectory)
 }
 
@@ -54,30 +57,30 @@ case class Settings(
 
 object Settings {
 
-  lazy val env = System.getenv
-
-  private def getString(key: String): Option[String] =
-    Option(env.get(key))
-
-  private def getStringOrFail(key: String): String =
-    getString(key) getOrElse sys.error(s"Configuration error: Unable to get $key")
-
-  private def getUri(key: String): Option[Uri] =
-    getString(key).flatMap(Uri.fromString(_).toOption)
-
-  private def getUriOrFail(key: String): Uri =
-    getUri(key) getOrElse sys.error(s"Configuration error: Unable to get $key")
-
-  private def getBoolean(key: String): Option[Boolean] =
-    scala.util.Try(getStringOrFail(key).toBoolean).toOption
-
-  private def getBooleanOrFail(key: String): Boolean =
-    getBoolean(key) getOrElse {
-      sys.error(s"Configuration error: Unable to get $key as Boolean")
-    }
-
-
   def build(): Settings = {
-    ???
+    Settings(
+      httpClient = HttpClientSettings(
+        logRequest = Env.getBooleanOrFail("HTTPCLIENT_LOGREQUEST"),
+        logResponse = Env.getBooleanOrFail("HTTPCLIENT_LOGRESPONSE")
+      ),
+      db = Env.getStringOrFail("DB_PATH"),
+      finance = FinanceSettings(
+        cm = CMSettings(
+          baseUri = Env.getUriOrFail("FINANCE_CM_BASE_URI"),
+          authenticationPath = Env.getStringOrFail("FINANCE_CM_AUTHENTICATION_PATH"),
+          validationPath = Env.getStringOrFail("FINANCE_CM_VALIDATION_PATH"),
+          homePath = Env.getStringOrFail("FINANCE_CM_HOME_PATH"),
+          downloadPath = Env.getStringOrFail("FINANCE_CM_DOWNLOAD_PATH"),
+          transactionPath = Env.getStringOrFail("FINANCE_CM_TRANSACTION_PATH"),
+          username = Env.getStringOrFail("FINANCE_CM_USERNAME"),
+          password = Env.getStringOrFail("FINANCE_CM_PASSWORD"),
+          accounts = Env.getJsonAsOrFail[List[CMAccountSettings]]("FINANCE_CM_ACCOUNTS"),
+          otpSession = Env.getStringOrFail("FINANCE_CM_OTPSESSION"),
+          apkId = Env.getStringOrFail("FINANCE_CM_APKID")
+        ),
+        wageStatements = Env.getJsonAsOrFail[List[String]]("FINANCE_WAGE_STATEMENTS"),
+        transactionsDir = Env.getFileOrFail("FINANCE_TRANSACTIONS_DIR")
+      )
+    )
   }
 }

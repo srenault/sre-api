@@ -20,12 +20,12 @@ case class FinanceService[F[_]](
   val routes: HttpRoutes[F] =
     HttpRoutes.of[F] {
 
-      case GET -> Root / "accounts" =>
+      case GET -> Root / "finance" / "accounts" =>
         WithAccountsOverview() { accountsOverview =>
           Ok(accountsOverview.asJson)
         }
 
-      case GET -> Root / "analytics" :? OptionalBeforePeriodDateQueryParamMatcher(maybeValidatedBeforePeriod) +& OptionalAfterPeriodDateQueryParamMatcher(maybeValidatedAfterPeriod) =>
+      case GET -> Root / "finance" / "analytics" :? OptionalBeforePeriodDateQueryParamMatcher(maybeValidatedBeforePeriod) +& OptionalAfterPeriodDateQueryParamMatcher(maybeValidatedAfterPeriod) =>
         WithPeriodDate(maybeValidatedBeforePeriod) { maybeBeforePeriod =>
           WithPeriodDate(maybeValidatedAfterPeriod) { maybeAfterPeriod =>
             for {
@@ -68,7 +68,7 @@ case class FinanceService[F[_]](
           }
         }
 
-      case GET -> Root / "analytics" / "period" / PeriodDateVar(periodDate) =>
+      case GET -> Root / "finance" / "analytics" / "period" / PeriodDateVar(periodDate) =>
         analyticsClient.getStatementsForPeriod(periodDate).value.flatMap {
           case Some((period, statements)) =>
             Ok(json"""{ "statements": $statements, "period":  $period }""")

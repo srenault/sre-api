@@ -74,12 +74,24 @@ lazy val server = (project in file("."))
   )
 
 scalacOptions ++= Seq("-Xlint")
+
 val Http4sVersionNext = "0.23.10"
 val CirceVersionNext = "0.15.0-M1"
 val FeralVersion = "0.1.0-M1"
 val natchezVersion = "0.1.6"
 
-val heaterApiProjectName = "heaters-api"
+lazy val commons = (project in file("commons"))
+  .settings(
+    organization := "sre",
+    name := "commons",
+    version := "0.0.1-SNAPSHOT",
+    scalaVersion := ScalaVersion,
+    libraryDependencies ++= Seq(
+      "io.circe"   %% "circe-parser" % CirceVersion,
+      "io.circe"   %% "circe-generic" % CirceVersionNext,
+      "org.http4s" %% "http4s-dsl" % Http4sVersionNext,
+    )
+  )
 
 lazy val heatersApi = (project in file("heaters-api"))
   .settings(
@@ -101,13 +113,11 @@ lazy val heatersApi = (project in file("heaters-api"))
       "org.tpolecat"              %% "natchez-xray"                  % natchezVersion,
       "org.tpolecat"              %% "natchez-http4s"                % "0.3.2"
     )
-  ). settings(
-    assemblyJarName in assembly := s"$heaterApiProjectName.jar",
-  )
+  ).settings(
+    assemblyJarName in assembly := s"heaters-api.jar"
+  ).dependsOn(commons)
 
-val financeApiProjectName = "finance-api"
-
-lazy val financeApi = (project in file("finance-api"))
+lazy val financeProject = (project in file("finance-api"))
   .settings(
     organization := "sre",
     name := "finance-api",
@@ -119,7 +129,6 @@ lazy val financeApi = (project in file("finance-api"))
       "org.http4s"                %% "http4s-scala-xml"              % Http4sVersionNext,
       "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
       "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
-      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
       "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
       "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
       "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
@@ -128,9 +137,11 @@ lazy val financeApi = (project in file("finance-api"))
       "org.jsoup"                 % "jsoup"                          % JsoupVersion,
       "com.webcohesion.ofx4j"     % "ofx4j"                          % Ofx4jVersion,
       "org.tpolecat"              %% "natchez-xray"                  % natchezVersion,
-      "org.tpolecat"              %% "natchez-http4s"                % "0.3.2"
+      "org.tpolecat"              %% "natchez-http4s"                % "0.3.2",
+      "org.xerial"                % "sqlite-jdbc"                     % SqliteJdbcVersion,
+      "org.http4s"                %% "http4s-blaze-client"            % Http4sVersionNext
     ),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
-  ). settings(
-    assemblyJarName in assembly := s"$financeApiProjectName.jar",
-  )
+  ).settings(
+    assemblyJarName in assembly := s"finance-api.jar"
+  ).dependsOn(commons)

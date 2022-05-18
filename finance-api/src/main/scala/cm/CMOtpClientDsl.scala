@@ -29,8 +29,20 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
         response.as[String].map { otpPage =>
           val doc = org.jsoup.Jsoup.parse(otpPage)
 
+          val action = doc.select(s"form").asScala.headOption.flatMap(d => Option(d.attributes.get("action"))) getOrElse {
+            sys.error("Unable to get validation form action")
+          }
+
           val otp = doc.select(s"""[name="${CMPendingOtpSession.OTP_HIDDEN_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get otp value")
+          }
+
+          val inAppSendNew1 = doc.select(s"""[name="${CMPendingOtpSession.IN_APP_SEND_NEW1_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
+            sys.error("Unable to get in app send new 1")
+          }
+
+          val inAppSendNew2 = doc.select(s"""[name="${CMPendingOtpSession.IN_APP_SEND_NEW2_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
+            sys.error("Unable to get in app send new 2")
           }
 
           val backup = doc.select(s"""[name="${CMPendingOtpSession.GLOBAL_BACKUP_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
@@ -44,18 +56,11 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
             }
           }
 
-          val antiForgeryToken = {
-            val r = """k___ValidateAntiForgeryToken=([^"]+)""".r
-            r.findFirstMatchIn(otpPage).flatMap(m => Option(m.group(1))) getOrElse {
-              sys.error("Unable to get anti forgery token")
-            }
-          }
-
           val (maybeOtpAuthCookie, otherCookies) = response.cookies.partition(_.name == CMPendingOtpSession.OTPAUTH_COOKIE)
 
           val otpAuthCookie = maybeOtpAuthCookie.headOption.getOrElse(sys.error("Unable to get otp session"))
 
-          CMPendingOtpSession.create(otp, backup, transactionId, antiForgeryToken, otpAuthCookie, otherCookies)
+          CMPendingOtpSession.create(action, otp, backup, inAppSendNew1, inAppSendNew2, transactionId, otpAuthCookie, otherCookies)
         }
       }
     } yield pendingOtpSession
@@ -87,14 +92,13 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       validatedOtpSession <- {
         val cookieHeader = headers.Cookie(cookies)
 
-        val uri = settings.validationUri
-          .withQueryParam("_tabi", "C")
-          .withQueryParam("_pid", "OtpValidationPage")
-          .withQueryParam("k___ValidateAntiForgeryToken", pendingOtpSession.antiForgeryToken)
+        val uri = settings.baseUri.withPath(pendingOtpSession.action)
 
         val data = UrlForm(
           CMPendingOtpSession.OTP_HIDDEN_FIELD_ID -> pendingOtpSession.otpHidden,
           CMPendingOtpSession.GLOBAL_BACKUP_FIELD_ID -> pendingOtpSession.globalBackup,
+          CMPendingOtpSession.IN_APP_SEND_NEW1_FIELD_ID -> pendingOtpSession.inAppSendNew1,
+          CMPendingOtpSession.IN_APP_SEND_NEW2_FIELD_ID -> pendingOtpSession.inAppSendNew2,
           CMPendingOtpSession.FID_DO_VALIDATE_X_FIELD,
           CMPendingOtpSession.FID_DO_VALIDATE_Y_FIELD,
           CMPendingOtpSession.WXF2_CC_FIELD

@@ -15,8 +15,12 @@ case class AnalyticsIndexClient[F[_]](
   settings: Settings
 )(implicit F: Sync[F]) {
 
+  private def isWageStatement(statement: CMStatement): Boolean = {
+    settings.finance.wageStatements.exists(statement.label.contains _)
+  }
+
   def computePeriodIndexesFrom(statements: List[CMStatement]): List[PeriodIndex] = {
-    val segments = AnalyticsIndexClient.computeSegmentIndexesStep(statements, partitions = Nil)(_ => ???)
+    val segments = AnalyticsIndexClient.computeSegmentIndexesStep(statements, partitions = Nil)(isWageStatement)
     val (periods, _) = AnalyticsIndexClient.computePeriodIndexesStep(segments, periods = Nil, pendingSegments = Nil)
     periods
   }
@@ -48,7 +52,7 @@ case class AnalyticsIndexClient[F[_]](
     }
 
   private def computePeriodIndexes(accountDirs: List[File], ofxFiles: List[OfxFile], seed: Option[PeriodIndex] = None): F[List[PeriodIndex]] = {
-    AnalyticsIndexClient.computePeriodIndexes(accountDirs, ofxFiles, seed)(_ => ???).map(_.filter(_.isValid))
+    AnalyticsIndexClient.computePeriodIndexes(accountDirs, ofxFiles, seed)(isWageStatement).map(_.filter(_.isValid))
   }
 }
 

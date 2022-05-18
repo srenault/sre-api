@@ -10,20 +10,21 @@ import cats.effect.std.Random
 import feral.lambda._
 import feral.lambda.events._
 import feral.lambda.http4s._
-import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
 import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
+import org.http4s.client.blaze._
+import scala.concurrent.ExecutionContext.global
 
 object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructuredResultV2] {
-  val settings: Settings = Settings.build()
+  lazy val settings: Settings = Settings.build()
 
   def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[Option[ApiGatewayProxyStructuredResultV2]]] = {
     for {
       entrypoint <- Resource.eval(Random.scalaUtilRandom[IO]).flatMap(implicit r => XRay.entryPoint[IO]())
-      httpClient <- EmberClientBuilder.default[IO].build
+      httpClient <- BlazeClientBuilder[IO](global).resource
       dbClient <- DBClient.resource[IO](settings)
     } yield { implicit env =>
       TracedHandler(entrypoint) { implicit trace =>

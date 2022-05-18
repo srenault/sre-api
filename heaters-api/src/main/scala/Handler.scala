@@ -25,6 +25,7 @@ object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructure
       entrypoint <- Resource.eval(Random.scalaUtilRandom[IO]).flatMap(implicit r => XRay.entryPoint[IO]())
       httpClient <- EmberClientBuilder.default[IO].build
     } yield { implicit env =>
+      import cats.effect.unsafe.implicits.global
       TracedHandler(entrypoint) { implicit trace =>
         val tracedHttpClient = NatchezMiddleware.client(httpClient)
         val heatersClient = HeatersClient(tracedHttpClient, settings.heaters)
