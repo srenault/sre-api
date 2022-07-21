@@ -17,3 +17,4 @@ sam-local.yml
 .vscode/settings.json
 scripts/finance-event.json
 scripts/finance.sh
+package.yml

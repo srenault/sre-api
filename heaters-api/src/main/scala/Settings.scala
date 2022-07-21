@@ -35,13 +35,13 @@ object Settings {
   def build(): Settings = {
     Settings(
       httpClient = HttpClientSettings(
-        logRequest = getBooleanOrFail("httpclient.logrequest"),
-        logResponse = getBooleanOrFail("httpclient.logresponse")
+        logRequest = getBooleanOrFail("HTTPCLIENT_LOGREQUEST"),
+        logResponse = getBooleanOrFail("HTTPCLIENT_LOGRESPONSE")
       ),
       heaters = HeatersSettings(
-        baseUri = getUriOrFail("heaters.baseuri"),
-        username = getStringOrFail("heaters.username"),
-        password = getStringOrFail("heaters.password")
+        baseUri = getUriOrFail("HEATERS_BASEURI"),
+        username = getStringOrFail("HEATERS_USERNAME"),
+        password = getStringOrFail("HEATERS_PASSWORD")
       )
     )
   }

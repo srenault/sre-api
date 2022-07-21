@@ -5,7 +5,7 @@ import cats.effect._
 import org.http4s.EntityEncoder
 import org.http4s.circe._
 import io.circe._
-import io.circe.literal._
+import io.circe.syntax._
 import io.circe.Encoder
 
 sealed trait CMOtpStatus
@@ -18,17 +18,10 @@ object CMOtpStatus {
   implicit val encoder: Encoder[CMOtpStatus] = new Encoder[CMOtpStatus] {
     final def apply(status: CMOtpStatus): Json = {
       status match {
-        case v: Validated =>
-          json"""{ "status": "validated", "validatedAt": ${v.validatedAt}, "transactionId": ${v.transactionId} }"""
-
-        case p: Pending =>
-          json"""{ "status": "pending", "requestedAt": ${p.requestedAt}, "transactionId": ${p.transactionId} }"""
-
-        case u: Unknown =>
-          json"""{ "status": "unknown" , "transactionId": ${u.transactionId} }"""
+        case s: Validated => "validated".asJson
+        case s: Pending => "pending".asJson
+        case s: Unknown => "unknown".asJson
       }
     }
   }
-
-  implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMOtpStatus] = jsonEncoderOf[F, CMOtpStatus]
 }
