@@ -85,8 +85,6 @@ case class ElectricityClient[F[_] : Effect: Parallel](domoticzClient: DomoticzCl
     }
   }
 
-  def getLastYearConsumption(): F[List[PowerConsumption]] = ???
-
   private def getYearlyConsumption(maybeYear: Option[Year]): F[List[PowerMeter3]] = {
     domoticzClient.graph[PowerMeter3](
       sensor = domoticz.Sensor.Counter,

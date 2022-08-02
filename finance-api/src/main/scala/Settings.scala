@@ -40,7 +40,12 @@ case class CMSettings(
   def getOtpSessionFile[F[_]: Sync] = cm.CMOtpSessionFile(otpSession)
 }
 
-case class FinanceSettings(cm: CMSettings, transactionsDir: File, wageStatements: List[String]) {
+case class FinanceSettings(
+  cm: CMSettings,
+  transactionsDir: File,
+  wageStatements: List[String],
+  s3TransactionsBucket: S3Settings
+) {
   def accountsDir: List[File] = transactionsDir.listFiles.toList.filter(_.isDirectory)
 }
 
@@ -79,7 +84,14 @@ object Settings {
           apkId = Env.getStringOrFail("FINANCE_CM_APKID")
         ),
         wageStatements = Env.getJsonAsOrFail[List[String]]("FINANCE_WAGE_STATEMENTS"),
-        transactionsDir = Env.getFileOrFail("FINANCE_TRANSACTIONS_DIR")
+        transactionsDir = Env.getFileOrFail("FINANCE_TRANSACTIONS_DIR"),
+        s3TransactionsBucket = S3Settings(
+          region = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_REGION"),
+          bucket = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_BUCKET"),
+          publicKey = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_PUBLICKEY"),
+          secretKey = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_SECRETKEY"),
+          prefix = Env.getString("FINANCE_S3_TRANSACTIONS_PREFIX")
+        )
       )
     )
   }

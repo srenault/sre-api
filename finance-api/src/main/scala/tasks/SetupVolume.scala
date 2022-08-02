@@ -1,4 +1,5 @@
-package sre.api.finance
+package sre.api
+package finance
 package tasks
 
 import cats.effect.syntax.all._
@@ -20,19 +21,20 @@ import org.http4s.client.blaze._
 import scala.concurrent.ExecutionContext.global
 import models._
 
-object CheckOtp extends IOLambda[CheckOtpEvent, CheckOtpResult] {
+object SetupVolume extends IOLambda[SetupVolumeEvent, SetupVolumeResult] {
   lazy val settings: Settings = Settings.build()
+  lazy val s3Client = S3Client[IO](settings.finance.s3TransactionsBucket)
 
-  def handler: Resource[IO, LambdaEnv[IO, CheckOtpEvent] => IO[Option[CheckOtpResult]]] = {
+  def handler: Resource[IO, LambdaEnv[IO, SetupVolumeEvent] => IO[Option[SetupVolumeResult]]] = {
     for {
       httpClient <- BlazeClientBuilder[IO](global).resource
       cmClient <- cm.CMClient.resource(httpClient, settings)
     } yield { implicit env =>
-        env.event.flatMap { checkOtpEvent =>
-          cmClient.checkOtpStatus(checkOtpEvent.otpRequest.transactionId).map { status =>
-            Some(CheckOtpResult(status))
-          }
+      env.event.flatMap { event =>
+        s3Client.ls("", event.continuationToken).map { response =>
+          Some(SetupVolumeResult(continuationToken = response.continuationToken))
         }
+      }
     }
   }
 }

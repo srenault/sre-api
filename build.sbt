@@ -90,6 +90,8 @@ lazy val commons = (project in file("commons"))
       "io.circe"   %% "circe-parser" % CirceVersion,
       "io.circe"   %% "circe-generic" % CirceVersionNext,
       "org.http4s" %% "http4s-dsl" % Http4sVersionNext,
+      "org.typelevel" %% "cats-effect" % "3.3.5",
+      "com.amazonaws" % "aws-java-sdk" % AwsSdkVersion
     )
   )
 

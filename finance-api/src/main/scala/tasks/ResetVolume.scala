@@ -20,18 +20,16 @@ import org.http4s.client.blaze._
 import scala.concurrent.ExecutionContext.global
 import models._
 
-object CheckOtp extends IOLambda[CheckOtpEvent, CheckOtpResult] {
+object ResetVolume extends IOLambda[ResetVolumeEvent, ResetVolumeResult] {
   lazy val settings: Settings = Settings.build()
 
-  def handler: Resource[IO, LambdaEnv[IO, CheckOtpEvent] => IO[Option[CheckOtpResult]]] = {
+  def handler: Resource[IO, LambdaEnv[IO, ResetVolumeEvent] => IO[Option[ResetVolumeResult]]] = {
     for {
       httpClient <- BlazeClientBuilder[IO](global).resource
       cmClient <- cm.CMClient.resource(httpClient, settings)
     } yield { implicit env =>
-        env.event.flatMap { checkOtpEvent =>
-          cmClient.checkOtpStatus(checkOtpEvent.otpRequest.transactionId).map { status =>
-            Some(CheckOtpResult(status))
-          }
+        env.event.map { resetVolumeEvent =>
+          Some(ResetVolumeResult())
         }
     }
   }
