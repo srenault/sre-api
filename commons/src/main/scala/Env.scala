@@ -2,6 +2,7 @@ package sre.api
 
 import org.http4s.Uri
 import java.io.File
+import java.nio.file.{ Path, Paths }
 import io.circe._
 import io.circe.parser._
 import io.circe.generic.auto._
@@ -46,6 +47,20 @@ object Env {
       sys.error(s"Configuration error: Unable to get $key as file, $path not found")
     } else {
       file
+    }
+  }
+
+  def getPathOrFail(key: String): Path = {
+    val src = getString(key) getOrElse {
+      sys.error(s"Configuration error: Unable to get $key as Path, not found")
+    }
+
+    val path = Paths.get(src)
+
+    if (!path.toFile.exists) {
+      sys.error(s"Configuration error: Unable to get $key as Path, $path not found")
+    } else {
+      path
     }
   }
 

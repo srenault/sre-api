@@ -78,7 +78,8 @@ scalacOptions ++= Seq("-Xlint")
 val Http4sVersionNext = "0.23.10"
 val CirceVersionNext = "0.15.0-M1"
 val FeralVersion = "0.1.0-M1"
-val natchezVersion = "0.1.6"
+val NatchezVersion = "0.1.6"
+val Log4catsVersion = "2.4.0"
 
 lazy val commons = (project in file("commons"))
   .settings(
@@ -87,11 +88,13 @@ lazy val commons = (project in file("commons"))
     version := "0.0.1-SNAPSHOT",
     scalaVersion := ScalaVersion,
     libraryDependencies ++= Seq(
-      "io.circe"   %% "circe-parser" % CirceVersion,
-      "io.circe"   %% "circe-generic" % CirceVersionNext,
-      "org.http4s" %% "http4s-dsl" % Http4sVersionNext,
-      "org.typelevel" %% "cats-effect" % "3.3.5",
-      "com.amazonaws" % "aws-java-sdk" % AwsSdkVersion
+      "io.circe"                  %% "circe-parser"                  % CirceVersion,
+      "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
+      "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
+      "org.typelevel"             %% "cats-effect"                   % "3.3.5",
+      "com.amazonaws"             %  "aws-java-sdk"                  % AwsSdkVersion,
+      "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
+      "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion
     )
   )
 
@@ -112,7 +115,7 @@ lazy val heatersApi = (project in file("heaters-api"))
       "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
       "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
       "ch.qos.logback"            %  "logback-classic"               % LogbackVersion,
-      "org.tpolecat"              %% "natchez-xray"                  % natchezVersion,
+      "org.tpolecat"              %% "natchez-xray"                  % NatchezVersion,
       "org.tpolecat"              %% "natchez-http4s"                % "0.3.2"
     )
   ).settings(
@@ -138,10 +141,13 @@ lazy val financeProject = (project in file("finance-api"))
       "org.playframework.anorm"   %% "anorm"                         % AnormVersion,
       "org.jsoup"                 % "jsoup"                          % JsoupVersion,
       "com.webcohesion.ofx4j"     % "ofx4j"                          % Ofx4jVersion,
-      "org.tpolecat"              %% "natchez-xray"                  % natchezVersion,
+      "org.tpolecat"              %% "natchez-xray"                  % NatchezVersion,
       "org.tpolecat"              %% "natchez-http4s"                % "0.3.2",
-      "org.xerial"                % "sqlite-jdbc"                     % SqliteJdbcVersion,
-      "org.http4s"                %% "http4s-blaze-client"            % Http4sVersionNext
+      "org.xerial"                % "sqlite-jdbc"                    % SqliteJdbcVersion,
+      "org.http4s"                %% "http4s-blaze-client"           % Http4sVersionNext,
+      "com.amazonaws"             % "aws-java-sdk"                   % AwsSdkVersion,
+      "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
+      "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion
     ),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
   ).settings(

@@ -2,6 +2,7 @@ package sre.api
 package finance
 
 import java.io.File
+import java.nio.file.Path
 import scala.concurrent.duration.FiniteDuration
 import cats.effect._
 import org.http4s.Uri
@@ -40,13 +41,16 @@ case class CMSettings(
   def getOtpSessionFile[F[_]: Sync] = cm.CMOtpSessionFile(otpSession)
 }
 
+case class SetupVolumeSettings(maxKeys: Int)
+
 case class FinanceSettings(
   cm: CMSettings,
-  transactionsDir: File,
+  transactionsDir: Path,
   wageStatements: List[String],
-  s3TransactionsBucket: S3Settings
+  s3TransactionsBucket: S3Settings,
+  setupVolume: SetupVolumeSettings
 ) {
-  def accountsDir: List[File] = transactionsDir.listFiles.toList.filter(_.isDirectory)
+  def accountsDir: List[File] = transactionsDir.toFile.listFiles.toList.filter(_.isDirectory)
 }
 
 case class HttpClientSettings(
@@ -84,14 +88,15 @@ object Settings {
           apkId = Env.getStringOrFail("FINANCE_CM_APKID")
         ),
         wageStatements = Env.getJsonAsOrFail[List[String]]("FINANCE_WAGE_STATEMENTS"),
-        transactionsDir = Env.getFileOrFail("FINANCE_TRANSACTIONS_DIR"),
+        transactionsDir = Env.getPathOrFail("FINANCE_TRANSACTIONS_DIR"),
         s3TransactionsBucket = S3Settings(
           region = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_REGION"),
           bucket = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_BUCKET"),
           publicKey = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_PUBLICKEY"),
           secretKey = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_SECRETKEY"),
           prefix = Env.getString("FINANCE_S3_TRANSACTIONS_PREFIX")
-        )
+        ),
+        setupVolume = SetupVolumeSettings(maxKeys = Env.getIntOrFail("FINANCE_SETUP_VOLUME_MAXKEYS"))
       )
     )
   }

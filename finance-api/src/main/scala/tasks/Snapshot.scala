@@ -30,7 +30,7 @@ object Snapshot extends IOLambda[SnapshotEvent, SnapshotResult] {
     } yield { implicit env =>
         cmClient.fetchAccountsOfxStmTrn() {
           case (accountId, response) =>
-            val accountPath = settings.finance.transactionsDir.toPath.resolve(accountId)
+            val accountPath = settings.finance.transactionsDir.resolve(accountId)
             ofx.OfxStmTrn.persist(is = response.body, accountPath).map(_ => accountPath)
         }.value.map {
           case Right(files) =>
