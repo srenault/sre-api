@@ -18,3 +18,5 @@ sam-local.yml
 scripts/finance-event.json
 scripts/finance.sh
 package.yml
+finance-api/src/test/resources/transactions
+project/metals.sbt

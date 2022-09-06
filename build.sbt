@@ -78,6 +78,7 @@ scalacOptions ++= Seq("-Xlint")
 val Http4sVersionNext = "0.23.10"
 val CirceVersionNext = "0.15.0-M1"
 val FeralVersion = "0.1.0-M1"
+val CatsEffectTestScalaTestVersionNext = "1.4.0"
 val NatchezVersion = "0.1.6"
 val Log4catsVersion = "2.4.0"
 
@@ -147,9 +148,15 @@ lazy val financeProject = (project in file("finance-api"))
       "org.http4s"                %% "http4s-blaze-client"           % Http4sVersionNext,
       "com.amazonaws"             % "aws-java-sdk"                   % AwsSdkVersion,
       "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
-      "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion
+      "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion,
+      "org.scalatest"             %% "scalatest"                     % ScalaTestVersion % "test",
+      "org.typelevel"             %% "cats-effect-testing-scalatest" % CatsEffectTestScalaTestVersionNext % "test"
     ),
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
   ).settings(
-    assemblyJarName in assembly := s"finance-api.jar"
+    assemblyJarName in assembly := s"finance-api.jar",
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    },
   ).dependsOn(commons)

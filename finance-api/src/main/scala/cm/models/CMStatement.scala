@@ -8,6 +8,8 @@ import org.http4s.EntityEncoder
 import org.http4s.circe._
 import io.circe._
 import io.circe.literal._
+import anorm._
+import anorm.SqlParser._
 
 case class CMStatement(
   fitid: String,
@@ -124,4 +126,6 @@ object CMStatement {
         }
     }.toList
   }
+
+  implicit lazy val sqlParser: RowParser[CMStatement] = Macro.namedParser[CMStatement]
 }

@@ -1,6 +1,7 @@
 package sre.api.finance
 package tasks
 
+import java.io.File
 import cats.effect.syntax.all._
 import io.circe.Decoder
 import io.circe.Encoder
@@ -28,9 +29,21 @@ object ResetVolume extends IOLambda[ResetVolumeEvent, ResetVolumeResult] {
       httpClient <- BlazeClientBuilder[IO](global).resource
       cmClient <- cm.CMClient.resource(httpClient, settings)
     } yield { implicit env =>
-        env.event.map { resetVolumeEvent =>
-          Some(ResetVolumeResult())
+        env.event.flatMap { resetVolumeEvent =>
+          deleteRecursively[IO](settings.finance.transactionsDir.toFile).map { _ =>
+            Some(ResetVolumeResult())
+          }
         }
     }
   }
+
+  def deleteRecursively[F[_]](file: File)(implicit F: Sync[F]): F[Unit] =
+    F.blocking {
+      if (file.isDirectory) {
+        file.listFiles.foreach(f => deleteRecursively(f))
+      }
+      if (file.exists && !file.delete) {
+        throw new Exception(s"Unable to delete ${file.getAbsolutePath}")
+      }
+    }
 }

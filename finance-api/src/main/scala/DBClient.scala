@@ -7,8 +7,11 @@ import java.time._
 import java.sql._
 import anorm._
 import analytics.{ PeriodIndex, CompletePeriodIndex }
+import cm.CMStatement
 
 case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
+
+  private val LIMIT_STATEMENTS = 1000
 
   import DBClient.Ordering
 
@@ -82,6 +85,15 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
       }
     }
 
+  def selectLastPeriod(): F[Option[CompletePeriodIndex]] = {
+    selectPeriodIndexes(
+      maybeBeforePeriod = None,
+      maybeAfterPeriod = None,
+      limit = 1,
+      yearMonthOrdering = Ordering.DESC
+    ).map(_.headOption)
+  }
+
   def countPeriodIndexes(maybeBeforePeriod: Option[YearMonth] = None, maybeAfterPeriod: Option[YearMonth] = None): F[Long] =
     F.blocking {
       try {
@@ -125,6 +137,44 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
           throw e
       }
     }
+
+  def insertStatement(statement: CMStatement): F[Unit] =
+    F.blocking {
+      SQL"""INSERT INTO FINANCE_TRANSACTIONS(fitid, accountid, date, amount, label, balance, downloadedat, pos, accurateBalance)
+            values (
+              ${statement.fitid},
+              ${statement.accountId},
+              ${utc(statement.date)},
+              ${statement.amount},
+              ${statement.label},
+              ${statement.balance},
+              ${statement.downloadedAt},
+              ${statement.pos},
+              ${statement.accurateBalance}
+            )""".executeUpdate()
+    }
+
+  def selectStatements(maybeAfterDate: Option[LocalDate] = None, limit: Int = LIMIT_STATEMENTS, ordering: Ordering.Value = Ordering.DESC): F[List[CMStatement]] =
+    F.blocking {
+      maybeAfterDate match {
+        case Some(afterPeriodDate) =>
+          SQL(s"SELECT * FROM FINANCE_TRANSACTIONS WHERE date > {afterPeriodDate} ORDER BY date ${ordering} LIMIT {limit}")
+            .on("afterPeriodDate" -> utc(afterPeriodDate))
+            .on("limit" -> limit)
+            .as(CMStatement.sqlParser.*)
+
+        case None =>
+          SQL(s"SELECT * FROM FINANCE_TRANSACTIONS ORDER BY date ${ordering} LIMIT {limit}")
+            .on("limit" -> limit)
+            .as(CMStatement.sqlParser.*)
+      }
+    }
+
+  def selectStatementsByAccountId(accountId: String, maybeAfterDate: Option[LocalDate] = None, limit: Int = LIMIT_STATEMENTS, ordering: Ordering.Value = Ordering.DESC): F[List[CMStatement]] =
+    F.blocking {
+      SQL(s"SELECT * FROM FINANCE_TRANSACTIONS WHERE accountid = ${accountId} ORDER BY date ${ordering} LIMIT {limit}")
+        .on("accountId" -> accountId).as(CMStatement.sqlParser.*)
+    }
 }
 
 object DBClient {
@@ -143,8 +193,19 @@ object DBClient {
             wagestatements TEXT,
             result NUMERIC,
             balancesByAccount TEXT,
-            lastupdate NUMERIC
-    );""".execute()
+            lastupdate NUMERIC);
+
+            CREATE TABLE IF NOT EXISTS FINANCE_TRANSACTIONS (
+            fitid TEXT PRIMARY_KEY,
+            accountid TEXT,
+            date NUMERIC,
+            amount NUMERIC,
+            label TEXT,
+            balance NUMERIC,
+            downloadedat NUMERIC,
+            pos NUMERIC,
+            accuratebalance BOOLEAN);
+      """.execute()
     }
 
   def resource[F[_]: Sync](settings: Settings): Resource[F, DBClient[F]] = {

@@ -6,7 +6,7 @@ import org.http4s._
 import org.http4s.circe._
 import io.circe.literal._
 import io.circe.syntax._
-import cm.CMClient
+import cm._
 import analytics.AnalyticsClient
 
 case class FinanceService[F[_]](
@@ -23,6 +23,13 @@ case class FinanceService[F[_]](
       case GET -> Root / "finance" / "accounts" =>
         WithAccountsOverview() { accountsOverview =>
           Ok(accountsOverview.asJson)
+        }
+
+      case GET -> Root / "accounts" / AccountIdVar(accountId) :? OptionalPeriodDateQueryParamMatcher(maybeValidatedPeriod) =>
+        WithPeriodDate(maybeValidatedPeriod) { maybePeriodDate =>
+          WithAccountState(accountId, maybePeriodDate) { (period, accountState) =>
+            Ok(json"""{ "period": $period , "account": $accountState }""")
+          }
         }
 
       case GET -> Root / "finance" / "analytics" :? OptionalBeforePeriodDateQueryParamMatcher(maybeValidatedBeforePeriod) +& OptionalAfterPeriodDateQueryParamMatcher(maybeValidatedAfterPeriod) =>

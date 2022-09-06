@@ -16,6 +16,8 @@ import analytics.{ AnalyticsClient, Period }
 
 trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
 
+  def settings: Settings
+
   def cmClient: CMClient[F]
 
   def dbClient: DBClient[F]
@@ -66,53 +68,73 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
   }
 
-  protected def handleOtpRequest[A](otpOrResult: EitherT[F, CMOtpRequest, A])(f: A => F[Response[F]])(implicit F: Sync[F]): F[Response[F]] = {
-    otpOrResult.value.flatMap {
-      case Left(otpRequest) =>
-        Ok(json"""{ "otpRequired": $otpRequest }""")
-
-      case Right(result) =>
-        f(result)
-    }
-  }
-
   def WithAccountsOverview()(f: CMAccountsOverview => F[Response[F]])(implicit F: Sync[F]): F[Response[F]] =
-    handleOtpRequest(cmClient.fetchAccountsState()) { accountsState =>
-      val allStatements = accountsState.flatMap(_.statements)
-      analyticsClient.computeCurrentPeriod(allStatements) match {
-        case Some(period) =>
-          val accountsOverview = CMAccountsOverview(period, accountsState.map(_.toOverview))
-          f(accountsOverview)
+    dbClient.selectLastPeriod().flatMap {
+      case Some(lastPeriod) =>
+        dbClient.selectStatements(maybeAfterDate = Some(lastPeriod.endDate)).flatMap { allStatements =>
+          analyticsClient.computeCurrentPeriod(allStatements) match {
+            case Some(period) =>
+              val accounts = allStatements.groupBy(_.accountId).toList.flatMap {
+                case (accountId, statements) =>
+                  settings.finance.cm.accounts.find(_.id == accountId).map { accountSettings =>
+                    CMAccountState(
+                      id = accountId,
+                      `type` = accountSettings.`type`,
+                      label = Some(accountSettings.label),
+                      displayName = Some(accountSettings.label),
+                      statements = statements
+                    ).toOverview
+                  }
+              }
+              f(CMAccountsOverview(period, accounts))
 
-        case None =>
-          NotFound()
-      }
+            case None =>
+              NotFound("No period were found from statements")
+          }
+        }
+      case None =>
+        NotFound("No last period has been found")
     }
 
   def WithAccountState(accountId: String, maybePeriodDate: Option[YearMonth])(f: (Period, CMAccountState) => F[Response[F]])(implicit F: Sync[F]): F[Response[F]] = {
-    maybePeriodDate match {
-      case Some(periodDate) =>
+    val maybeAccountSettings = settings.finance.cm.accounts.find(_.id == accountId)
+
+    (maybeAccountSettings, maybePeriodDate) match {
+      case (None, _) =>
+        NotFound()
+
+      case (_, Some(periodDate)) =>
         analyticsClient.getAccountStateForPeriod(accountId, periodDate).value.flatMap {
           case Some((period, accountState)) =>
             f(period, accountState)
 
           case None =>
-            NotFound()
+            NotFound(s"Not able to get account state for period ${periodDate}")
         }
 
-      case None =>
-        handleOtpRequest(cmClient.fetchAccountsState()) { accountsState =>
-          val allStatements = accountsState.flatMap(_.statements)
-          analyticsClient.computeCurrentPeriod(allStatements) match {
-            case Some(period) =>
-              accountsState.find(_.id === accountId) match {
-                case Some(accountState) => f(period, accountState.forPeriod(period))
-                case None => NotFound()
-              }
+      case (Some(accountSettings), None) =>
+        dbClient.selectLastPeriod().flatMap {
+          case Some(lastPeriod) =>
+            dbClient.selectStatementsByAccountId(accountId, maybeAfterDate = Some(lastPeriod.endDate)).flatMap { statements =>
+              analyticsClient.computeCurrentPeriod(statements) match {
+                case Some(period) =>
+                  val accountState = CMAccountState(
+                    id = accountId,
+                    `type` = accountSettings.`type`,
+                    label = Some(accountSettings.label),
+                    displayName = Some(accountSettings.label),
+                    statements = statements
+                  )
 
-            case None =>
-              NotFound()
-          }
+                  f(period, accountState.forPeriod(period))
+
+                case None =>
+                  NotFound("No period were found from statements")
+              }
+            }
+
+          case None =>
+            NotFound("No last period has been found")
         }
     }
   }
