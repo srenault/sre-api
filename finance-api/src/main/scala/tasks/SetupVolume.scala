@@ -50,9 +50,9 @@ object SetupVolume extends IOLambda[SetupVolumeEvent, SetupVolumeResult] {
       _ <- Logger[IO].info(s"Downloading transactions...")
 
       _ <- listing.objects.map { obj =>
-        val destinationPath = settings.finance.transactionsDir.resolve(obj.getKey)
+        val destinationPath = settings.finance.transactionsDir.resolve(obj.key)
         destinationPath.toFile.mkdirs
-        s3Client.downloadFileTo(obj.getKey, destinationPath)
+        s3Client.downloadFileTo(obj.key, destinationPath)
       }.parSequence
 
       _ <- Logger[IO].info(s"Transactions downloaded [nextContinuationToken=${listing.continuationToken}]")

@@ -35,6 +35,7 @@ class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
           statementsByPeriod.foreach {
             case (period, Some((_, statements))) =>
               val result = statements.foldLeft(0D)(_ + _.amount)
+              println("############> " + period + "\n" + result)
               period.result shouldBe result
 
             case (period, _) =>

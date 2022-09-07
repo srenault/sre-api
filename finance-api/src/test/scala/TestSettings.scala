@@ -14,6 +14,10 @@ object TestSettings {
     }
   }
 
+  private def getResourceAbsolutePath(): String = {
+    getPathFromResource("").toFile.getAbsolutePath()
+  }
+
   private def uri(s: String): Uri = {
     Uri.fromString(s).toOption.getOrElse {
       sys.error(s"Unable to parse ${s} as Uri")
@@ -26,7 +30,7 @@ object TestSettings {
         logRequest = true,
         logResponse = true
       ),
-      db = s"jdbc:sqlite:${getPathFromResource("sre.db").toFile.getAbsolutePath()}",
+      db = s"jdbc:sqlite:${getResourceAbsolutePath()}/sre.db",
       finance = FinanceSettings(
         cm = CMSettings(
           baseUri = uri("https://www.bank.com"),

@@ -93,7 +93,7 @@ lazy val commons = (project in file("commons"))
       "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
       "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
       "org.typelevel"             %% "cats-effect"                   % "3.3.5",
-      "com.amazonaws"             %  "aws-java-sdk"                  % AwsSdkVersion,
+      "software.amazon.awssdk"    % "s3"                             % "2.17.268",
       "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
       "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion
     )
@@ -146,7 +146,6 @@ lazy val financeProject = (project in file("finance-api"))
       "org.tpolecat"              %% "natchez-http4s"                % "0.3.2",
       "org.xerial"                % "sqlite-jdbc"                    % SqliteJdbcVersion,
       "org.http4s"                %% "http4s-blaze-client"           % Http4sVersionNext,
-      "com.amazonaws"             % "aws-java-sdk"                   % AwsSdkVersion,
       "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
       "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion,
       "org.scalatest"             %% "scalatest"                     % ScalaTestVersion % "test",
