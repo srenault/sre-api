@@ -145,7 +145,7 @@ lazy val financeProject = (project in file("finance-api"))
       "org.tpolecat"              %% "natchez-xray"                  % NatchezVersion,
       "org.tpolecat"              %% "natchez-http4s"                % "0.3.2",
       "org.xerial"                % "sqlite-jdbc"                    % SqliteJdbcVersion,
-      "org.http4s"                %% "http4s-blaze-client"           % Http4sVersionNext,
+      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
       "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
       "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion,
       "org.scalatest"             %% "scalatest"                     % ScalaTestVersion % "test",

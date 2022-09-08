@@ -17,7 +17,7 @@ import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
-import org.http4s.client.blaze._
+import org.http4s.ember.client.EmberClientBuilder
 import scala.concurrent.ExecutionContext.global
 import models._
 
@@ -26,7 +26,7 @@ object ResetVolume extends IOLambda[ResetVolumeEvent, ResetVolumeResult] {
 
   def handler: Resource[IO, LambdaEnv[IO, ResetVolumeEvent] => IO[Option[ResetVolumeResult]]] = {
     for {
-      httpClient <- BlazeClientBuilder[IO](global).resource
+      httpClient <- EmberClientBuilder.default[IO].build
       cmClient <- cm.CMClient.resource(httpClient, settings)
     } yield { implicit env =>
         env.event.flatMap { resetVolumeEvent =>

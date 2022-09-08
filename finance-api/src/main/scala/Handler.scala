@@ -15,7 +15,7 @@ import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
-import org.http4s.client.blaze._
+import org.http4s.ember.client.EmberClientBuilder
 import scala.concurrent.ExecutionContext.global
 
 object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructuredResultV2] {
@@ -24,7 +24,7 @@ object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructure
   def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[Option[ApiGatewayProxyStructuredResultV2]]] = {
     for {
       entrypoint <- Resource.eval(Random.scalaUtilRandom[IO]).flatMap(implicit r => XRay.entryPoint[IO]())
-      httpClient <- BlazeClientBuilder[IO](global).resource
+      httpClient <- EmberClientBuilder.default[IO].build
       dbClient <- DBClient.resource[IO](settings)
     } yield { implicit env =>
       TracedHandler(entrypoint) { implicit trace =>
