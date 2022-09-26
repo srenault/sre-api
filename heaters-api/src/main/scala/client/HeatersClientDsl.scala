@@ -6,6 +6,7 @@ import org.http4s._
 import org.http4s.client._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.Http4sClientDsl
+import sre.api.settings.HeatersSettings
 
 trait HeatersClientDsl[F[_]] extends Http4sClientDsl[F] {
 

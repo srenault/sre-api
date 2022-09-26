@@ -48,10 +48,3 @@ case class CMOtpSessionFile[F[_] : Sync](path: Path) {
     Sync[F].blocking(Files.deleteIfExists(path))
   }
 }
-
-object CMOtpSessionFile {
-
-  def apply[F[_]: Sync](path: String): CMOtpSessionFile[F] = {
-    CMOtpSessionFile(Paths.get(path))
-  }
-}

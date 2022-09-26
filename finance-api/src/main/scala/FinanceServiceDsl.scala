@@ -1,4 +1,5 @@
-package sre.api.finance
+package sre.api
+package finance
 
 import java.time.YearMonth
 import java.time.format.DateTimeFormatterBuilder
@@ -13,10 +14,11 @@ import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import cm.{ CMClient, CMAccountState, CMAccountsOverview, CMOtpRequest }
 import analytics.{ AnalyticsClient, Period }
+import settings.FinanceSettings
 
 trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
 
-  def settings: Settings
+  def settings: FinanceSettings
 
   def cmClient: CMClient[F]
 
@@ -76,7 +78,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
             case Some(period) =>
               val accounts = allStatements.groupBy(_.accountId).toList.flatMap {
                 case (accountId, statements) =>
-                  settings.finance.cm.accounts.find(_.id == accountId).map { accountSettings =>
+                  settings.cm.accounts.find(_.id == accountId).map { accountSettings =>
                     CMAccountState(
                       id = accountId,
                       `type` = accountSettings.`type`,
@@ -97,7 +99,7 @@ trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
     }
 
   def WithAccountState(accountId: String, maybePeriodDate: Option[YearMonth])(f: (Period, CMAccountState) => F[Response[F]])(implicit F: Sync[F]): F[Response[F]] = {
-    val maybeAccountSettings = settings.finance.cm.accounts.find(_.id == accountId)
+    val maybeAccountSettings = settings.cm.accounts.find(_.id == accountId)
 
     (maybeAccountSettings, maybePeriodDate) match {
       case (None, _) =>

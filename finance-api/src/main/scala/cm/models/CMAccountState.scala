@@ -7,6 +7,7 @@ import org.http4s.circe._
 import io.circe.Encoder
 import io.circe.generic.semiauto._
 import analytics.Period
+import sre.api.settings.CMAccountSettings
 
 case class CMAccountState(
   id: String,
@@ -54,6 +55,22 @@ object CMAccountState {
       `type` = accountSettings.`type`,
       label = None,
       displayName = Some(accountSettings.label),
+      statements = statements
+    )
+  }
+
+  def apply (
+  id: String,
+  `type`: String,
+  label: Option[String],
+  displayName: Option[String],
+  statements: List[CMStatement]
+  ): CMAccountState = {
+    CMAccountState(
+      id = id,
+      `type` = CMAccountType(`type`),
+      label = label,
+      displayName = displayName,
       statements = statements
     )
   }

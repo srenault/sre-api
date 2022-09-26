@@ -19,11 +19,12 @@ import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
 import org.http4s.ember.client.EmberClientBuilder
 import scala.concurrent.ExecutionContext.global
+import sre.api.settings.FinanceSettings
 import models._
 import analytics.AnalyticsClient
 
 object Reindex extends IOLambda[ReindexEvent, ReindexResult] {
-  lazy val settings: Settings = Settings.build()
+  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
   def handler: Resource[IO, LambdaEnv[IO, ReindexEvent] => IO[Option[ReindexResult]]] = {
     for {
@@ -35,5 +36,5 @@ object Reindex extends IOLambda[ReindexEvent, ReindexResult] {
         Some(ReindexResult(result))
       }
     }
-  } 
+  }
 }

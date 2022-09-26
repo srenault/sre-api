@@ -12,6 +12,7 @@ import cats.implicits._
 import fs2._
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import settings.S3Settings
 
 case class S3ObjectListing(objects: List[S3Object], continuationToken: Option[String])
 

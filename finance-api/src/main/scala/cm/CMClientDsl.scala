@@ -10,6 +10,7 @@ import org.http4s.dsl.io._
 import org.http4s.client._
 import org.http4s.client.dsl.Http4sClientDsl
 import org.slf4j.Logger
+import sre.api.settings.CMSettings
 
 trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 

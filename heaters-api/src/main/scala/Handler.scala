@@ -16,9 +16,10 @@ import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
+import sre.api.settings.HeatersSettings
 
 object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructuredResultV2] {
-  val settings: Settings = Settings.build()
+  val settings: HeatersSettings = HeatersSettings.fromEnv()
 
   def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[Option[ApiGatewayProxyStructuredResultV2]]] = {
     for {
@@ -28,8 +29,8 @@ object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructure
       import cats.effect.unsafe.implicits.global
       TracedHandler(entrypoint) { implicit trace =>
         val tracedHttpClient = NatchezMiddleware.client(httpClient)
-        val heatersClient = HeatersClient(tracedHttpClient, settings.heaters)
-        val service = new HeatersService(heatersClient, settings.heaters)
+        val heatersClient = HeatersClient(tracedHttpClient, settings)
+        val service = new HeatersHttpService(heatersClient, settings)
         ApiGatewayProxyHandler(service.routes)
       }
     }

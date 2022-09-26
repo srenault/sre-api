@@ -6,6 +6,7 @@ import cats.effect._
 import cats.implicits._
 import org.http4s.client._
 import org.http4s.scalaxml._
+import sre.api.settings.HeatersSettings
 
 case class HeatersClient[F[_]: Async](httpClient: Client[F], settings: HeatersSettings) extends HeatersClientDsl[F] {
 

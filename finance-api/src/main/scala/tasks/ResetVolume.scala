@@ -19,10 +19,11 @@ import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
 import org.http4s.ember.client.EmberClientBuilder
 import scala.concurrent.ExecutionContext.global
+import sre.api.settings.FinanceSettings
 import models._
 
 object ResetVolume extends IOLambda[ResetVolumeEvent, ResetVolumeResult] {
-  lazy val settings: Settings = Settings.build()
+  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
   def handler: Resource[IO, LambdaEnv[IO, ResetVolumeEvent] => IO[Option[ResetVolumeResult]]] = {
     for {
@@ -30,7 +31,7 @@ object ResetVolume extends IOLambda[ResetVolumeEvent, ResetVolumeResult] {
       cmClient <- cm.CMClient.resource(httpClient, settings)
     } yield { implicit env =>
         env.event.flatMap { resetVolumeEvent =>
-          deleteRecursively[IO](settings.finance.transactionsDir.toFile).map { _ =>
+          deleteRecursively[IO](settings.transactionsDir.toFile).map { _ =>
             Some(ResetVolumeResult())
           }
         }

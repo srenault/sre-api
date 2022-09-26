@@ -12,6 +12,7 @@ import org.http4s._
 import org.http4s.client._
 import fs2.concurrent.SignallingRef
 import org.slf4j.{LoggerFactory, Logger}
+import sre.api.settings._
 
 case class CMClient[F[_]](
   httpClient: Client[F],
@@ -149,17 +150,17 @@ case class CMClient[F[_]](
 
 object CMClient {
 
-  def resource[F[_] : Async : Concurrent : Parallel](httpClient: Client[F], settings: Settings): Resource[F, CMClient[F]] = {
+  def resource[F[_] : Async : Concurrent : Parallel](httpClient: Client[F], settings: FinanceSettings): Resource[F, CMClient[F]] = {
     val logger = LoggerFactory.getLogger("sre.api.finance.CmClient")
 
-    val otpSessionFile = settings.finance.cm.getOtpSessionFile
+    val otpSessionFile = CMOtpSessionFile(settings.cm.otpSession)
 
     val client = for {
       basicAuthSessionRef <- Ref[F].of[Option[Deferred[F, CMBasicAuthSession]]](None)
 
       maybeValidOptSession <- otpSessionFile.get.map {
         case Left(error) =>
-          logger.warn(s"Unable to restore otp session from ${settings.finance.cm.otpSession}:\n$error")
+          logger.warn(s"Unable to restore otp session from ${settings.cm.otpSession}:\n$error")
           None
 
         case Right(otpSession) =>
@@ -175,7 +176,7 @@ object CMClient {
     } yield {
       CMClient[F](
         httpClient,
-        settings.finance.cm,
+        settings.cm,
         basicAuthSessionRef,
         otpSessionRef,
         otpSessionFile,

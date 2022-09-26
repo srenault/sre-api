@@ -7,16 +7,17 @@ import java.time.temporal.ChronoUnit
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.implicits._
+import sre.api.settings.FinanceSettings
 import cm.CMStatement
 import ofx.{ OfxFile, OfxStmTrn, OfxDir }
 
 case class AnalyticsIndexClient[F[_]](
   dbClient: DBClient[F],
-  settings: Settings
+  settings: FinanceSettings
 )(implicit F: Sync[F]) {
 
   private def isWageStatement(statement: CMStatement): Boolean = {
-    settings.finance.wageStatements.exists(statement.label.contains _)
+    settings.wageStatements.exists(statement.label.contains _)
   }
 
   def computePeriodIndexesFrom(statements: List[CMStatement]): List[PeriodIndex] = {
@@ -26,7 +27,7 @@ case class AnalyticsIndexClient[F[_]](
   }
 
   def computePeriodIndexesFromScratch(): F[List[PeriodIndex]] =
-    settings.finance.accountsDir match {
+    settings.accountsDir match {
       case accountDirs@(accountDir :: _) =>
         val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay)
         computePeriodIndexes(accountDirs, ofxFiles)
@@ -35,7 +36,7 @@ case class AnalyticsIndexClient[F[_]](
     }
 
   def computeLatestPeriodIndexes(nmonths: Int = 4): F[List[PeriodIndex]] =
-    settings.finance.accountsDir match {
+    settings.accountsDir match {
       case accountDirs@(accountDir :: _) =>
         val ofxFiles = OfxDir.listFiles(accountDir).sortBy(-_.date.toEpochDay).take(nmonths)
         ofxFiles.lastOption match {

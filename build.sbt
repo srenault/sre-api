@@ -80,7 +80,9 @@ val CirceVersionNext = "0.15.0-M1"
 val FeralVersion = "0.1.0-M1"
 val CatsEffectTestScalaTestVersionNext = "1.4.0"
 val NatchezVersion = "0.1.6"
+val NatchezHttp4s = "0.3.2"
 val Log4catsVersion = "2.4.0"
+val DeclineVersion = "2.3.0"
 
 lazy val commons = (project in file("commons"))
   .settings(
@@ -99,7 +101,7 @@ lazy val commons = (project in file("commons"))
     )
   )
 
-lazy val heatersApi = (project in file("heaters-api"))
+lazy val heatersProject = (project in file("heaters-api"))
   .settings(
     organization := "sre",
     name := "heaters-api",
@@ -117,7 +119,7 @@ lazy val heatersApi = (project in file("heaters-api"))
       "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
       "ch.qos.logback"            %  "logback-classic"               % LogbackVersion,
       "org.tpolecat"              %% "natchez-xray"                  % NatchezVersion,
-      "org.tpolecat"              %% "natchez-http4s"                % "0.3.2"
+      "org.tpolecat"              %% "natchez-http4s"                % NatchezHttp4s
     )
   ).settings(
     assemblyJarName in assembly := s"heaters-api.jar"
@@ -143,7 +145,7 @@ lazy val financeProject = (project in file("finance-api"))
       "org.jsoup"                 % "jsoup"                          % JsoupVersion,
       "com.webcohesion.ofx4j"     % "ofx4j"                          % Ofx4jVersion,
       "org.tpolecat"              %% "natchez-xray"                  % NatchezVersion,
-      "org.tpolecat"              %% "natchez-http4s"                % "0.3.2",
+      "org.tpolecat"              %% "natchez-http4s"                % NatchezHttp4s,
       "org.xerial"                % "sqlite-jdbc"                    % SqliteJdbcVersion,
       "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
       "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
@@ -159,3 +161,19 @@ lazy val financeProject = (project in file("finance-api"))
       case x => MergeStrategy.first
     },
   ).dependsOn(commons)
+
+lazy val cli = (project in file("cli"))
+  .settings(
+    organization := "sre",
+    name := "cli",
+    version := "0.0.1-SNAPSHOT",
+    scalaVersion := ScalaVersion,
+    libraryDependencies ++= Seq(
+      "com.monovore" %% "decline"        % DeclineVersion,
+      "com.monovore" %% "decline-effect" % DeclineVersion,
+      "io.circe"     %% "circe-parser"   % CirceVersion,
+      "io.circe"     %% "circe-config"   % CirceConfigVersion
+    )
+  ).settings(
+    assemblyJarName in assembly := s"cli.jar"
+  ).dependsOn(financeProject, heatersProject)

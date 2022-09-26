@@ -17,9 +17,10 @@ import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
 import org.http4s.ember.client.EmberClientBuilder
 import scala.concurrent.ExecutionContext.global
+import sre.api.settings.FinanceSettings
 
 object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructuredResultV2] {
-  lazy val settings: Settings = Settings.build()
+  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
   def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[Option[ApiGatewayProxyStructuredResultV2]]] = {
     for {

@@ -21,12 +21,13 @@ import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
 import scala.concurrent.ExecutionContext.global
+import sre.api.settings.FinanceSettings
 import models._
 
 object SetupVolume extends IOLambda[SetupVolumeEvent, SetupVolumeResult] {
-  lazy val settings: Settings = Settings.build()
+  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
-  lazy val s3Client = S3Client[IO](settings.finance.s3TransactionsBucket)
+  lazy val s3Client = S3Client[IO](settings.s3TransactionsBucket)
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
@@ -45,12 +46,12 @@ object SetupVolume extends IOLambda[SetupVolumeEvent, SetupVolumeResult] {
 
       _ <- Logger[IO].info(s"Listing transactions to download [continuationToken=${event.continuationToken}]")
 
-      listing <- s3Client.ls("", settings.finance.setupVolume.maxKeys, event.continuationToken)
+      listing <- s3Client.ls("", settings.setupVolume.maxKeys, event.continuationToken)
 
       _ <- Logger[IO].info(s"Downloading transactions...")
 
       _ <- listing.objects.map { obj =>
-        val destinationPath = settings.finance.transactionsDir.resolve(obj.key)
+        val destinationPath = settings.transactionsDir.resolve(obj.key)
         destinationPath.toFile.mkdirs
         s3Client.downloadFileTo(obj.key, destinationPath)
       }.parSequence

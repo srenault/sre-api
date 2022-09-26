@@ -1,4 +1,5 @@
-package sre.api.finance
+package sre.api
+package finance
 
 import cats.effect._
 import cats.implicits._
@@ -8,11 +9,12 @@ import io.circe.literal._
 import io.circe.syntax._
 import cm._
 import analytics.AnalyticsClient
+import settings.FinanceSettings
 
 case class FinanceService[F[_]](
   cmClient: CMClient[F],
   dbClient: DBClient[F],
-  settings: Settings
+  settings: FinanceSettings
 )(implicit F: Sync[F]) extends FinanceServiceDsl[F] {
 
   lazy val analyticsClient = AnalyticsClient(dbClient, settings)

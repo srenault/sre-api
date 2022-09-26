@@ -1,4 +1,5 @@
-package sre.api.finance
+package sre.api
+package finance
 
 import cats.effect._
 import cats.implicits._
@@ -7,6 +8,7 @@ import java.time._
 import java.sql._
 import anorm._
 import analytics.{ PeriodIndex, CompletePeriodIndex }
+import settings.FinanceSettings
 import cm.CMStatement
 
 case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
@@ -208,7 +210,7 @@ object DBClient {
       """.execute()
     }
 
-  def resource[F[_]: Sync](settings: Settings): Resource[F, DBClient[F]] = {
+  def resource[F[_]: Sync](settings: FinanceSettings): Resource[F, DBClient[F]] = {
     Class.forName("org.sqlite.JDBC")
     implicit val connection = DriverManager.getConnection(settings.db)
     val dbClient = DBClient()

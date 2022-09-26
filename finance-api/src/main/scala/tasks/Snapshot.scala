@@ -18,10 +18,11 @@ import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
 import org.http4s.ember.client.EmberClientBuilder
 import scala.concurrent.ExecutionContext.global
+import sre.api.settings.FinanceSettings
 import models._
 
 object Snapshot extends IOLambda[SnapshotEvent, SnapshotResult] {
-  lazy val settings: Settings = Settings.build()
+  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
   def handler: Resource[IO, LambdaEnv[IO, SnapshotEvent] => IO[Option[SnapshotResult]]] = {
      for {
@@ -30,7 +31,7 @@ object Snapshot extends IOLambda[SnapshotEvent, SnapshotResult] {
     } yield { implicit env =>
         cmClient.fetchAccountsOfxStmTrn() {
           case (accountId, response) =>
-            val accountPath = settings.finance.transactionsDir.resolve(accountId)
+            val accountPath = settings.transactionsDir.resolve(accountId)
             ofx.OfxStmTrn.persist(is = response.body, accountPath).map(_ => accountPath)
         }.value.map {
           case Right(files) =>

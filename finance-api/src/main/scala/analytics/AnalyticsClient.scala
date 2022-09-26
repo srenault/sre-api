@@ -1,16 +1,18 @@
-package sre.api.finance
+package sre.api
+package finance
 package analytics
 
 import java.time.YearMonth
 import cats.data.OptionT
 import cats.effect._
 import cats.implicits._
+import settings.FinanceSettings
 import cm.{ CMAccountState, CMStatement }
 
 case class AnalyticsClient[F[_]](
   indexClient: AnalyticsIndexClient[F],
   dbClient: DBClient[F],
-  settings: Settings
+  settings: FinanceSettings
 )(implicit F: Sync[F]) {
 
   def reindex(fromScratch: Boolean): F[List[PeriodIndex]] = {
@@ -47,7 +49,7 @@ case class AnalyticsClient[F[_]](
 
   def getAccountStateForPeriod(accountId: String, periodDate: YearMonth): OptionT[F, (Period, CMAccountState)] = {
     for {
-      accountSettings <- OptionT(F.pure(settings.finance.cm.accounts.find(_.id == accountId)))
+      accountSettings <- OptionT(F.pure(settings.cm.accounts.find(_.id == accountId)))
 
       periodIndex <- OptionT(dbClient.selectOnePeriodIndex(periodDate))
 
@@ -91,7 +93,7 @@ case class AnalyticsClient[F[_]](
 object AnalyticsClient {
   def apply[F[_]](
     dbClient: DBClient[F],
-    settings: Settings
+    settings: FinanceSettings
   )(implicit F: Sync[F]): AnalyticsClient[F] = {
     val indexClient = AnalyticsIndexClient(dbClient, settings)
     AnalyticsClient(indexClient, dbClient, settings)
