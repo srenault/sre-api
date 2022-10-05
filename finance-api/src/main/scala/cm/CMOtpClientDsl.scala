@@ -66,10 +66,11 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     } yield pendingOtpSession
   }
 
-  private def checkOtpTransaction(transactionId: String)(implicit F: Concurrent[F]): F[Boolean] = {
+  private def checkOtpTransaction(transactionId: String)(implicit F: Concurrent[F], A: Async[F]): F[Boolean] = {
     logger.info(s"Checking OTP status for transaction $transactionId")
     val data = UrlForm("transactionId" -> transactionId)
     val uri = settings.transactionUri
+
     for {
       basicAuthSession <- getOrCreateBasicAuthSession()
       request = POST(data, uri, headers.Cookie(basicAuthSession.idSesCookie))
@@ -120,33 +121,6 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     }
   }
 
-  private def validateOtpTransaction(transactionId: String)(implicit F: Concurrent[F]): F[Unit] = {
-    logger.info(s"Validating OTP for transactionId $transactionId ...")
-    otpSessionRef.access.flatMap {
-      case (value, set) =>
-        value match {
-          case Some(deferredOtpSession) =>
-            deferredOtpSession.get.flatMap {
-              case otpSession: CMPendingOtpSession if otpSession.transactionId === transactionId =>
-                for {
-                  validatedOtpSession <- validateOtpSession(otpSession)
-                  d <- Deferred[F, CMOtpSession]
-                  _ <- d.complete(validatedOtpSession)
-                  result <- set(Some(d))
-                  _ <- otpSessionFile.set(validatedOtpSession)
-                } yield {
-                  logger.info(s"Otp session with transactionId $transactionId validated")
-                  ()
-                }
-
-              case _ => F.pure(())
-            }
-
-          case _ => F.pure(())
-        }
-    }
-  }
-
   private def resetOtpSession()(implicit F: Concurrent[F]): F[Unit] =
     F.pure {
       logger.info(s"Pending OTP session has been reset.")
@@ -173,9 +147,8 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       _ <- otpSessionRef.set(Some(d))
       pendingOtpSession <- startOtpValidation()
       _ <- d.complete(pendingOtpSession)
-      //_ <- checkPeriodicallyOtpTransaction(pendingOtpSession.transactionId)
+      _ <- logger.info(s"A new pending OTP session created with transactionId ${pendingOtpSession.transactionId}")
     } yield {
-      logger.info(s"A new pending OTP session created with transactionId ${pendingOtpSession.transactionId}")
       pendingOtpSession
     }
   }
@@ -194,17 +167,42 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     }
   }
 
-  def checkOtpStatus(transactionId: String)(implicit F: Concurrent[F]): F[CMOtpStatus] = {
+  def checkOtpStatus(transactionId: String)(implicit F: Concurrent[F], A: Async[F]): F[CMOtpStatus] = {
     otpSessionRef.get.flatMap {
       case Some(deferredOtpSession) =>
         deferredOtpSession.get.flatMap {
           case otpSession if otpSession.transactionId === transactionId =>
-            F.pure(otpSession.status)
+            otpSession match {
+              case pendingOtpSession: CMPendingOtpSession =>
+                checkOtpTransaction(transactionId).flatMap {
+                  case true =>
+                    for {
+                      _  <- logger.info(s"OTP validated for transaction $transactionId")
+                      validatedSession <- validateOtpSession(pendingOtpSession)
+                    } yield validatedSession.status
 
-          case _ => F.pure(CMOtpStatus.Unknown(transactionId))
+                  case false =>
+                    logger.info(s"OTP pending for transaction $transactionId").map { _ =>
+                      otpSession.status
+                    }
+                }
+
+              case validOtpSession: CMValidOtpSession =>
+                logger.info(s"OTP session $transactionId is already valid").map { _ =>
+                  validOtpSession.status
+                }
+            }
+
+          case _ =>
+            logger.info(s"OTP session $transactionId is unknown").map { _ =>
+              CMOtpStatus.Unknown(transactionId)
+            }
         }
 
-      case _ => F.pure(CMOtpStatus.Unknown(transactionId))
+      case _ =>
+        logger.info(s"OTP session $transactionId is unknown").map { _ =>
+          CMOtpStatus.Unknown(transactionId)
+        }
     }
   }
 }

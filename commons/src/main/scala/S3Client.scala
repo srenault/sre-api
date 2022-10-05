@@ -16,18 +16,16 @@ import settings.S3Settings
 
 case class S3ObjectListing(objects: List[S3Object], continuationToken: Option[String])
 
-case class S3Client[F[_] : Logger](bucket: String, prefix: Option[String], s3Client: AwsS3Client)(implicit F: Async[F]) {
+case class S3Client[F[_] : Logger](bucket: String, s3Client: AwsS3Client)(implicit F: Async[F]) {
 
-  def ls(key: String, maxKeys: Int, continuationToken: Option[String]): F[S3ObjectListing] = {
-    val dir = prefix.fold(key)(_ + "/" + key)
-
+  def ls(prefix: String, maxKeys: Int, continuationToken: Option[String]): F[S3ObjectListing] = {
     for {
-      _ <- Logger[F].info(s"Listing $dir...")
+      _ <- Logger[F].info(s"Listing $prefix...")
       listing <- F.pure {
         val request = {
           val reqBuilder = ListObjectsV2Request.builder()
             .bucket(bucket)
-            .prefix(dir)
+            .prefix(prefix)
 
           continuationToken.fold(reqBuilder)(reqBuilder.continuationToken(_)).maxKeys(maxKeys).build()
         }
@@ -41,8 +39,7 @@ case class S3Client[F[_] : Logger](bucket: String, prefix: Option[String], s3Cli
     } yield listing
   }
 
-  def downloadFileTo(objectPath: String, destinationPath: Path): F[Unit] = {
-    val key = prefix.fold(objectPath)(_ + "/" + objectPath)
+  def downloadFileTo(key: String, destinationPath: Path): F[Unit] = {
     val req = GetObjectRequest.builder()
       .key(key)
       .bucket(bucket)
@@ -76,6 +73,6 @@ object S3Client {
       .credentialsProvider(credentialsProvider)
       .build()
 
-    S3Client(settings.bucket, settings.prefix, s3Client)
+    S3Client(settings.bucket, s3Client)
   }
 }

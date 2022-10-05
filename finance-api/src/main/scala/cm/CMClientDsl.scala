@@ -9,12 +9,12 @@ import org.http4s.headers._
 import org.http4s.dsl.io._
 import org.http4s.client._
 import org.http4s.client.dsl.Http4sClientDsl
-import org.slf4j.Logger
+import org.typelevel.log4cats.Logger
 import sre.api.settings.CMSettings
 
 trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
-  val logger: Logger
+  val logger: Logger[F]
 
   def httpClient: Client[F]
 
@@ -25,7 +25,6 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
   def otpSessionRef: Ref[F, Option[Deferred[F, CMOtpSession]]]
 
   protected def doBasicAuth()(implicit F: Concurrent[F]): F[CMBasicAuthSession] = {
-
     val body = UrlForm(
       "_cm_user" -> settings.username,
       "_cm_pwd" -> settings.password,
@@ -40,7 +39,8 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
       }
 
       maybeAuthClientStateCookie = maybeValidOtpSession.map(otpSession => headers.Cookie(otpSession.authClientStateCookie))
-
+      _ = println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+      _ = println(maybeAuthClientStateCookie)
       basicAuthSession <- {
         val authenticationRequest = POST(body, settings.authenticationUri, maybeAuthClientStateCookie.toList)
         httpClient.run(authenticationRequest).use { response =>
@@ -70,6 +70,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
   protected def getOrCreateBasicAuthSession()(implicit F: Concurrent[F]): F[CMBasicAuthSession] = {
     for {
       maybeBasicAuthSession <- basicAuthSessionRef.get
+
       basicAuthSession <- maybeBasicAuthSession match {
         case Some(deferredBasicAuthSession) => deferredBasicAuthSession.get
         case None => refreshBasicAuthSession()
@@ -128,7 +129,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
             }
 
             if (hasExpiredBasicAuthSession && retries > 0) {
-              refreshSession().value *> authenticatedFetch(request, retries - 1)(f).value
+              refreshSession().value.flatMap( _ => authenticatedFetch(request, retries - 1)(f).value)
             } else if (hasExpiredBasicAuthSession && retries > 0) {
               sys.error("Unable to refresh cm session")
             } else if (hasExpiredOtpSession) {

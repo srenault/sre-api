@@ -1,6 +1,9 @@
 package sre.api.finance
 package ofx
 
+import io.circe.{ Encoder, Json }
+import io.circe.literal._
+import io.circe.syntax._
 import cats.effect._
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
@@ -92,6 +95,20 @@ object OfxFile {
       case _ => None
     }
   }
+
+  implicit val jsonEncoder: Encoder[OfxFile] = new Encoder[OfxFile] {
+    final def apply(ofxFile: OfxFile): Json = {
+      val path = ofxFile.file.toString
+      val date = ofxFile.date.toString
+
+      json"""
+      {
+        "file": $path,
+        "date": $date
+      }
+      """
+    }
+  }
 }
 
 object OfxDir {
@@ -176,11 +193,14 @@ object OfxStmTrn {
   }
 
   def persist[F[_]: Async](is: fs2.Stream[F, Byte], accountPath: java.nio.file.Path): F[Unit] = {
-      val filename = OfxFile.filename(LocalDate.now)
-      val path = accountPath.resolve(filename)
+    accountPath.toFile.mkdirs
 
-      java.nio.file.Files.deleteIfExists(path)
+    val filename = OfxFile.filename(LocalDate.now)
 
-      is.through(fs2.io.file.writeAll(path, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil)).compile.drain
+    val path = accountPath.resolve(filename)
+
+    java.nio.file.Files.deleteIfExists(path)
+
+    is.through(fs2.io.file.writeAll(path, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil)).compile.drain
   }
 }

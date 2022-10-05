@@ -75,7 +75,7 @@ lazy val server = (project in file("."))
 
 scalacOptions ++= Seq("-Xlint")
 
-val Http4sVersionNext = "0.23.10"
+val Http4sVersionNext = "0.23.12"
 val CirceVersionNext = "0.15.0-M1"
 val FeralVersion = "0.1.0-M1"
 val CatsEffectTestScalaTestVersionNext = "1.4.0"
@@ -113,7 +113,7 @@ lazy val heatersProject = (project in file("heaters-api"))
       "org.http4s"                %% "http4s-scala-xml"              % Http4sVersionNext,
       "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
       "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
-      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
+      "org.http4s"                %% "http4s-blaze-client"           % Http4sVersionNext,
       "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
       "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
       "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
@@ -137,6 +137,7 @@ lazy val financeProject = (project in file("finance-api"))
       "org.http4s"                %% "http4s-scala-xml"              % Http4sVersionNext,
       "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
       "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
+      "org.http4s"                %% "http4s-blaze-client"           % Http4sVersionNext,
       "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
       "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
       "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
@@ -147,7 +148,6 @@ lazy val financeProject = (project in file("finance-api"))
       "org.tpolecat"              %% "natchez-xray"                  % NatchezVersion,
       "org.tpolecat"              %% "natchez-http4s"                % NatchezHttp4s,
       "org.xerial"                % "sqlite-jdbc"                    % SqliteJdbcVersion,
-      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
       "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
       "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion,
       "org.scalatest"             %% "scalatest"                     % ScalaTestVersion % "test",
@@ -169,10 +169,11 @@ lazy val cli = (project in file("cli"))
     version := "0.0.1-SNAPSHOT",
     scalaVersion := ScalaVersion,
     libraryDependencies ++= Seq(
-      "com.monovore" %% "decline"        % DeclineVersion,
-      "com.monovore" %% "decline-effect" % DeclineVersion,
-      "io.circe"     %% "circe-parser"   % CirceVersion,
-      "io.circe"     %% "circe-config"   % CirceConfigVersion
+      "com.monovore" %% "decline"              % DeclineVersion,
+      "com.monovore" %% "decline-effect"       % DeclineVersion,
+      "io.circe"     %% "circe-parser"         % CirceVersion,
+      "io.circe"     %% "circe-config"         % CirceConfigVersion,
+      "org.http4s"   %% "http4s-blaze-client"  % Http4sVersionNext,
     )
   ).settings(
     assemblyJarName in assembly := s"cli.jar"

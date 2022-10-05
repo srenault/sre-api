@@ -8,7 +8,7 @@ case class S3Settings(
   bucket: String,
   publicKey: String,
   secretKey: String,
-  prefix: Option[String]
+  prefix: String
 )
 
 object S3Settings {

@@ -11,17 +11,18 @@ import cats.effect._
 import org.http4s._
 import org.http4s.client._
 import fs2.concurrent.SignallingRef
-import org.slf4j.{LoggerFactory, Logger}
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sre.api.settings._
 
-case class CMClient[F[_]](
+case class CMClient[F[_] : Parallel : Logger](
+  logger: Logger[F],
   httpClient: Client[F],
   settings: CMSettings,
   basicAuthSessionRef: Ref[F, Option[Deferred[F, CMBasicAuthSession]]],
   otpSessionRef: Ref[F, Option[Deferred[F, CMOtpSession]]],
   otpSessionFile: CMOtpSessionFile[F],
-  logger: Logger
-)(implicit F: Concurrent[F], parallel: Parallel[F]) extends CMClientDsl[F] {
+)(implicit F: Concurrent[F]) extends CMClientDsl[F] {
 
   private val FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
@@ -54,11 +55,14 @@ case class CMClient[F[_]](
   }
 
   def fetchAccountsState(): EitherT[F, CMOtpRequest, List[CMAccountState]] = {
-    fetchDownloadForm().flatMap { downloadForm =>
-      downloadForm.inputs.grouped(4).toList.map { group =>
-        EitherT(group.map(fetchAccountStateByInput(_).value).parSequence.map(_.sequence))
-      }.sequence.map(_.flatten)
-    }
+    for {
+      _ <- EitherT.liftT(logger.info(s"Fetching accounts state"))
+      accountsState <- fetchDownloadForm().flatMap { downloadForm =>
+        downloadForm.inputs.grouped(4).toList.map { group =>
+          EitherT(group.map(fetchAccountStateByInput(_).value).parSequence.map(_.sequence))
+        }.sequence.map(_.flatten)
+      }
+    } yield accountsState
   }
 
 
@@ -151,7 +155,7 @@ case class CMClient[F[_]](
 object CMClient {
 
   def resource[F[_] : Async : Concurrent : Parallel](httpClient: Client[F], settings: FinanceSettings): Resource[F, CMClient[F]] = {
-    val logger = LoggerFactory.getLogger("sre.api.finance.CmClient")
+    implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
     val otpSessionFile = CMOtpSessionFile(settings.cm.otpSession)
 
@@ -175,12 +179,12 @@ object CMClient {
       otpSessionRef <- Ref.of(maybeDeferredOptSessionRef)
     } yield {
       CMClient[F](
+        logger,
         httpClient,
         settings.cm,
         basicAuthSessionRef,
         otpSessionRef,
         otpSessionFile,
-        logger
       )
     }
     Resource.eval(client)

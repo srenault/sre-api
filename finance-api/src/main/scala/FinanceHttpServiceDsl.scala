@@ -16,7 +16,7 @@ import cm.{ CMClient, CMAccountState, CMAccountsOverview, CMOtpRequest }
 import analytics.{ AnalyticsClient, Period }
 import settings.FinanceSettings
 
-trait FinanceServiceDsl[F[_]] extends Http4sDsl[F] {
+trait FinanceHttpServiceDsl[F[_]] extends Http4sDsl[F] {
 
   def settings: FinanceSettings
 

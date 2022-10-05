@@ -1,6 +1,10 @@
 package sre.api.finance
 package analytics
 
+import io.circe._
+import io.circe.literal._
+import io.circe.syntax._
+import io.circe.generic.semiauto._
 import java.util.Base64
 import java.time.temporal.ChronoUnit
 import java.time.{ LocalDate, YearMonth }
@@ -88,6 +92,18 @@ object PeriodIndex {
         } else {
           acc + (statement.accountId -> statement.balance)
         }
+    }
+  }
+
+  implicit val jsonEncoder: Encoder[PeriodIndex] = new Encoder[PeriodIndex] {
+    final def apply(periodIndex: PeriodIndex): Json = {
+      periodIndex match {
+        case index: CompletePeriodIndex =>
+          CompletePeriodIndex.jsonEncoder(index)
+
+        case index: IncompletePeriodIndex =>
+          IncompletePeriodIndex.jsonEncoder(index)
+      }
     }
   }
 }
@@ -263,8 +279,9 @@ object CompletePeriodIndex {
         case None =>
           sys.error(s"Invalid period index $yearMonthDate: wageStatements is empty")
       }
-
   }
+
+  implicit val jsonEncoder: Encoder[CompletePeriodIndex] = deriveEncoder[CompletePeriodIndex]
 }
 
 case class IncompletePeriodIndex(
@@ -347,4 +364,6 @@ object IncompletePeriodIndex {
       balancesByAccount = Map.empty
     )
   }
+
+  implicit val jsonEncoder: Encoder[IncompletePeriodIndex] = deriveEncoder[IncompletePeriodIndex]
 }

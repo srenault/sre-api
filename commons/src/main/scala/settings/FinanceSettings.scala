@@ -60,7 +60,7 @@ case class FinanceSettings(
   cm: CMSettings,
   transactionsDir: Path,
   wageStatements: List[String],
-  s3TransactionsBucket: S3Settings,
+  s3: S3Settings,
   setupVolume: SetupVolumeSettings
 ) {
   def accountsDir: List[File] = transactionsDir.toFile.listFiles.toList.filter(_.isDirectory)
@@ -90,12 +90,12 @@ object FinanceSettings {
       ),
       wageStatements = Env.getJsonAsOrFail[List[String]]("FINANCE_WAGE_STATEMENTS"),
       transactionsDir = Env.getPathOrFail("FINANCE_TRANSACTIONS_DIR"),
-      s3TransactionsBucket = S3Settings(
+      s3 = S3Settings(
         region = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_REGION"),
         bucket = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_BUCKET"),
         publicKey = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_PUBLICKEY"),
         secretKey = Env.getStringOrFail("FINANCE_S3_TRANSACTIONS_SECRETKEY"),
-        prefix = Env.getString("FINANCE_S3_TRANSACTIONS_PREFIX")
+        prefix = Env.getString("FINANCE_S3_TRANSACTIONS_PREFIX").getOrElse("")
       ),
       setupVolume = SetupVolumeSettings(maxKeys = Env.getIntOrFail("FINANCE_SETUP_VOLUME_MAXKEYS"))
     )

@@ -50,7 +50,7 @@ object TestSettings {
           "VIR NEW PRISMIC",
           "VIR DDFIP D INDRE ET LOIRE"
         ),
-        s3TransactionsBucket = S3Settings(
+        s3 = S3Settings(
           region = "us-east-1",
           bucket = "test",
           publicKey = "xxxxx",
