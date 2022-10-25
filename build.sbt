@@ -32,7 +32,7 @@ lazy val root = (project in file("."))
     organization := "sre",
     name := projectName,
     version := "0.0.1-SNAPSHOT",
-    scalaVersion := "2.13.8",
+    scalaVersion := "2.13.10",
     libraryDependencies ++= Seq(
       "co.fs2"                    %% "fs2-core"                       % Fs2Version,
       "co.fs2"                    %% "fs2-io"                         % Fs2Version,
