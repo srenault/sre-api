@@ -13,15 +13,15 @@ import org.http4s.circe._
 import io.circe.literal._
 import io.circe.syntax._
 import org.typelevel.log4cats.Logger
-import analytics.{ Period, PeriodIndex }
+import analytics.{Period, PeriodIndex}
 import cm._
 import analytics.AnalyticsClient
 import settings.FinanceSettings
 
-case class FinanceTasks[F[_] : Logger : Parallel](
-  cmClient: CMClient[F],
-  dbClient: DBClient[F],
-  settings: FinanceSettings
+case class FinanceTasks[F[_]: Logger: Parallel](
+    cmClient: CMClient[F],
+    dbClient: DBClient[F],
+    settings: FinanceSettings
 )(implicit F: Async[F]) {
 
   lazy val s3Client = S3Client[F](settings.s3)
@@ -32,10 +32,11 @@ case class FinanceTasks[F[_] : Logger : Parallel](
     def deleteRecursively(file: File): F[Unit] =
       Logger[F].info(s"Deleting ${file.getAbsolutePath}").flatMap { _ =>
         if (file.isDirectory) {
-          file.listFiles.toList.map(f => deleteRecursively(f)).parSequence.map { _ =>
-            if (file.exists && !file.delete) {
-              sys.error(s"Unable to delete ${file.getAbsolutePath}")
-            }
+          file.listFiles.toList.map(f => deleteRecursively(f)).parSequence.map {
+            _ =>
+              if (file.exists && !file.delete) {
+                sys.error(s"Unable to delete ${file.getAbsolutePath}")
+              }
           }
         } else {
           if (file.exists && !file.delete) {
@@ -49,9 +50,13 @@ case class FinanceTasks[F[_] : Logger : Parallel](
     deleteRecursively(settings.transactionsDir.toFile)
   }
 
-  def setupVolume(continuationToken: Option[String] = None): F[Option[String]] = {
+  def setupVolume(
+      continuationToken: Option[String] = None
+  ): F[Option[String]] = {
     for {
-      _ <- Logger[F].info(s"Listing transactions to download [continuationToken=${continuationToken}]")
+      _ <- Logger[F].info(
+        s"Listing transactions to download [continuationToken=${continuationToken}]"
+      )
 
       maxKeys = settings.setupVolume.maxKeys
 
@@ -67,7 +72,9 @@ case class FinanceTasks[F[_] : Logger : Parallel](
         s3Client.downloadFileTo(obj.key, destinationPath)
       }.parSequence
 
-      _ <- Logger[F].info(s"Transactions downloaded [nextContinuationToken=${listing.continuationToken}]")
+      _ <- Logger[F].info(
+        s"Transactions downloaded [nextContinuationToken=${listing.continuationToken}]"
+      )
 
     } yield listing.continuationToken
   }
@@ -76,10 +83,11 @@ case class FinanceTasks[F[_] : Logger : Parallel](
     for {
       _ <- EitherT.liftF(Logger[F].info(s"Refresh current period"))
 
-      files <- cmClient.fetchAccountsOfxStmTrn() {
-        case (accountId, response) =>
-          val accountPath = settings.transactionsDir.resolve(accountId)
-          finance.ofx.OfxStmTrn.persist(is = response.body, accountPath).map(_ => accountPath)
+      files <- cmClient.fetchAccountsOfxStmTrn() { case (accountId, response) =>
+        val accountPath = settings.transactionsDir.resolve(accountId)
+        finance.ofx.OfxStmTrn
+          .persist(is = response.body, accountPath)
+          .map(_ => accountPath)
       }
 
     } yield files

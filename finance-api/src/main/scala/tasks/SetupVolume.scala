@@ -6,7 +6,7 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import cats.Parallel
 import cats.effect.syntax.all._
-import io.circe.{ Decoder, Encoder }
+import io.circe.{Decoder, Encoder}
 import cats.effect._
 import cats.implicits._
 import cats.effect.kernel.Resource
@@ -16,7 +16,7 @@ import feral.lambda.events._
 import feral.lambda.http4s._
 import org.http4s.client.blaze._
 import org.http4s.client._
-import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
+import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
@@ -32,7 +32,9 @@ object SetupVolume extends IOLambda[SetupVolumeEvent, SetupVolumeResult] {
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
-  def handler: Resource[IO, LambdaEnv[IO, SetupVolumeEvent] => IO[Option[SetupVolumeResult]]] = {
+  def handler: Resource[IO, LambdaEnv[IO, SetupVolumeEvent] => IO[
+    Option[SetupVolumeResult]
+  ]] = {
     for {
       httpClient <- BlazeClientBuilder[IO](global).resource
       dbClient <- DBClient.resource[IO](settings)
@@ -42,7 +44,9 @@ object SetupVolume extends IOLambda[SetupVolumeEvent, SetupVolumeResult] {
       for {
         event <- env.event
 
-        nextContinuationToken <- financeTasks.setupVolume(event.continuationToken)
+        nextContinuationToken <- financeTasks.setupVolume(
+          event.continuationToken
+        )
 
       } yield Some(SetupVolumeResult(nextContinuationToken))
     }

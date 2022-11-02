@@ -8,7 +8,7 @@ import cats.effect.std.Random
 import feral.lambda._
 import feral.lambda.events._
 import feral.lambda.http4s._
-import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
+import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.client.blaze._
 import org.http4s.client._
@@ -19,10 +19,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import sre.api.settings.FinanceSettings
 import models._
 
-object ImportStatements extends IOLambda[ImportStatementsEvent, ImportStatementsResult] {
+object ImportStatements
+    extends IOLambda[ImportStatementsEvent, ImportStatementsResult] {
   lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
-  def handler: Resource[IO, LambdaEnv[IO, ImportStatementsEvent] => IO[Option[ImportStatementsResult]]] = {
+  def handler: Resource[IO, LambdaEnv[IO, ImportStatementsEvent] => IO[
+    Option[ImportStatementsResult]
+  ]] = {
     for {
       httpClient <- BlazeClientBuilder[IO](global).resource
       cmClient <- cm.CMClient.resource(httpClient, settings)

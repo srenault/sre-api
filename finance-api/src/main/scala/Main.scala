@@ -3,7 +3,7 @@ package finance
 
 import com.amazonaws.services.lambda.runtime._
 import java.io._
-import java.nio.file.{ Paths, Path }
+import java.nio.file.{Paths, Path}
 import cats.effect._
 import cats.effect.std.Random
 import fs2.text
@@ -25,7 +25,8 @@ object Main extends IOApp {
         def getInvokedFunctionArn(): String = "invokedFunctionArn"
         def getIdentity(): CognitoIdentity = null
         def getClientContext(): ClientContext = null
-        def getRemainingTimeInMillis(): Int = (1000 - System.currentTimeMillis).toInt
+        def getRemainingTimeInMillis(): Int =
+          (1000 - System.currentTimeMillis).toInt
         def getMemoryLimitInMB(): Int = Env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE
         def getLogger(): LambdaLogger = new LambdaLogger() {
           def log(s: String) = {
@@ -46,7 +47,10 @@ object Main extends IOApp {
 
   private def parseArgs(args: List[String]): Map[Symbol, String] = {
     @annotation.tailrec
-    def step(list: List[String], acc: Map[Symbol, String] = Map.empty): Map[Symbol, String] = {
+    def step(
+        list: List[String],
+        acc: Map[Symbol, String] = Map.empty
+    ): Map[Symbol, String] = {
       list match {
         case "--file" :: value :: tail =>
           step(tail, acc + ('file -> value))
@@ -58,7 +62,9 @@ object Main extends IOApp {
     step(args)
   }
 
-  private def validateArgs[A](args: List[String])(success: Path => IO[A])(failure: IO[A]): IO[A] = {
+  private def validateArgs[A](
+      args: List[String]
+  )(success: Path => IO[A])(failure: IO[A]): IO[A] = {
     val parsedArgs = parseArgs(args)
     (for {
       eventPath <- parsedArgs.get('file).map(Paths.get(_))
@@ -74,7 +80,8 @@ object Main extends IOApp {
       .readAll(FS2Path(eventPath.toString))
       .through(text.utf8Decode)
       .through(text.lines)
-      .compile.fold("")(_ +  _)
+      .compile
+      .fold("")(_ + _)
 
     Resource.fromAutoCloseable(eventuallyContent.map { content =>
       new ByteArrayInputStream(content.getBytes("UTF-8"))
@@ -84,21 +91,18 @@ object Main extends IOApp {
   private def buildOutputStream(): Resource[IO, OutputStream] =
     Resource.fromAutoCloseable(IO.blocking(new ByteArrayOutputStream()))
 
-
   override def run(args: List[String]): IO[ExitCode] = {
-    validateArgs(args) {
-      case eventPath =>
-        buildAwsContext().flatMap { awsContext =>
-          (
-            for {
-              is <- buildInputStream(eventPath)
-              os <- buildOutputStream()
-            } yield (is, os)
-          ).use {
-            case (is, os) =>
-              IO.blocking(Handler.handleRequest(is, os, awsContext)).map(_ => ())
-          }
+    validateArgs(args) { case eventPath =>
+      buildAwsContext().flatMap { awsContext =>
+        (
+          for {
+            is <- buildInputStream(eventPath)
+            os <- buildOutputStream()
+          } yield (is, os)
+        ).use { case (is, os) =>
+          IO.blocking(Handler.handleRequest(is, os, awsContext)).map(_ => ())
         }
+      }
     }(printUsage()).as(ExitCode.Success)
   }
 }

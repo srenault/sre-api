@@ -7,7 +7,10 @@ import io.circe._
 import io.circe.literal._
 import sre.api.settings.HeatersSettings
 
-class HeatersService[F[_]: Async](heatersClient: HeatersClient[F], settings: HeatersSettings) {
+class HeatersService[F[_]: Async](
+    heatersClient: HeatersClient[F],
+    settings: HeatersSettings
+) {
 
   def getStatus(): F[SortedSet[ChannelStatus]] =
     heatersClient.getStatus()

@@ -18,55 +18,99 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
 
   def otpSessionFile: CMOtpSessionFile[F]
 
-  private def startOtpValidation()(implicit F: Concurrent[F]): F[CMPendingOtpSession] = {
+  private def startOtpValidation()(implicit
+      F: Concurrent[F]
+  ): F[CMPendingOtpSession] = {
     for {
       basicAuthSession <- getOrCreateBasicAuthSession()
 
-      request = GET(settings.validationUri, headers.Cookie(basicAuthSession.cookies))
+      request = GET(
+        settings.validationUri,
+        headers.Cookie(basicAuthSession.cookies)
+      )
 
       pendingOtpSession <- httpClient.run(request).use { response =>
-
         response.as[String].map { otpPage =>
           val doc = org.jsoup.Jsoup.parse(otpPage)
 
-          val action = doc.select(s"form").asScala.headOption.flatMap(d => Option(d.attributes.get("action"))) getOrElse {
+          val action = doc
+            .select(s"form")
+            .asScala
+            .headOption
+            .flatMap(d => Option(d.attributes.get("action"))) getOrElse {
             sys.error("Unable to get validation form action")
           }
 
-          val otp = doc.select(s"""[name="${CMPendingOtpSession.OTP_HIDDEN_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
+          val otp = doc
+            .select(s"""[name="${CMPendingOtpSession.OTP_HIDDEN_FIELD_ID}"]""")
+            .asScala
+            .headOption
+            .flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get otp value")
           }
 
-          val inAppSendNew1 = doc.select(s"""[name="${CMPendingOtpSession.IN_APP_SEND_NEW1_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
+          val inAppSendNew1 = doc
+            .select(
+              s"""[name="${CMPendingOtpSession.IN_APP_SEND_NEW1_FIELD_ID}"]"""
+            )
+            .asScala
+            .headOption
+            .flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get in app send new 1")
           }
 
-          val inAppSendNew2 = doc.select(s"""[name="${CMPendingOtpSession.IN_APP_SEND_NEW2_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
+          val inAppSendNew2 = doc
+            .select(
+              s"""[name="${CMPendingOtpSession.IN_APP_SEND_NEW2_FIELD_ID}"]"""
+            )
+            .asScala
+            .headOption
+            .flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get in app send new 2")
           }
 
-          val backup = doc.select(s"""[name="${CMPendingOtpSession.GLOBAL_BACKUP_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
+          val backup = doc
+            .select(
+              s"""[name="${CMPendingOtpSession.GLOBAL_BACKUP_FIELD_ID}"]"""
+            )
+            .asScala
+            .headOption
+            .flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get backup value")
           }
 
           val transactionId = {
             val r = "transactionId: '([^']+)".r
-            r.findFirstMatchIn(otpPage).flatMap(m => Option(m.group(1))) getOrElse {
+            r.findFirstMatchIn(otpPage)
+              .flatMap(m => Option(m.group(1))) getOrElse {
               sys.error("Unable to get transaction id")
             }
           }
 
-          val (maybeOtpAuthCookie, otherCookies) = response.cookies.partition(_.name == CMPendingOtpSession.OTPAUTH_COOKIE)
+          val (maybeOtpAuthCookie, otherCookies) = response.cookies
+            .partition(_.name == CMPendingOtpSession.OTPAUTH_COOKIE)
 
-          val otpAuthCookie = maybeOtpAuthCookie.headOption.getOrElse(sys.error("Unable to get otp session"))
+          val otpAuthCookie = maybeOtpAuthCookie.headOption
+            .getOrElse(sys.error("Unable to get otp session"))
 
-          CMPendingOtpSession.create(action, otp, backup, inAppSendNew1, inAppSendNew2, transactionId, otpAuthCookie, otherCookies)
+          CMPendingOtpSession.create(
+            action,
+            otp,
+            backup,
+            inAppSendNew1,
+            inAppSendNew2,
+            transactionId,
+            otpAuthCookie,
+            otherCookies
+          )
         }
       }
     } yield pendingOtpSession
   }
 
-  private def checkOtpTransaction(transactionId: String)(implicit F: Concurrent[F], A: Async[F]): F[Boolean] = {
+  private def checkOtpTransaction(
+      transactionId: String
+  )(implicit F: Concurrent[F], A: Async[F]): F[Boolean] = {
     logger.info(s"Checking OTP status for transaction $transactionId")
     val data = UrlForm("transactionId" -> transactionId)
     val uri = settings.transactionUri
@@ -76,14 +120,19 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       request = POST(data, uri, headers.Cookie(basicAuthSession.idSesCookie))
       xml <- httpClient.expect[Elem](request)
     } yield {
-      val isValidated = (xml \ "transactionState").exists(_.text === "VALIDATED")
+      val isValidated =
+        (xml \ "transactionState").exists(_.text === "VALIDATED")
       val status = (xml \ "code_retour").exists(_.text === "0000")
       isValidated && status
     }
   }
 
-  private def validateOtpSession(pendingOtpSession: CMPendingOtpSession)(implicit F: Concurrent[F]): F[CMValidOtpSession] = {
-    logger.info(s"Validating OTP session for transaction ${pendingOtpSession.transactionId}")
+  private def validateOtpSession(
+      pendingOtpSession: CMPendingOtpSession
+  )(implicit F: Concurrent[F]): F[CMValidOtpSession] = {
+    logger.info(
+      s"Validating OTP session for transaction ${pendingOtpSession.transactionId}"
+    )
 
     for {
       basicAuthSession <- getOrCreateBasicAuthSession()
@@ -110,13 +159,17 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
         httpClient.run(request).use { response =>
           println(response.status)
           response.cookies.foreach(println)
-          val cookie = response.cookies.find(_.name == CMValidOtpSession.AUTH_CLIENT_STATE) getOrElse sys.error("Unable to get otp session")
+          val cookie = response.cookies.find(
+            _.name == CMValidOtpSession.AUTH_CLIENT_STATE
+          ) getOrElse sys.error("Unable to get otp session")
           val validOtpSession = pendingOtpSession.validate(cookie)
           F.pure(validOtpSession)
         }
       }
     } yield {
-      logger.info(s"Otp session for transaction ${pendingOtpSession.transactionId} validated")
+      logger.info(
+        s"Otp session for transaction ${pendingOtpSession.transactionId} validated"
+      )
       validatedOtpSession
     }
   }
@@ -127,8 +180,13 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       otpSessionFile.delete() *> otpSessionRef.set(None)
     }
 
-  protected def isOtpSessionExpired(basicAuthSession: CMBasicAuthSession, otpSession: CMValidOtpSession)(implicit F: Concurrent[F]): F[Boolean] = {
-    val cookieHeader = headers.Cookie(otpSession.authClientStateCookie :: basicAuthSession.cookies)
+  protected def isOtpSessionExpired(
+      basicAuthSession: CMBasicAuthSession,
+      otpSession: CMValidOtpSession
+  )(implicit F: Concurrent[F]): F[Boolean] = {
+    val cookieHeader = headers.Cookie(
+      otpSession.authClientStateCookie :: basicAuthSession.cookies
+    )
     val request = GET(settings.homeUri, cookieHeader)
     httpClient.run(request).use { response =>
       F.pure {
@@ -139,7 +197,9 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
     }
   }
 
-  protected def requestOtpSession()(implicit F: Concurrent[F]): F[CMPendingOtpSession] = {
+  protected def requestOtpSession()(implicit
+      F: Concurrent[F]
+  ): F[CMPendingOtpSession] = {
     logger.info(s"Requesting new cm OTP session ...")
     for {
       _ <- resetOtpSession()
@@ -147,27 +207,35 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
       _ <- otpSessionRef.set(Some(d))
       pendingOtpSession <- startOtpValidation()
       _ <- d.complete(pendingOtpSession)
-      _ <- logger.info(s"A new pending OTP session created with transactionId ${pendingOtpSession.transactionId}")
+      _ <- logger.info(
+        s"A new pending OTP session created with transactionId ${pendingOtpSession.transactionId}"
+      )
     } yield {
       pendingOtpSession
     }
   }
 
-  protected def getOtpSession()(implicit F: Concurrent[F]): F[Option[CMOtpSession]] = {
+  protected def getOtpSession()(implicit
+      F: Concurrent[F]
+  ): F[Option[CMOtpSession]] = {
     otpSessionRef.get.flatMap {
       case Some(deferredOtpsession) => deferredOtpsession.get.map(Option(_))
-      case None => F.pure(None)
+      case None                     => F.pure(None)
     }
   }
 
-  protected def getOrRequestOtpSession()(implicit F: Concurrent[F]): F[CMOtpSession] = {
+  protected def getOrRequestOtpSession()(implicit
+      F: Concurrent[F]
+  ): F[CMOtpSession] = {
     getOtpSession().flatMap {
       case Some(otpSession) => F.pure(otpSession)
-      case None => requestOtpSession().widen[CMOtpSession]
+      case None             => requestOtpSession().widen[CMOtpSession]
     }
   }
 
-  def checkOtpStatus(transactionId: String)(implicit F: Concurrent[F], A: Async[F]): F[CMOtpStatus] = {
+  def checkOtpStatus(
+      transactionId: String
+  )(implicit F: Concurrent[F], A: Async[F]): F[CMOtpStatus] = {
     otpSessionRef.get.flatMap {
       case Some(deferredOtpSession) =>
         deferredOtpSession.get.flatMap {
@@ -177,20 +245,26 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
                 checkOtpTransaction(transactionId).flatMap {
                   case true =>
                     for {
-                      _  <- logger.info(s"OTP validated for transaction $transactionId")
+                      _ <- logger.info(
+                        s"OTP validated for transaction $transactionId"
+                      )
                       validatedSession <- validateOtpSession(pendingOtpSession)
                     } yield validatedSession.status
 
                   case false =>
-                    logger.info(s"OTP pending for transaction $transactionId").map { _ =>
-                      otpSession.status
-                    }
+                    logger
+                      .info(s"OTP pending for transaction $transactionId")
+                      .map { _ =>
+                        otpSession.status
+                      }
                 }
 
               case validOtpSession: CMValidOtpSession =>
-                logger.info(s"OTP session $transactionId is already valid").map { _ =>
-                  validOtpSession.status
-                }
+                logger
+                  .info(s"OTP session $transactionId is already valid")
+                  .map { _ =>
+                    validOtpSession.status
+                  }
             }
 
           case _ =>

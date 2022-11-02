@@ -2,23 +2,23 @@ package sre.api.finance.cm
 
 import java.time.LocalDateTime
 import cats.data.NonEmptyList
-import io.circe.{ Json, Decoder, Encoder, HCursor }
-import org.http4s.{ RequestCookie, ResponseCookie }
+import io.circe.{Json, Decoder, Encoder, HCursor}
+import org.http4s.{RequestCookie, ResponseCookie}
 
 sealed trait CMOtpSession {
   def transactionId: String
   def status: CMOtpStatus
   def isPending: Boolean = status match {
     case session: CMOtpStatus.Pending => true
-    case _ => false
+    case _                            => false
   }
 }
 
 case class CMValidOtpSession(
-  authClientStateCookie: RequestCookie,
-  transactionId: String,
-  requestedAt: LocalDateTime,
-  validatedAt: LocalDateTime
+    authClientStateCookie: RequestCookie,
+    transactionId: String,
+    requestedAt: LocalDateTime,
+    validatedAt: LocalDateTime
 ) extends CMOtpSession {
 
   def status = CMOtpStatus.Validated(transactionId, validatedAt)
@@ -28,61 +28,78 @@ object CMValidOtpSession {
   val AUTH_CLIENT_STATE = "auth_client_state"
 
   def create(
-    authClientStateResponseCookie: ResponseCookie,
-    transactionId: String,
-    requestedAt: LocalDateTime,
-    validatedAt: LocalDateTime
+      authClientStateResponseCookie: ResponseCookie,
+      transactionId: String,
+      requestedAt: LocalDateTime,
+      validatedAt: LocalDateTime
   ): CMValidOtpSession = {
     val authClientStateCookie =
-      RequestCookie(authClientStateResponseCookie.name, authClientStateResponseCookie.content)
-
-    CMValidOtpSession(authClientStateCookie, transactionId, requestedAt, validatedAt)
-  }
-
-  implicit val decoder: Decoder[CMValidOtpSession] = new Decoder[CMValidOtpSession] {
-    final def apply(c: HCursor): Decoder.Result[CMValidOtpSession] =
-      for {
-        key <- c.downField("key").as[String]
-        value <- c.downField("value").as[String]
-        transactionId <- c.downField("transactionId").as[String]
-        requestedAt <- c.downField("requestedAt").as[LocalDateTime]
-        validatedAt <- c.downField("validatedAt").as[LocalDateTime]
-      } yield {
-        val authClientStateResponseCookie = RequestCookie(key, value)
-        CMValidOtpSession(authClientStateResponseCookie, transactionId, requestedAt, validatedAt)
-      }
-  }
-
-  implicit val encoder: Encoder[CMValidOtpSession] = new Encoder[CMValidOtpSession] {
-    final def apply(otpSession: CMValidOtpSession): Json = {
-      Json.obj(
-        "key" -> Json.fromString(otpSession.authClientStateCookie.name),
-        "value" -> Json.fromString(otpSession.authClientStateCookie.content),
-        "transactionId" -> Json.fromString(otpSession.transactionId),
-        "requestedAt" -> Json.fromString(otpSession.requestedAt.toString),
-        "validatedAt" -> Json.fromString(otpSession.validatedAt.toString)
+      RequestCookie(
+        authClientStateResponseCookie.name,
+        authClientStateResponseCookie.content
       )
-    }
+
+    CMValidOtpSession(
+      authClientStateCookie,
+      transactionId,
+      requestedAt,
+      validatedAt
+    )
   }
+
+  implicit val decoder: Decoder[CMValidOtpSession] =
+    new Decoder[CMValidOtpSession] {
+      final def apply(c: HCursor): Decoder.Result[CMValidOtpSession] =
+        for {
+          key <- c.downField("key").as[String]
+          value <- c.downField("value").as[String]
+          transactionId <- c.downField("transactionId").as[String]
+          requestedAt <- c.downField("requestedAt").as[LocalDateTime]
+          validatedAt <- c.downField("validatedAt").as[LocalDateTime]
+        } yield {
+          val authClientStateResponseCookie = RequestCookie(key, value)
+          CMValidOtpSession(
+            authClientStateResponseCookie,
+            transactionId,
+            requestedAt,
+            validatedAt
+          )
+        }
+    }
+
+  implicit val encoder: Encoder[CMValidOtpSession] =
+    new Encoder[CMValidOtpSession] {
+      final def apply(otpSession: CMValidOtpSession): Json = {
+        Json.obj(
+          "key" -> Json.fromString(otpSession.authClientStateCookie.name),
+          "value" -> Json.fromString(otpSession.authClientStateCookie.content),
+          "transactionId" -> Json.fromString(otpSession.transactionId),
+          "requestedAt" -> Json.fromString(otpSession.requestedAt.toString),
+          "validatedAt" -> Json.fromString(otpSession.validatedAt.toString)
+        )
+      }
+    }
 }
 
 case class CMPendingOtpSession(
-  action: String,
-  otpHidden: String,
-  globalBackup: String,
-  inAppSendNew1: String,
-  inAppSendNew2: String,
-  transactionId: String,
-  otpAuthCookie: RequestCookie,
-  otherCookies: List[RequestCookie],
-  requestedAt: LocalDateTime,
+    action: String,
+    otpHidden: String,
+    globalBackup: String,
+    inAppSendNew1: String,
+    inAppSendNew2: String,
+    transactionId: String,
+    otpAuthCookie: RequestCookie,
+    otherCookies: List[RequestCookie],
+    requestedAt: LocalDateTime
 ) extends CMOtpSession {
 
-  def cookies: NonEmptyList[RequestCookie] = NonEmptyList(otpAuthCookie, otherCookies)
+  def cookies: NonEmptyList[RequestCookie] =
+    NonEmptyList(otpAuthCookie, otherCookies)
 
   def status = CMOtpStatus.Pending(transactionId, requestedAt)
 
-  def toOtpRequest(apkId: String) = CMOtpRequest(transactionId, requestedAt, apkId)
+  def toOtpRequest(apkId: String) =
+    CMOtpRequest(transactionId, requestedAt, apkId)
 
   def validate(cookie: ResponseCookie): CMValidOtpSession =
     CMValidOtpSession.create(
@@ -104,14 +121,14 @@ object CMPendingOtpSession {
   val WXF2_CC_FIELD = "_wxf2_cc" -> "fr-FR"
 
   def create(
-    action: String,
-    otpHidden: String,
-    globalBackup: String,
-    inAppSendNew1: String,
-    inAppSendNew2: String,
-    transactionId: String,
-    otpAuthCookie: ResponseCookie,
-    otherCookies: List[ResponseCookie]
+      action: String,
+      otpHidden: String,
+      globalBackup: String,
+      inAppSendNew1: String,
+      inAppSendNew2: String,
+      transactionId: String,
+      otpAuthCookie: ResponseCookie,
+      otherCookies: List[ResponseCookie]
   ): CMPendingOtpSession = {
     CMPendingOtpSession(
       action,
@@ -121,7 +138,7 @@ object CMPendingOtpSession {
       inAppSendNew2,
       transactionId,
       otpAuthCookie = RequestCookie(otpAuthCookie.name, otpAuthCookie.content),
-      otherCookies = otherCookies.map( c => RequestCookie(c.name, c.content)),
+      otherCookies = otherCookies.map(c => RequestCookie(c.name, c.content)),
       requestedAt = LocalDateTime.now
     )
   }

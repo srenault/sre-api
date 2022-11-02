@@ -7,11 +7,11 @@ import io.circe.Encoder
 import io.circe.generic.semiauto._
 
 case class CMAccountOverview(
-  id: String,
-  `type`: CMAccountType,
-  label: Option[String],
-  displayName: Option[String],
-  balance: Float
+    id: String,
+    `type`: CMAccountType,
+    label: Option[String],
+    displayName: Option[String],
+    balance: Float
 )
 
 object CMAccountOverview {
@@ -22,6 +22,7 @@ object CMAccountOverview {
   implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMAccountOverview] =
     jsonEncoderOf[F, CMAccountOverview]
 
-  implicit def entitiesEncoder[F[_]: Sync]: EntityEncoder[F, List[CMAccountOverview]] =
+  implicit def entitiesEncoder[F[_]: Sync]
+      : EntityEncoder[F, List[CMAccountOverview]] =
     jsonEncoderOf[F, List[CMAccountOverview]]
 }

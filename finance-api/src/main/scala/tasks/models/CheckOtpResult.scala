@@ -7,5 +7,5 @@ import sre.api.finance.cm.CMOtpStatus
 final case class CheckOtpResult(status: CMOtpStatus)
 
 object CheckOtpResult {
-    implicit val encoder: Encoder[CheckOtpResult] = deriveEncoder[CheckOtpResult]
+  implicit val encoder: Encoder[CheckOtpResult] = deriveEncoder[CheckOtpResult]
 }

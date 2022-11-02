@@ -1,13 +1,13 @@
 package sre.api.finance
 package ofx
 
-import io.circe.{ Encoder, Json }
+import io.circe.{Encoder, Json}
 import io.circe.literal._
 import io.circe.syntax._
 import cats.effect._
 import java.time.format.DateTimeFormatter
 import java.time.LocalDate
-import java.io.{ File, FileInputStream }
+import java.io.{File, FileInputStream}
 import cm.CMStatement
 
 sealed trait OfxStrTrnType {
@@ -25,7 +25,6 @@ object OfxStrTrnType {
       sys.error(s"Unable to parse TRNTYPE value for $s")
     }
 
-
   case object Debit extends OfxStrTrnType {
     def value = "DEBIT"
   }
@@ -36,19 +35,29 @@ object OfxStrTrnType {
 }
 
 case class OfxStmTrn(
-  fitid: String,
-  `type`: OfxStrTrnType,
-  posted: LocalDate,
-  user: LocalDate,
-  amount: Float,
-  name: String,
-  balance: Float,
-  accurateBalance: Boolean,
-  downloadedAt: LocalDate,
-  pos: Int
+    fitid: String,
+    `type`: OfxStrTrnType,
+    posted: LocalDate,
+    user: LocalDate,
+    amount: Float,
+    name: String,
+    balance: Float,
+    accurateBalance: Boolean,
+    downloadedAt: LocalDate,
+    pos: Int
 ) {
   def toStatement(accountId: String): CMStatement = {
-    CMStatement(fitid, accountId, posted, amount, name, balance, downloadedAt, pos, accurateBalance)
+    CMStatement(
+      fitid,
+      accountId,
+      posted,
+      amount,
+      name,
+      balance,
+      downloadedAt,
+      pos,
+      accurateBalance
+    )
   }
 
   def toStatement(ofxFile: OfxFile): CMStatement = {
@@ -135,7 +144,10 @@ object OfxStmTrn {
       ofxReader.setContentHandler(new DefaultHandler() {
 
         override def onElement(name: String, value: String): Unit = {
-          if (List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "FITID", "NAME").exists(_ == name)) {
+          if (
+            List("TRNTYPE", "DTPOSTED", "DTUSER", "TRNAMT", "FITID", "NAME")
+              .exists(_ == name)
+          ) {
             val updated = stackStatements.pop() :+ value
             stackStatements.push(updated)
           }
@@ -159,10 +171,17 @@ object OfxStmTrn {
       }
 
       stackStatements.toList.zipWithIndex.foldLeft[List[OfxStmTrn]](Nil) {
-        case (acc, (typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil, index)) =>
+        case (
+              acc,
+              (
+                typStr :: postedStr :: userStr :: amountStr :: fitid :: name :: Nil,
+                index
+              )
+            ) =>
           val amount = amountStr.toFloat
           val `type` = OfxStrTrnType(typStr)
-          val posted = LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
+          val posted =
+            LocalDate.parse(postedStr, DateTimeFormatter.BASIC_ISO_DATE)
           val user = LocalDate.parse(userStr, DateTimeFormatter.BASIC_ISO_DATE)
           val balance = acc match {
             case (previousStatement :: _) =>
@@ -192,7 +211,10 @@ object OfxStmTrn {
     }
   }
 
-  def persist[F[_]: Async](is: fs2.Stream[F, Byte], accountPath: java.nio.file.Path): F[Unit] = {
+  def persist[F[_]: Async](
+      is: fs2.Stream[F, Byte],
+      accountPath: java.nio.file.Path
+  ): F[Unit] = {
     accountPath.toFile.mkdirs
 
     val filename = OfxFile.filename(LocalDate.now)
@@ -201,6 +223,10 @@ object OfxStmTrn {
 
     java.nio.file.Files.deleteIfExists(path)
 
-    is.through(fs2.io.file.writeAll(path, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil)).compile.drain
+    is.through(
+      fs2.io.file
+        .writeAll(path, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil)
+    ).compile
+      .drain
   }
 }

@@ -7,7 +7,7 @@ import io.circe.syntax._
 import io.circe.generic.semiauto._
 import java.util.Base64
 import java.time.temporal.ChronoUnit
-import java.time.{ LocalDate, YearMonth }
+import java.time.{LocalDate, YearMonth}
 import io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
 import anorm._
 import anorm.SqlParser._
@@ -31,14 +31,19 @@ sealed trait PeriodIndex {
     wageStatements.exists(_.id == statement.id)
   }
 
-  def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): PeriodIndex
+  def includeStatements(
+      statements: List[CMStatement],
+      partitions: List[OfxFile] = Nil
+  ): PeriodIndex
 
-  def fillMissingBalancesByAccount(previousBalancesByAccount: Map[String, Double]): PeriodIndex
+  def fillMissingBalancesByAccount(
+      previousBalancesByAccount: Map[String, Double]
+  ): PeriodIndex
 
   def includeNewWageStatement(
-    wageStatement: CMStatement,
-    statements: List[CMStatement],
-    partitions: List[OfxFile]
+      wageStatement: CMStatement,
+      statements: List[CMStatement],
+      partitions: List[OfxFile]
   ): PeriodIndex
 
   def isValid: Boolean = {
@@ -47,7 +52,7 @@ sealed trait PeriodIndex {
     nbDays < 40
   }
 
-  def totalBalance: Double = balancesByAccount.foldLeft(0D) {
+  def totalBalance: Double = balancesByAccount.foldLeft(0d) {
     case (acc, (_, amount)) => acc + amount
   }
 }
@@ -70,28 +75,27 @@ object PeriodIndex {
         None
     }
 
-    val (_, dates) = period.groupBy(_.getMonth).maxBy {
-      case (_, dates) => dates.length
+    val (_, dates) = period.groupBy(_.getMonth).maxBy { case (_, dates) =>
+      dates.length
     }
 
     YearMonth.from(dates.head)
   }
 
   def computeResult(statements: List[CMStatement]): Double = {
-    statements.foldLeft(0D)(_ + _.amount)
+    statements.foldLeft(0d)(_ + _.amount)
   }
 
   def computeBalancesByAccount(
-    balancesByAccount: Map[String, Double],
-    statements: List[CMStatement]
+      balancesByAccount: Map[String, Double],
+      statements: List[CMStatement]
   ): Map[String, Double] = {
-    statements.foldLeft(balancesByAccount) {
-      case (acc, statement) =>
-        if (acc.isDefinedAt(statement.accountId)) {
-          acc
-        } else {
-          acc + (statement.accountId -> statement.balance)
-        }
+    statements.foldLeft(balancesByAccount) { case (acc, statement) =>
+      if (acc.isDefinedAt(statement.accountId)) {
+        acc
+      } else {
+        acc + (statement.accountId -> statement.balance)
+      }
     }
   }
 
@@ -109,21 +113,26 @@ object PeriodIndex {
 }
 
 case class CompletePeriodIndex(
-  yearMonth: YearMonth,
-  partitions: List[OfxFile],
-  startDate: LocalDate,
-  endDate: LocalDate,
-  wageStatements: NonEmptyList[CMStatement],
-  result: Double,
-  balancesByAccount: Map[String, Double]
+    yearMonth: YearMonth,
+    partitions: List[OfxFile],
+    startDate: LocalDate,
+    endDate: LocalDate,
+    wageStatements: NonEmptyList[CMStatement],
+    result: Double,
+    balancesByAccount: Map[String, Double]
 ) extends PeriodIndex {
   def maybeEndDate = Some(endDate)
 
   def maybeYearMonth = Some(yearMonth)
 
-  def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): CompletePeriodIndex = {
-    val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
-    val updatedBalancesByAccount = PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
+  def includeStatements(
+      statements: List[CMStatement],
+      partitions: List[OfxFile] = Nil
+  ): CompletePeriodIndex = {
+    val updatedResult: Double =
+      this.result + PeriodIndex.computeResult(statements)
+    val updatedBalancesByAccount =
+      PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
 
     this.copy(
       partitions = (this.partitions ++ partitions).distinct,
@@ -133,12 +142,14 @@ case class CompletePeriodIndex(
   }
 
   def includeNewWageStatement(
-    wageStatement: CMStatement,
-    statements: List[CMStatement],
-    partitions: List[OfxFile]
+      wageStatement: CMStatement,
+      statements: List[CMStatement],
+      partitions: List[OfxFile]
   ): CompletePeriodIndex = {
-    val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
-    val updatedBalancesByAccount = PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
+    val updatedResult: Double =
+      this.result + PeriodIndex.computeResult(statements)
+    val updatedBalancesByAccount =
+      PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
     val updatedWageStatements = wageStatement :: wageStatements
 
     this.copy(
@@ -150,8 +161,12 @@ case class CompletePeriodIndex(
     )
   }
 
-  def fillMissingBalancesByAccount(previousBalancesByAccount: Map[String, Double]): CompletePeriodIndex = {
-    this.copy(balancesByAccount = previousBalancesByAccount ++ this.balancesByAccount)
+  def fillMissingBalancesByAccount(
+      previousBalancesByAccount: Map[String, Double]
+  ): CompletePeriodIndex = {
+    this.copy(balancesByAccount =
+      previousBalancesByAccount ++ this.balancesByAccount
+    )
   }
 
   override def toString(): String = {
@@ -179,10 +194,10 @@ case class CompletePeriodIndex(
 object CompletePeriodIndex {
 
   def apply(
-    partitions: List[OfxFile],
-    startDate: LocalDate,
-    endDate: LocalDate,
-    wageStatements: NonEmptyList[CMStatement]
+      partitions: List[OfxFile],
+      startDate: LocalDate,
+      endDate: LocalDate,
+      wageStatements: NonEmptyList[CMStatement]
   ): CompletePeriodIndex = {
     val yearMonth = PeriodIndex.computeYearMonth(startDate, endDate)
     CompletePeriodIndex(
@@ -213,51 +228,69 @@ object CompletePeriodIndex {
     partitionsStr.split(SEP).toList.map { p =>
       OfxFile.open(decodeBase64(p)) match {
         case Some(file) => file
-        case None => sys.error(s"Unable to find partition file $p")
+        case None       => sys.error(s"Unable to find partition file $p")
       }
     }
   }
 
-  def encodeWageStatements(wageStatements: NonEmptyList[CMStatement]): String = {
-    wageStatements.map(wageStatement => encodeBase64(wageStatement.asJson.noSpaces)).toList.mkString(SEP.toString)
+  def encodeWageStatements(
+      wageStatements: NonEmptyList[CMStatement]
+  ): String = {
+    wageStatements
+      .map(wageStatement => encodeBase64(wageStatement.asJson.noSpaces))
+      .toList
+      .mkString(SEP.toString)
   }
 
   def decodeWageStatements(wageStatementsStr: String): List[CMStatement] = {
-    wageStatementsStr.split(SEP).toList.map { s =>
-      decode[CMStatement](decodeBase64(s)) match {
-        case Left(err) => sys.error(s"Unable to decode $s as CMStatement")
-        case Right(st) => st
+    wageStatementsStr
+      .split(SEP)
+      .toList
+      .map { s =>
+        decode[CMStatement](decodeBase64(s)) match {
+          case Left(err) => sys.error(s"Unable to decode $s as CMStatement")
+          case Right(st) => st
+        }
       }
-    }.toList
+      .toList
   }
 
-  def decodeBalancesByAccount(balancesByAccountStr: String): Map[String, Double] = {
-    balancesByAccountStr.split(SEP).toList.map { s =>
-      s.split(":").toList match {
-        case accountId :: balanceStr :: Nil =>
-          accountId -> balanceStr.toDouble
+  def decodeBalancesByAccount(
+      balancesByAccountStr: String
+  ): Map[String, Double] = {
+    balancesByAccountStr
+      .split(SEP)
+      .toList
+      .map { s =>
+        s.split(":").toList match {
+          case accountId :: balanceStr :: Nil =>
+            accountId -> balanceStr.toDouble
 
-        case _ =>
-          sys.error(s"Unable to decode $s as balances by account")
+          case _ =>
+            sys.error(s"Unable to decode $s as balances by account")
+        }
       }
-    }.toMap
+      .toMap
   }
 
-  def encodeBalancesByAccount(balancesByAccount: Map[String, Double]): String = {
-    balancesByAccount.map {
-      case (accountId, balance) =>
+  def encodeBalancesByAccount(
+      balancesByAccount: Map[String, Double]
+  ): String = {
+    balancesByAccount
+      .map { case (accountId, balance) =>
         s"${accountId}:${balance}"
-    }.mkString(SEP.toString)
+      }
+      .mkString(SEP.toString)
   }
 
   implicit lazy val parser: RowParser[CompletePeriodIndex] = (
     get[LocalDate]("yearMonth") ~
-    get[LocalDate]("startdate") ~
-    get[LocalDate]("enddate") ~
-    get[String]("partitions") ~
-    get[String]("wagestatements") ~
-    get[Double]("result") ~
-    get[String]("balancesByAccount")
+      get[LocalDate]("startdate") ~
+      get[LocalDate]("enddate") ~
+      get[String]("partitions") ~
+      get[String]("wagestatements") ~
+      get[Double]("result") ~
+      get[String]("balancesByAccount")
   ) map {
     case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ result ~ balancesByAccountStr =>
       val balancesByAccount = decodeBalancesByAccount(balancesByAccountStr)
@@ -277,27 +310,35 @@ object CompletePeriodIndex {
           )
 
         case None =>
-          sys.error(s"Invalid period index $yearMonthDate: wageStatements is empty")
+          sys.error(
+            s"Invalid period index $yearMonthDate: wageStatements is empty"
+          )
       }
   }
 
-  implicit val jsonEncoder: Encoder[CompletePeriodIndex] = deriveEncoder[CompletePeriodIndex]
+  implicit val jsonEncoder: Encoder[CompletePeriodIndex] =
+    deriveEncoder[CompletePeriodIndex]
 }
 
 case class IncompletePeriodIndex(
-  partitions: List[OfxFile],
-  startDate: LocalDate,
-  wageStatements: NonEmptyList[CMStatement],
-  result: Double,
-  balancesByAccount: Map[String, Double]
+    partitions: List[OfxFile],
+    startDate: LocalDate,
+    wageStatements: NonEmptyList[CMStatement],
+    result: Double,
+    balancesByAccount: Map[String, Double]
 ) extends PeriodIndex {
   def maybeEndDate = None
 
   def maybeYearMonth = None
 
-  def includeStatements(statements: List[CMStatement], partitions: List[OfxFile] = Nil): IncompletePeriodIndex = {
-    val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
-    val updatedBalancesByAccount = PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
+  def includeStatements(
+      statements: List[CMStatement],
+      partitions: List[OfxFile] = Nil
+  ): IncompletePeriodIndex = {
+    val updatedResult: Double =
+      this.result + PeriodIndex.computeResult(statements)
+    val updatedBalancesByAccount =
+      PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
 
     this.copy(
       partitions = (this.partitions ++ partitions).distinct,
@@ -307,13 +348,15 @@ case class IncompletePeriodIndex(
   }
 
   def includeNewWageStatement(
-    wageStatement: CMStatement,
-    statements: List[CMStatement],
-    partitions: List[OfxFile]
+      wageStatement: CMStatement,
+      statements: List[CMStatement],
+      partitions: List[OfxFile]
   ): IncompletePeriodIndex = {
-    val updatedResult: Double = this.result + PeriodIndex.computeResult(statements)
+    val updatedResult: Double =
+      this.result + PeriodIndex.computeResult(statements)
     val updatedWageStatements = wageStatement :: wageStatements
-    val updatedBalancesByAccount = PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
+    val updatedBalancesByAccount =
+      PeriodIndex.computeBalancesByAccount(balancesByAccount, statements)
 
     this.copy(
       partitions = (this.partitions ++ partitions).distinct,
@@ -324,8 +367,12 @@ case class IncompletePeriodIndex(
     )
   }
 
-  def fillMissingBalancesByAccount(previousBalancesByAccount: Map[String, Double]): IncompletePeriodIndex = {
-    this.copy(balancesByAccount = previousBalancesByAccount ++ this.balancesByAccount)
+  def fillMissingBalancesByAccount(
+      previousBalancesByAccount: Map[String, Double]
+  ): IncompletePeriodIndex = {
+    this.copy(balancesByAccount =
+      previousBalancesByAccount ++ this.balancesByAccount
+    )
   }
 
   override def toString(): String = {
@@ -352,9 +399,9 @@ case class IncompletePeriodIndex(
 object IncompletePeriodIndex {
 
   def apply(
-    partitions: List[OfxFile],
-    startDate: LocalDate,
-    wageStatements: NonEmptyList[CMStatement]
+      partitions: List[OfxFile],
+      startDate: LocalDate,
+      wageStatements: NonEmptyList[CMStatement]
   ): IncompletePeriodIndex = {
     IncompletePeriodIndex(
       partitions,
@@ -365,5 +412,6 @@ object IncompletePeriodIndex {
     )
   }
 
-  implicit val jsonEncoder: Encoder[IncompletePeriodIndex] = deriveEncoder[IncompletePeriodIndex]
+  implicit val jsonEncoder: Encoder[IncompletePeriodIndex] =
+    deriveEncoder[IncompletePeriodIndex]
 }

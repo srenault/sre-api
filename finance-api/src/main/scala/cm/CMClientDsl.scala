@@ -24,7 +24,9 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
   def otpSessionRef: Ref[F, Option[Deferred[F, CMOtpSession]]]
 
-  protected def doBasicAuth()(implicit F: Concurrent[F]): F[CMBasicAuthSession] = {
+  protected def doBasicAuth()(implicit
+      F: Concurrent[F]
+  ): F[CMBasicAuthSession] = {
     val body = UrlForm(
       "_cm_user" -> settings.username,
       "_cm_pwd" -> settings.password,
@@ -35,18 +37,27 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     for {
       maybeValidOtpSession <- getOtpSession().map {
         case Some(otpSession: CMValidOtpSession) => Some(otpSession)
-        case _ => None
+        case _                                   => None
       }
 
-      maybeAuthClientStateCookie = maybeValidOtpSession.map(otpSession => headers.Cookie(otpSession.authClientStateCookie))
+      maybeAuthClientStateCookie = maybeValidOtpSession.map(otpSession =>
+        headers.Cookie(otpSession.authClientStateCookie)
+      )
       _ = println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
       _ = println(maybeAuthClientStateCookie)
       basicAuthSession <- {
-        val authenticationRequest = POST(body, settings.authenticationUri, maybeAuthClientStateCookie.toList)
+        val authenticationRequest = POST(
+          body,
+          settings.authenticationUri,
+          maybeAuthClientStateCookie.toList
+        )
         httpClient.run(authenticationRequest).use { response =>
-          val (maybeIdSesCookie, otherCookies) = response.cookies.partition(_.name == CMBasicAuthSession.IDSES_COOKIE)
-          val idSesCookie = maybeIdSesCookie.headOption.getOrElse(sys.error("Unable to get cm basic auth session"))
-          val cmBasicAuthSession = CMBasicAuthSession.create(idSesCookie, otherCookies)
+          val (maybeIdSesCookie, otherCookies) = response.cookies
+            .partition(_.name == CMBasicAuthSession.IDSES_COOKIE)
+          val idSesCookie = maybeIdSesCookie.headOption
+            .getOrElse(sys.error("Unable to get cm basic auth session"))
+          val cmBasicAuthSession =
+            CMBasicAuthSession.create(idSesCookie, otherCookies)
           F.pure(cmBasicAuthSession)
         }
       }
@@ -54,7 +65,9 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     } yield basicAuthSession
   }
 
-  private def refreshBasicAuthSession()(implicit F: Concurrent[F]): F[CMBasicAuthSession] = {
+  private def refreshBasicAuthSession()(implicit
+      F: Concurrent[F]
+  ): F[CMBasicAuthSession] = {
     logger.info("Requesting cm basic auth session...")
     for {
       d <- Deferred[F, CMBasicAuthSession]
@@ -67,32 +80,44 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     }
   }
 
-  protected def getOrCreateBasicAuthSession()(implicit F: Concurrent[F]): F[CMBasicAuthSession] = {
+  protected def getOrCreateBasicAuthSession()(implicit
+      F: Concurrent[F]
+  ): F[CMBasicAuthSession] = {
     for {
       maybeBasicAuthSession <- basicAuthSessionRef.get
 
       basicAuthSession <- maybeBasicAuthSession match {
         case Some(deferredBasicAuthSession) => deferredBasicAuthSession.get
-        case None => refreshBasicAuthSession()
+        case None                           => refreshBasicAuthSession()
       }
     } yield basicAuthSession
   }
 
-  private def refreshSession()(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, CMSession] = {
+  private def refreshSession()(implicit
+      F: Concurrent[F]
+  ): EitherT[F, CMOtpRequest, CMSession] = {
     for {
       basicAuthSession <- EitherT.liftF(refreshBasicAuthSession())
 
       currentOtpSession <- EitherT(getOrRequestOtpSession().map {
         case otpSession: CMValidOtpSession => Right(otpSession)
-        case otpSession: CMPendingOtpSession => Left(otpSession.toOtpRequest(settings.apkId))
+        case otpSession: CMPendingOtpSession =>
+          Left(otpSession.toOtpRequest(settings.apkId))
       })
 
-      otpExpired <- EitherT.liftF(isOtpSessionExpired(basicAuthSession, currentOtpSession))
+      otpExpired <- EitherT.liftF(
+        isOtpSessionExpired(basicAuthSession, currentOtpSession)
+      )
 
       otpSession <- (
         if (otpExpired) {
-          EitherT.liftF[F, CMOtpRequest, CMPendingOtpSession](requestOtpSession())
-        }  else EitherT.liftF[F, CMOtpRequest, CMOtpSession](F.pure(currentOtpSession))
+          EitherT.liftF[F, CMOtpRequest, CMPendingOtpSession](
+            requestOtpSession()
+          )
+        } else
+          EitherT.liftF[F, CMOtpRequest, CMOtpSession](
+            F.pure(currentOtpSession)
+          )
       ).widen[CMOtpSession]
 
     } yield CMSession(basicAuthSession, otpSession)
@@ -105,7 +130,9 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
     } yield CMSession(basicAuthSession, otpSession)
   }
 
-  def authenticatedFetch[A](request: Request[F], retries: Int = 1)(f: Response[F] => F[A])(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
+  def authenticatedFetch[A](request: Request[F], retries: Int = 1)(
+      f: Response[F] => F[A]
+  )(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
     logger.info(s"Performing request ${request.uri} with retries = $retries")
 
     EitherT.liftF(getSession()).flatMap {
@@ -120,37 +147,48 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
         EitherT[F, CMOtpRequest, A] {
           httpClient.run(authenticatedRequest).use { response =>
-            val hasExpiredBasicAuthSession = response.headers.get[Location].exists { location =>
-              location.uri == settings.authenticationUri
-            }
+            val hasExpiredBasicAuthSession =
+              response.headers.get[Location].exists { location =>
+                location.uri == settings.authenticationUri
+              }
 
-            val hasExpiredOtpSession = response.headers.get[Location].exists { location =>
-              location.uri.toString.endsWith(settings.validationPath.toString)
-            }
+            val hasExpiredOtpSession =
+              response.headers.get[Location].exists { location =>
+                location.uri.toString.endsWith(settings.validationPath.toString)
+              }
 
             if (hasExpiredBasicAuthSession && retries > 0) {
-              refreshSession().value.flatMap( _ => authenticatedFetch(request, retries - 1)(f).value)
+              refreshSession().value
+                .flatMap(_ => authenticatedFetch(request, retries - 1)(f).value)
             } else if (hasExpiredBasicAuthSession && retries > 0) {
               sys.error("Unable to refresh cm session")
             } else if (hasExpiredOtpSession) {
-              requestOtpSession().map(otpSession => Left(otpSession.toOtpRequest(settings.apkId)))
+              requestOtpSession().map(otpSession =>
+                Left(otpSession.toOtpRequest(settings.apkId))
+              )
             } else if (response.status == Status.Ok) {
               logger.info(s"Request ${request.uri} OK")
               f(response).map(result => Right[CMOtpRequest, A](result))
             } else {
-              sys.error(s"An error occured while performing $authenticatedRequest\n:$response")
+              sys.error(
+                s"An error occured while performing $authenticatedRequest\n:$response"
+              )
             }
           }
         }
     }
   }
 
-  def authenticatedGet[A](uri: Uri)(f: Response[F] => F[A])(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
+  def authenticatedGet[A](uri: Uri)(
+      f: Response[F] => F[A]
+  )(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
     val request = GET(uri)
     authenticatedFetch(request)(f)
   }
 
-  def authenticatedPost[A](uri: Uri, data: UrlForm)(f: Response[F] => F[A])(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
+  def authenticatedPost[A](uri: Uri, data: UrlForm)(
+      f: Response[F] => F[A]
+  )(implicit F: Concurrent[F]): EitherT[F, CMOtpRequest, A] = {
     val request = POST(data, uri)
     authenticatedFetch(request)(f)
   }

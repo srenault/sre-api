@@ -8,10 +8,14 @@ case class CMDownloadForm(action: String, inputs: List[CMAccountInput])
 object CMDownloadForm {
 
   def parse(html: String): Either[String, CMDownloadForm] = {
-    Either.catchNonFatal {
-      val doc = org.jsoup.Jsoup.parse(html)
-      parse(doc)
-    }.left.map(_.getMessage).flatten
+    Either
+      .catchNonFatal {
+        val doc = org.jsoup.Jsoup.parse(html)
+        parse(doc)
+      }
+      .left
+      .map(_.getMessage)
+      .flatten
   }
 
   def parse(doc: org.jsoup.nodes.Document): Either[String, CMDownloadForm] = {
@@ -19,14 +23,14 @@ object CMDownloadForm {
     val formOrError: Either[String, org.jsoup.nodes.Element] =
       doc.select("""[id="P1:F"]""").asScala.headOption match {
         case Some(el) => Right(el)
-        case None => Left("Unable to get download form")
+        case None     => Left("Unable to get download form")
       }
 
     val actionOrError: org.jsoup.nodes.Element => Either[String, String] =
       (form) => {
         Option(form.attributes.get("action")) match {
           case Some(action) => Right(action)
-          case None => Left("Unable to get action")
+          case None         => Left("Unable to get action")
         }
       }
 

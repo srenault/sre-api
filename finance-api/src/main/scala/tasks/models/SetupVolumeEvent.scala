@@ -7,5 +7,6 @@ import sre.api.finance.cm.CMOtpRequest
 final case class SetupVolumeEvent(continuationToken: Option[String])
 
 object SetupVolumeEvent {
-    implicit val decoder: Decoder[SetupVolumeEvent] = deriveDecoder[SetupVolumeEvent]
+  implicit val decoder: Decoder[SetupVolumeEvent] =
+    deriveDecoder[SetupVolumeEvent]
 }

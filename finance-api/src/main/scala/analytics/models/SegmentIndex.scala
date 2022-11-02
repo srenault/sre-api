@@ -7,9 +7,9 @@ import ofx.OfxFile
 import cm.CMStatement
 
 case class SegmentIndex(
-  partitions: Seq[OfxFile],
-  wageStatement: Option[CMStatement],
-  statements: List[CMStatement] //TODO
+    partitions: Seq[OfxFile],
+    wageStatement: Option[CMStatement],
+    statements: List[CMStatement] // TODO
 ) {
   lazy val sortedStatements = statements.sortBy(_.date.toEpochDay)
 

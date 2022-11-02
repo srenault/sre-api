@@ -7,5 +7,6 @@ import sre.api.finance.cm.CMOtpStatus
 final case class SetupVolumeResult(continuationToken: Option[String])
 
 object SetupVolumeResult {
-    implicit val encoder: Encoder[SetupVolumeResult] = deriveEncoder[SetupVolumeResult]
+  implicit val encoder: Encoder[SetupVolumeResult] =
+    deriveEncoder[SetupVolumeResult]
 }

@@ -10,10 +10,10 @@ object CMAccountType {
 
   def apply(id: String): CMAccountType = {
     id match {
-      case id if id == Saving.id => Saving
+      case id if id == Saving.id  => Saving
       case id if id == Current.id => Current
-      case id if id == Joint.id => Joint
-      case _ => Unknown
+      case id if id == Joint.id   => Joint
+      case _                      => Unknown
     }
   }
 

@@ -10,5 +10,6 @@ import sre.api.finance.cm.CMOtpRequest
 final case class ImportStatementsResult(otpRequest: Option[CMOtpRequest])
 
 object ImportStatementsResult {
-  implicit val encoder: Encoder[ImportStatementsResult] = deriveEncoder[ImportStatementsResult]
+  implicit val encoder: Encoder[ImportStatementsResult] =
+    deriveEncoder[ImportStatementsResult]
 }

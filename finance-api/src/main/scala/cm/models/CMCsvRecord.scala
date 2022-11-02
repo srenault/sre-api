@@ -3,11 +3,11 @@ package sre.api.finance.cm
 import java.time.LocalDate
 
 case class CMCsvRecord(
-  date: String,
-  dateValue: String,
-  amount: String,
-  label: String,
-  balance: String
+    date: String,
+    dateValue: String,
+    amount: String,
+    label: String,
+    balance: String
 ) {
   def toStatement(id: String, accountId: String): CMStatement =
     CMCsvRecord.toStatement(id, accountId, this)
@@ -23,7 +23,11 @@ object CMCsvRecord {
   private def parseDateOrFail(s: String): LocalDate =
     LocalDate.parse(s, format)
 
-  def toStatement(id: String, accountId: String, csvRecord: CMCsvRecord): CMStatement = {
+  def toStatement(
+      id: String,
+      accountId: String,
+      csvRecord: CMCsvRecord
+  ): CMStatement = {
     val date = parseDateOrFail(csvRecord.date)
     CMStatement(
       id,
@@ -36,7 +40,7 @@ object CMCsvRecord {
       pos = 0,
       accurateBalance = true
     )
-  } //TODO
+  } // TODO
 
   def parseOrFail(line: String): CMCsvRecord = {
     line.split(";").toList match {

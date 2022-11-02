@@ -1,18 +1,18 @@
 package sre.api.finance.cm
 
 import java.io._
-import java.nio.file.{ Files, Path, Paths }
+import java.nio.file.{Files, Path, Paths}
 import cats.effect._
 import cats.data.OptionT
 import cats.implicits._
 import io.circe.Error
 import io.circe.parser._
 
-case class CMOtpSessionFile[F[_] : Sync](path: Path) {
+case class CMOtpSessionFile[F[_]: Sync](path: Path) {
 
   def ensurePath: Path = {
     val f = path.toFile
-    if(!f.exists) f.createNewFile
+    if (!f.exists) f.createNewFile
     path
   }
 
@@ -41,7 +41,9 @@ case class CMOtpSessionFile[F[_] : Sync](path: Path) {
 
   def set(otpSession: CMValidOtpSession): F[Unit] =
     resourceWriter.use { writer =>
-      Sync[F].blocking(writer.write(CMValidOtpSession.encoder(otpSession).noSpaces))
+      Sync[F].blocking(
+        writer.write(CMValidOtpSession.encoder(otpSession).noSpaces)
+      )
     }
 
   def delete(): F[Boolean] = {

@@ -12,19 +12,27 @@ import feral.lambda.events._
 import feral.lambda.http4s._
 import org.http4s.client.blaze._
 import org.http4s.client._
-import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
+import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
 import sre.api.settings.HeatersSettings
 
-object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructuredResultV2] {
+object Handler
+    extends IOLambda[
+      ApiGatewayProxyEventV2,
+      ApiGatewayProxyStructuredResultV2
+    ] {
   val settings: HeatersSettings = HeatersSettings.fromEnv()
 
-  def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[Option[ApiGatewayProxyStructuredResultV2]]] = {
+  def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[
+    Option[ApiGatewayProxyStructuredResultV2]
+  ]] = {
     for {
-      entrypoint <- Resource.eval(Random.scalaUtilRandom[IO]).flatMap(implicit r => XRay.entryPoint[IO]())
+      entrypoint <- Resource
+        .eval(Random.scalaUtilRandom[IO])
+        .flatMap(implicit r => XRay.entryPoint[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
     } yield { implicit env =>
       import cats.effect.unsafe.implicits.global

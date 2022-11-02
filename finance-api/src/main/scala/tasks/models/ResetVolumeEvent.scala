@@ -7,5 +7,6 @@ import sre.api.finance.cm.CMOtpRequest
 final case class ResetVolumeEvent(continuationToken: Option[String])
 
 object ResetVolumeEvent {
-    implicit val decoder: Decoder[ResetVolumeEvent] = deriveDecoder[ResetVolumeEvent]
+  implicit val decoder: Decoder[ResetVolumeEvent] =
+    deriveDecoder[ResetVolumeEvent]
 }

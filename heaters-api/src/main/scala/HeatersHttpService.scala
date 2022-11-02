@@ -13,7 +13,10 @@ import org.http4s.syntax.header._
 import java.nio.charset.StandardCharsets.UTF_8
 import sre.api.settings.HeatersSettings
 
-class HeatersHttpService[F[_]: Async](heatersClient: HeatersClient[F], settings: HeatersSettings) extends Http4sDsl[F] {
+class HeatersHttpService[F[_]: Async](
+    heatersClient: HeatersClient[F],
+    settings: HeatersSettings
+) extends Http4sDsl[F] {
 
   val heatersService = new HeatersService(heatersClient, settings)
 
@@ -36,7 +39,10 @@ class HeatersHttpService[F[_]: Async](heatersClient: HeatersClient[F], settings:
           case Right(mode) =>
             heatersService.update(channel, mode).flatMap { channels =>
               val json = HeatersHttpService.statusEncoder(channels)
-              Ok(json, `Content-Type`(MediaType.application.json, Charset.`UTF-8`))
+              Ok(
+                json,
+                `Content-Type`(MediaType.application.json, Charset.`UTF-8`)
+              )
             }
 
           case Left(_) =>
@@ -51,9 +57,10 @@ class HeatersHttpService[F[_]: Async](heatersClient: HeatersClient[F], settings:
 
 object HeatersHttpService {
 
-  val statusEncoder: Encoder[SortedSet[ChannelStatus]] = new Encoder[SortedSet[ChannelStatus]] {
-    final def apply(channels: SortedSet[ChannelStatus]): Json = {
-      json"""{ "channels": $channels, "modes": ${Mode.all} }"""
+  val statusEncoder: Encoder[SortedSet[ChannelStatus]] =
+    new Encoder[SortedSet[ChannelStatus]] {
+      final def apply(channels: SortedSet[ChannelStatus]): Json = {
+        json"""{ "channels": $channels, "modes": ${Mode.all} }"""
+      }
     }
-  }
 }

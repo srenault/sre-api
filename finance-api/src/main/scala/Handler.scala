@@ -14,21 +14,29 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.http4s.client.blaze._
 import org.http4s.client._
-import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
+import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
 import sre.api.settings.FinanceSettings
 
-object Handler extends IOLambda[ApiGatewayProxyEventV2, ApiGatewayProxyStructuredResultV2] {
+object Handler
+    extends IOLambda[
+      ApiGatewayProxyEventV2,
+      ApiGatewayProxyStructuredResultV2
+    ] {
   lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
-  def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[Option[ApiGatewayProxyStructuredResultV2]]] = {
+  def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[
+    Option[ApiGatewayProxyStructuredResultV2]
+  ]] = {
     for {
-      entrypoint <- Resource.eval(Random.scalaUtilRandom[IO]).flatMap(implicit r => XRay.entryPoint[IO]())
+      entrypoint <- Resource
+        .eval(Random.scalaUtilRandom[IO])
+        .flatMap(implicit r => XRay.entryPoint[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
       dbClient <- DBClient.resource[IO](settings)
     } yield { implicit env =>

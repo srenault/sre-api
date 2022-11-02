@@ -10,11 +10,11 @@ import analytics.Period
 import sre.api.settings.CMAccountSettings
 
 case class CMAccountState(
-  id: String,
-  `type`: CMAccountType,
-  label: Option[String],
-  displayName: Option[String],
-  statements: List[CMStatement]
+    id: String,
+    `type`: CMAccountType,
+    label: Option[String],
+    displayName: Option[String],
+    statements: List[CMStatement]
 ) {
 
   def forPeriod(period: Period): CMAccountState = {
@@ -24,7 +24,9 @@ case class CMAccountState(
 
     val statementsForPeriod = period.endDate match {
       case Some(endDate) =>
-        statementsAfterStartPeriod.takeWhile(_.date.isBefore(endDate.plusDays(1)))
+        statementsAfterStartPeriod.takeWhile(
+          _.date.isBefore(endDate.plusDays(1))
+        )
       case None =>
         statementsAfterStartPeriod
     }
@@ -49,7 +51,10 @@ case class CMAccountState(
 
 object CMAccountState {
 
-  def apply(accountSettings: CMAccountSettings, statements: List[CMStatement]): CMAccountState = {
+  def apply(
+      accountSettings: CMAccountSettings,
+      statements: List[CMStatement]
+  ): CMAccountState = {
     CMAccountState(
       id = accountSettings.id,
       `type` = accountSettings.`type`,
@@ -59,12 +64,12 @@ object CMAccountState {
     )
   }
 
-  def apply (
-  id: String,
-  `type`: String,
-  label: Option[String],
-  displayName: Option[String],
-  statements: List[CMStatement]
+  def apply(
+      id: String,
+      `type`: String,
+      label: Option[String],
+      displayName: Option[String],
+      statements: List[CMStatement]
   ): CMAccountState = {
     CMAccountState(
       id = id,
@@ -75,8 +80,18 @@ object CMAccountState {
     )
   }
 
-  def unknown(id: String, label: Option[String], statements: List[CMStatement]): CMAccountState = {
-    CMAccountState(id, CMAccountType.Unknown, label, displayName = None, statements)
+  def unknown(
+      id: String,
+      label: Option[String],
+      statements: List[CMStatement]
+  ): CMAccountState = {
+    CMAccountState(
+      id,
+      CMAccountType.Unknown,
+      label,
+      displayName = None,
+      statements
+    )
   }
 
   implicit val encoder: Encoder[CMAccountState] =
@@ -85,6 +100,7 @@ object CMAccountState {
   implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMAccountState] =
     jsonEncoderOf[F, CMAccountState]
 
-  implicit def entitiesEncoder[F[_]: Sync]: EntityEncoder[F, List[CMAccountState]] =
+  implicit def entitiesEncoder[F[_]: Sync]
+      : EntityEncoder[F, List[CMAccountState]] =
     jsonEncoderOf[F, List[CMAccountState]]
 }

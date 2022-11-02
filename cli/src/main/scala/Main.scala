@@ -21,15 +21,19 @@ import sre.api.heaters._
 
 sealed trait SreCmd
 
-object Cli extends CommandIOApp(
-  name = "sre",
-  header = "sreapi command line",
-  version = "0.0.1"
-) {
+object Cli
+    extends CommandIOApp(
+      name = "sre",
+      header = "sreapi command line",
+      version = "0.0.1"
+    ) {
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
-  def heatersHandler(action: HeatersCmd.Action, settings: Settings): IO[ExitCode] = {
+  def heatersHandler(
+      action: HeatersCmd.Action,
+      settings: Settings
+  ): IO[ExitCode] = {
     BlazeClientBuilder[IO](global).resource.use { httpClient =>
       val heatersClient = HeatersClient(httpClient, settings.heaters)
       val service = new HeatersService(heatersClient, settings.heaters)
@@ -51,7 +55,10 @@ object Cli extends CommandIOApp(
     }
   }
 
-  def financeHandler(action: FinanceCmd.Action, settings: Settings): IO[ExitCode] = {
+  def financeHandler(
+      action: FinanceCmd.Action,
+      settings: Settings
+  ): IO[ExitCode] = {
     import sre.api.finance._
     import sre.api.finance.cm._
 
@@ -69,10 +76,11 @@ object Cli extends CommandIOApp(
             tasks.resetVolume().map(_ => ExitCode.Success)
 
           case FinanceCmd.SetupVolumeAction(maybeContinuationToken) =>
-            tasks.setupVolume(maybeContinuationToken).map { maybeNextContinuationToken =>
-              val token = maybeNextContinuationToken.getOrElse("N/A")
-              println(json"""{ "nextContinuationToken": $token }""")
-              ExitCode.Success
+            tasks.setupVolume(maybeContinuationToken).map {
+              maybeNextContinuationToken =>
+                val token = maybeNextContinuationToken.getOrElse("N/A")
+                println(json"""{ "nextContinuationToken": $token }""")
+                ExitCode.Success
             }
 
           case FinanceCmd.ReindexAction(fromScratch) =>
@@ -105,15 +113,20 @@ object Cli extends CommandIOApp(
             }
 
           case FinanceCmd.GetAccountAction(accountId, maybePeriodDate) =>
-            service.getAccountState(accountId, maybePeriodDate).map { accountState =>
-              println(accountState.asJson.spaces4)
-              ExitCode.Success
+            service.getAccountState(accountId, maybePeriodDate).map {
+              accountState =>
+                println(accountState.asJson.spaces4)
+                ExitCode.Success
             }
 
-          case FinanceCmd.GetPeriodsAction(maybeBeforePeriod, maybeAfterPeriod) =>
-            service.getPeriods(maybeBeforePeriod, maybeAfterPeriod).map { periods =>
-              println(periods.asJson.spaces4)
-              ExitCode.Success
+          case FinanceCmd.GetPeriodsAction(
+                maybeBeforePeriod,
+                maybeAfterPeriod
+              ) =>
+            service.getPeriods(maybeBeforePeriod, maybeAfterPeriod).map {
+              periods =>
+                println(periods.asJson.spaces4)
+                ExitCode.Success
             }
 
           case FinanceCmd.GetStatementsForPeriodAction(period) =>
@@ -126,7 +139,8 @@ object Cli extends CommandIOApp(
   }
 
   def main: Opts[IO[ExitCode]] = {
-    val configOpt = Opts.option[Path]("config", help = "Local path to configuration file")
+    val configOpt =
+      Opts.option[Path]("config", help = "Local path to configuration file")
 
     //    configOpt.orNone.map { maybeConfigPath =>
     Settings.load(maybeConfigPath = None) match {
@@ -158,27 +172,34 @@ object FinanceCmd {
   case class CheckOtpAction(transactionId: String) extends Action
   case class ReindexAction(fromScratch: Boolean) extends Action
   case class SetupVolumeAction(continuationToken: Option[String]) extends Action
-  case class GetAccountAction(accountId: String, maybePeriodDate: Option[YearMonth]) extends Action
+  case class GetAccountAction(
+      accountId: String,
+      maybePeriodDate: Option[YearMonth]
+  ) extends Action
   case object GetAccountsAction extends Action
-  case class GetPeriodsAction(maybeBeforePeriod: Option[YearMonth], maybeAfterPeriod: Option[YearMonth]) extends Action
+  case class GetPeriodsAction(
+      maybeBeforePeriod: Option[YearMonth],
+      maybeAfterPeriod: Option[YearMonth]
+  ) extends Action
   case class GetStatementsForPeriodAction(period: YearMonth) extends Action
 
-  implicit val yearMonthArgument: Argument[YearMonth] = new Argument[YearMonth] {
-    def read(str: String) = {
-      Validated
-        .catchNonFatal {
-          val format = new DateTimeFormatterBuilder()
-            .appendPattern("yyyy-MM")
-            .toFormatter();
+  implicit val yearMonthArgument: Argument[YearMonth] =
+    new Argument[YearMonth] {
+      def read(str: String) = {
+        Validated
+          .catchNonFatal {
+            val format = new DateTimeFormatterBuilder()
+              .appendPattern("yyyy-MM")
+              .toFormatter();
 
-          YearMonth.parse(str, format)
-        }
-        .leftMap(t => s"Invalid period date: ${t.getMessage}")
-        .toValidatedNel
+            YearMonth.parse(str, format)
+          }
+          .leftMap(t => s"Invalid period date: ${t.getMessage}")
+          .toValidatedNel
+      }
+
+      def defaultMetavar = "key:value"
     }
-
-    def defaultMetavar = "key:value"
-  }
 
   val resetCmd = Command(
     name = "reset",
@@ -191,9 +212,12 @@ object FinanceCmd {
     name = "setup",
     header = "Setup volume"
   ) {
-    Opts.option[String]("continuationToken", help = "Continuation token").orNone.map { maybeContinuationToken =>
-      SetupVolumeAction(maybeContinuationToken)
-    }
+    Opts
+      .option[String]("continuationToken", help = "Continuation token")
+      .orNone
+      .map { maybeContinuationToken =>
+        SetupVolumeAction(maybeContinuationToken)
+      }
   }
 
   val snapshotCmd = Command(
@@ -207,8 +231,9 @@ object FinanceCmd {
     name = "reindex",
     header = "Reindex"
   ) {
-    Opts.flag("fromScratch", help = "Reindex from scratch").orFalse.map { fromScratch =>
-      ReindexAction(fromScratch)
+    Opts.flag("fromScratch", help = "Reindex from scratch").orFalse.map {
+      fromScratch =>
+        ReindexAction(fromScratch)
     }
   }
 
@@ -226,11 +251,11 @@ object FinanceCmd {
 
     val accountIdOpt = Opts.option[String]("accountId", help = "Account id")
 
-    val periodDateOpt =  Opts.option[YearMonth]("periodDate", help = "Period date").orNone
+    val periodDateOpt =
+      Opts.option[YearMonth]("periodDate", help = "Period date").orNone
 
-    (accountIdOpt, periodDateOpt).mapN {
-      case (accountId, maybePeriodDate) =>
-        GetAccountAction(accountId, maybePeriodDate)
+    (accountIdOpt, periodDateOpt).mapN { case (accountId, maybePeriodDate) =>
+      GetAccountAction(accountId, maybePeriodDate)
     }
   }
 
@@ -238,8 +263,10 @@ object FinanceCmd {
     name = "periods",
     header = "Display periods"
   ) {
-    val beforePeriodOpt = Opts.option[YearMonth]("before", help = "Get periods before").orNone
-    val afterPeriodOpt = Opts.option[YearMonth]("after", help = "Get periods after").orNone
+    val beforePeriodOpt =
+      Opts.option[YearMonth]("before", help = "Get periods before").orNone
+    val afterPeriodOpt =
+      Opts.option[YearMonth]("after", help = "Get periods after").orNone
 
     (beforePeriodOpt, afterPeriodOpt).mapN {
       case (maybeBeforePeriod, maybeAfterPeriod) =>
@@ -270,13 +297,13 @@ object FinanceCmd {
     val statementsForPeriodOpt = Opts.subcommand(statementsForPeriodCmd)
 
     resetOpt orElse
-    setupOpt orElse
-    reindexOpt orElse
-    accountsOpt orElse
-    accountOpt orElse
-    periodsOpt orElse
-    snapshotOpt orElse
-    statementsForPeriodOpt map(FinanceCmd(_))
+      setupOpt orElse
+      reindexOpt orElse
+      accountsOpt orElse
+      accountOpt orElse
+      periodsOpt orElse
+      snapshotOpt orElse
+      statementsForPeriodOpt map (FinanceCmd(_))
   }
 }
 
@@ -299,13 +326,14 @@ object HeatersCmd {
     name = "update",
     header = "Set channel mode"
   ) {
-    val channelOpt = Opts.option[Int]("channel", help = "Channel").mapValidated { i =>
-      if (i >= 0 && i <= 3) {
-        Validated.valid(i)
-      } else {
-        Validated.invalidNel(s"Invalid channel value: $i")
+    val channelOpt =
+      Opts.option[Int]("channel", help = "Channel").mapValidated { i =>
+        if (i >= 0 && i <= 3) {
+          Validated.valid(i)
+        } else {
+          Validated.invalidNel(s"Invalid channel value: $i")
+        }
       }
-    }
 
     val modeOpt = Opts.option[Int]("mode", help = "Mode").mapValidated { i =>
       Mode.get(i) match {
@@ -316,9 +344,8 @@ object HeatersCmd {
       }
     }
 
-    (channelOpt, modeOpt).mapN {
-      case (channel, mode) =>
-        UpdateAction(channel, mode)
+    (channelOpt, modeOpt).mapN { case (channel, mode) =>
+      UpdateAction(channel, mode)
     }
   }
 

@@ -7,12 +7,12 @@ import cats.data.OptionT
 import cats.effect._
 import cats.implicits._
 import settings.FinanceSettings
-import cm.{ CMAccountState, CMStatement }
+import cm.{CMAccountState, CMStatement}
 
 case class AnalyticsClient[F[_]](
-  indexClient: AnalyticsIndexClient[F],
-  dbClient: DBClient[F],
-  settings: FinanceSettings
+    indexClient: AnalyticsIndexClient[F],
+    dbClient: DBClient[F],
+    settings: FinanceSettings
 )(implicit F: Sync[F]) {
 
   def reindex(fromScratch: Boolean): F[List[PeriodIndex]] = {
@@ -27,7 +27,9 @@ case class AnalyticsClient[F[_]](
     }
   }
 
-  def getStatementsForPeriod(periodDate: YearMonth): OptionT[F, (Period, List[CMStatement])] = {
+  def getStatementsForPeriod(
+      periodDate: YearMonth
+  ): OptionT[F, (Period, List[CMStatement])] = {
     for {
       periodIndex <- OptionT(dbClient.selectOnePeriodIndex(periodDate))
 
@@ -36,20 +38,27 @@ case class AnalyticsClient[F[_]](
           .map(f => ofx.OfxStmTrn.load(f).map(f.accountId -> _))
           .sequence
           .map { transactionsByAccount =>
-            CMStatement.merge(transactionsByAccount.map {
-              case (accountId, transactions) =>
-                transactions.map(_.toStatement(accountId))
-            }.flatten).sorted(CMStatement.ORDER_ASC)
-             .dropWhile(_.date.isBefore(periodIndex.startDate))
-             .takeWhile(_.date.isBefore(periodIndex.endDate))
+            CMStatement
+              .merge(transactionsByAccount.map {
+                case (accountId, transactions) =>
+                  transactions.map(_.toStatement(accountId))
+              }.flatten)
+              .sorted(CMStatement.ORDER_ASC)
+              .dropWhile(_.date.isBefore(periodIndex.startDate))
+              .takeWhile(_.date.isBefore(periodIndex.endDate))
           }
       }
     } yield Period(periodIndex) -> statements
   }
 
-  def getAccountStateForPeriod(accountId: String, periodDate: YearMonth): OptionT[F, (Period, CMAccountState)] = {
+  def getAccountStateForPeriod(
+      accountId: String,
+      periodDate: YearMonth
+  ): OptionT[F, (Period, CMAccountState)] = {
     for {
-      accountSettings <- OptionT(F.pure(settings.cm.accounts.find(_.id == accountId)))
+      accountSettings <- OptionT(
+        F.pure(settings.cm.accounts.find(_.id == accountId))
+      )
 
       periodIndex <- OptionT(dbClient.selectOnePeriodIndex(periodDate))
 
@@ -57,12 +66,14 @@ case class AnalyticsClient[F[_]](
         periodIndex.partitions
           .filter(_.accountId == accountId)
           .map(f => ofx.OfxStmTrn.load(f))
-          .sequence.map { ofxStmTrn =>
-            CMStatement.merge(
-              ofxStmTrn
-                .flatten
-                .map(_.toStatement(accountId))
-            ).sorted(CMStatement.ORDER_ASC)
+          .sequence
+          .map { ofxStmTrn =>
+            CMStatement
+              .merge(
+                ofxStmTrn.flatten
+                  .map(_.toStatement(accountId))
+              )
+              .sorted(CMStatement.ORDER_ASC)
               .dropWhile(_.date.isBefore(periodIndex.startDate))
               .takeWhile(_.date.isBefore(periodIndex.endDate))
           }
@@ -72,16 +83,27 @@ case class AnalyticsClient[F[_]](
     }
   }
 
-  def countPeriods(maybeBeforePeriod: Option[YearMonth] = None, maybeAfterPeriod: Option[YearMonth] = None): F[Long] = {
+  def countPeriods(
+      maybeBeforePeriod: Option[YearMonth] = None,
+      maybeAfterPeriod: Option[YearMonth] = None
+  ): F[Long] = {
     dbClient.countPeriodIndexes(maybeBeforePeriod, maybeAfterPeriod)
   }
 
-  def getPeriods(maybeBeforePeriod: Option[YearMonth], maybeAfterPeriod: Option[YearMonth], limit: Int): F[List[Period]] = {
-    val ordering = if (maybeBeforePeriod.isDefined) DBClient.Ordering.DESC else DBClient.Ordering.ASC
+  def getPeriods(
+      maybeBeforePeriod: Option[YearMonth],
+      maybeAfterPeriod: Option[YearMonth],
+      limit: Int
+  ): F[List[Period]] = {
+    val ordering =
+      if (maybeBeforePeriod.isDefined) DBClient.Ordering.DESC
+      else DBClient.Ordering.ASC
 
-    dbClient.selectPeriodIndexes(maybeBeforePeriod, maybeAfterPeriod, limit, ordering).map { periodIndexes =>
-      periodIndexes.map(Period(_)).sortBy(-_.startDate.toEpochDay)
-    }
+    dbClient
+      .selectPeriodIndexes(maybeBeforePeriod, maybeAfterPeriod, limit, ordering)
+      .map { periodIndexes =>
+        periodIndexes.map(Period(_)).sortBy(-_.startDate.toEpochDay)
+      }
   }
 
   def computeCurrentPeriod(statements: List[CMStatement]): Option[Period] = {
@@ -92,8 +114,8 @@ case class AnalyticsClient[F[_]](
 
 object AnalyticsClient {
   def apply[F[_]](
-    dbClient: DBClient[F],
-    settings: FinanceSettings
+      dbClient: DBClient[F],
+      settings: FinanceSettings
   )(implicit F: Sync[F]): AnalyticsClient[F] = {
     val indexClient = AnalyticsIndexClient(dbClient, settings)
     AnalyticsClient(indexClient, dbClient, settings)

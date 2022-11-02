@@ -6,5 +6,6 @@ import io.circe.generic.semiauto._
 final case class ImportStatementsEvent()
 
 object ImportStatementsEvent {
-  implicit val decoder: Decoder[ImportStatementsEvent] = deriveDecoder[ImportStatementsEvent]
+  implicit val decoder: Decoder[ImportStatementsEvent] =
+    deriveDecoder[ImportStatementsEvent]
 }

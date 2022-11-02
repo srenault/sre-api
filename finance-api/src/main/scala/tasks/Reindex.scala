@@ -1,4 +1,3 @@
-
 package sre.api.finance
 package tasks
 
@@ -11,7 +10,7 @@ import cats.effect.std.Random
 import feral.lambda._
 import feral.lambda.events._
 import feral.lambda.http4s._
-import org.http4s.client.middleware.{ RequestLogger, ResponseLogger }
+import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.client.blaze._
 import org.http4s.client._
@@ -28,7 +27,9 @@ object Reindex extends IOLambda[ReindexEvent, ReindexResult] {
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
-  def handler: Resource[IO, LambdaEnv[IO, ReindexEvent] => IO[Option[ReindexResult]]] = {
+  def handler: Resource[IO, LambdaEnv[IO, ReindexEvent] => IO[
+    Option[ReindexResult]
+  ]] = {
     for {
       httpClient <- BlazeClientBuilder[IO](global).resource
       dbClient <- DBClient.resource[IO](settings)

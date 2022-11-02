@@ -7,5 +7,5 @@ import sre.api.finance.cm.CMOtpRequest
 final case class CheckOtpEvent(otpRequest: CMOtpRequest)
 
 object CheckOtpEvent {
-    implicit val decoder: Decoder[CheckOtpEvent] = deriveDecoder[CheckOtpEvent]
+  implicit val decoder: Decoder[CheckOtpEvent] = deriveDecoder[CheckOtpEvent]
 }

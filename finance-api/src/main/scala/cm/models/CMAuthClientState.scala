@@ -1,6 +1,6 @@
 package sre.api.finance.cm
 
-import org.http4s.{ RequestCookie, ResponseCookie }
+import org.http4s.{RequestCookie, ResponseCookie}
 import org.http4s.headers.Cookie
 
 case class CMAuthClientState(cookie: ResponseCookie) {
@@ -10,5 +10,5 @@ case class CMAuthClientState(cookie: ResponseCookie) {
 }
 
 object CMAuthClientState {
-  val id= "auth_client_state"
+  val id = "auth_client_state"
 }

@@ -6,5 +6,5 @@ import io.circe.generic.semiauto._
 final case class SnapshotEvent(fromScratch: Boolean)
 
 object SnapshotEvent {
-    implicit val decoder: Decoder[SnapshotEvent] = deriveDecoder[SnapshotEvent]
+  implicit val decoder: Decoder[SnapshotEvent] = deriveDecoder[SnapshotEvent]
 }

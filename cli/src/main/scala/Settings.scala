@@ -11,8 +11,8 @@ import io.circe.config.syntax._
 import sre.api.settings._
 
 case class Settings(
-  finance: FinanceSettings,
-  heaters: HeatersSettings
+    finance: FinanceSettings,
+    heaters: HeatersSettings
 )
 
 object Settings {

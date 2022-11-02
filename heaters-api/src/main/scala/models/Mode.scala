@@ -34,7 +34,7 @@ object Mode {
   def validate(id: Int): Either[String, Mode] = {
     get(id) match {
       case Some(mode) => Right(mode)
-      case None => Left(s"Unknown mode $id")
+      case None       => Left(s"Unknown mode $id")
     }
   }
 
@@ -70,7 +70,8 @@ object Mode {
 
   implicit val ordering: Ordering[Mode] = Ordering.by(_.id)
 
-  val all: SortedSet[Mode]= SortedSet(Arret, HorsGel, Eco, Confort, ConfortMoins1, ConfortMoins2)
+  val all: SortedSet[Mode] =
+    SortedSet(Arret, HorsGel, Eco, Confort, ConfortMoins1, ConfortMoins2)
 
   implicit val encoder: Encoder[Mode] = new Encoder[Mode] {
     final def apply(mode: Mode): Json = {

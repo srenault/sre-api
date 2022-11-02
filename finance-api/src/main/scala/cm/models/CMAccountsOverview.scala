@@ -9,8 +9,8 @@ import io.circe.generic.semiauto._
 import analytics.Period
 
 case class CMAccountsOverview(
-  period: Period,
-  accounts: List[CMAccountOverview]
+    period: Period,
+    accounts: List[CMAccountOverview]
 )
 
 object CMAccountsOverview {
