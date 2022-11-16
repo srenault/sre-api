@@ -76,8 +76,8 @@ lazy val server = (project in file("."))
 scalacOptions ++= Seq("-Xlint")
 
 val Http4sVersionNext = "0.23.12"
-val CirceVersionNext = "0.15.0-M1"
-val FeralVersion = "0.1.0-M1"
+val CirceVersionNext = "0.14.3"
+val FeralVersion = "0.1.0-M13"
 val CatsEffectTestScalaTestVersionNext = "1.4.0"
 val NatchezVersion = "0.1.6"
 val NatchezHttp4s = "0.3.2"
@@ -122,7 +122,11 @@ lazy val heatersProject = (project in file("heaters-api"))
       "org.tpolecat"              %% "natchez-http4s"                % NatchezHttp4s
     )
   ).settings(
-    assemblyJarName in assembly := s"heaters-api.jar"
+    assemblyJarName in assembly := s"heaters-api.jar",
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    },
   ).dependsOn(commons)
 
 lazy val financeProject = (project in file("finance-api"))
@@ -162,7 +166,7 @@ lazy val financeProject = (project in file("finance-api"))
     },
   ).dependsOn(commons)
 
-lazy val cli = (project in file("cli"))
+lazy val cliProject = (project in file("cli"))
   .settings(
     organization := "sre",
     name := "cli",

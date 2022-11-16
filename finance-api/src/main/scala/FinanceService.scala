@@ -85,8 +85,8 @@ case class FinanceService[F[_]: Logger](
         dbClient.selectLastPeriod().flatMap {
           case Some(lastPeriod) =>
             dbClient
-              .selectStatementsByAccountId(
-                accountId,
+              .selectStatements(
+                maybeAccountId = Some(accountId),
                 maybeAfterDate = Some(lastPeriod.endDate)
               )
               .flatMap { statements =>

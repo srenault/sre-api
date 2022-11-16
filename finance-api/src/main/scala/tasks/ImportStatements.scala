@@ -1,6 +1,8 @@
 package sre.api.finance
 package tasks
 
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import cats.effect.syntax.all._
 import cats.effect._
 import cats.effect.kernel.Resource
@@ -23,14 +25,20 @@ object ImportStatements
     extends IOLambda[ImportStatementsEvent, ImportStatementsResult] {
   lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
+  implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
+
   def handler: Resource[IO, LambdaEnv[IO, ImportStatementsEvent] => IO[
     Option[ImportStatementsResult]
   ]] = {
     for {
       httpClient <- BlazeClientBuilder[IO](global).resource
+      dbClient <- DBClient.resource[IO](settings)
       cmClient <- cm.CMClient.resource(httpClient, settings)
     } yield { implicit env =>
-      ???
+      val financeTasks = new FinanceTasks(cmClient, dbClient, settings)
+      financeTasks.importStatements().value.map { result =>
+        Some(ImportStatementsResult(result.left.toOption))
+      }
     }
   }
 }

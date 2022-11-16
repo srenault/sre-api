@@ -4,7 +4,7 @@ package finance
 import java.nio.file.Path
 import java.io.File
 import java.time.YearMonth
-import cats.Parallel
+import cats.{Parallel, Traverse}
 import cats.data.EitherT
 import cats.effect._
 import cats.implicits._
@@ -30,7 +30,7 @@ case class FinanceTasks[F[_]: Logger: Parallel](
 
   def resetVolume(): F[Unit] = {
     def deleteRecursively(file: File): F[Unit] =
-      Logger[F].info(s"Deleting ${file.getAbsolutePath}").flatMap { _ =>
+      Logger[F].info(s"Deleting ${file.getAbsolutePath}") *> {
         if (file.isDirectory) {
           file.listFiles.toList.map(f => deleteRecursively(f)).parSequence.map {
             _ =>
@@ -102,13 +102,34 @@ case class FinanceTasks[F[_]: Logger: Parallel](
     } yield periods
   }
 
-  def importStatements(): EitherT[F, CMOtpRequest, List[CMAccountState]] = {
+  def importStatements(): EitherT[F, CMOtpRequest, List[CMStatement]] = {
     for {
       _ <- EitherT.liftF(Logger[F].info(s"Import statements"))
 
       accountsState <- cmClient.fetchAccountsState()
 
-    } yield accountsState
+      statements = accountsState.flatMap(_.statements)
+
+      _ <- EitherT.liftF {
+        statements.map(dbClient.insertStatement).sequence
+      }
+
+      maybeLastPeriod <- EitherT.liftF {
+        dbClient.selectLastPeriod().flatMap {
+          case Some(lastPeriod) =>
+            Logger[F]
+              .info(
+                s"Deleting statements before ${lastPeriod.yearMonth.toString}"
+              )
+              .flatMap { _ =>
+                dbClient.deleteStatements(beforePeriod = lastPeriod.yearMonth)
+              }
+
+          case None => F.pure(())
+        }
+      }
+
+    } yield statements
   }
 
   def checkOtpStatus(transactionId: String): F[CMOtpStatus] = {

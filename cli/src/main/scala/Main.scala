@@ -134,6 +134,17 @@ object Cli
               println(statements.asJson.spaces4)
               ExitCode.Success
             }
+
+          case FinanceCmd.ImportStatementsAction =>
+            tasks.importStatements().value.map {
+              case Right(statements) =>
+                println(statements.asJson.spaces4)
+                ExitCode.Success
+
+              case Left(otpRequest) =>
+                println(json"""{ "otpRequest": $otpRequest }""")
+                ExitCode.Success
+            }
         }
     }
   }
@@ -182,6 +193,7 @@ object FinanceCmd {
       maybeAfterPeriod: Option[YearMonth]
   ) extends Action
   case class GetStatementsForPeriodAction(period: YearMonth) extends Action
+  case object ImportStatementsAction extends Action
 
   implicit val yearMonthArgument: Argument[YearMonth] =
     new Argument[YearMonth] {
@@ -283,6 +295,13 @@ object FinanceCmd {
     }
   }
 
+  val importStatementsCmd = Command(
+    name = "importStatements",
+    header = "Import statements"
+  ) {
+    Opts(ImportStatementsAction)
+  }
+
   val cmd = Command(
     name = "finance",
     header = "Finance operations"
@@ -295,6 +314,7 @@ object FinanceCmd {
     val accountOpt = Opts.subcommand(accountCmd)
     val periodsOpt = Opts.subcommand(periodsCmd)
     val statementsForPeriodOpt = Opts.subcommand(statementsForPeriodCmd)
+    val importStatementsOpt = Opts.subcommand(importStatementsCmd)
 
     resetOpt orElse
       setupOpt orElse
@@ -303,7 +323,8 @@ object FinanceCmd {
       accountOpt orElse
       periodsOpt orElse
       snapshotOpt orElse
-      statementsForPeriodOpt map (FinanceCmd(_))
+      statementsForPeriodOpt orElse
+      importStatementsOpt map (FinanceCmd(_))
   }
 }
 

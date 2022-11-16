@@ -24,7 +24,8 @@ object Handler
       ApiGatewayProxyEventV2,
       ApiGatewayProxyStructuredResultV2
     ] {
-  val settings: HeatersSettings = HeatersSettings.fromEnv()
+
+  lazy val settings: HeatersSettings = HeatersSettings.fromEnv()
 
   def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[
     Option[ApiGatewayProxyStructuredResultV2]
@@ -35,7 +36,6 @@ object Handler
         .flatMap(implicit r => XRay.entryPoint[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
     } yield { implicit env =>
-      import cats.effect.unsafe.implicits.global
       TracedHandler(entrypoint) { implicit trace =>
         val tracedHttpClient = NatchezMiddleware.client(httpClient)
         val heatersClient = HeatersClient(tracedHttpClient, settings)

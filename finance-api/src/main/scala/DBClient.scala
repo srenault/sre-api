@@ -1,6 +1,9 @@
 package sre.api
 package finance
 
+import io.circe.syntax._
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import cats.effect._
 import cats.implicits._
 import fs2.Stream
@@ -11,7 +14,10 @@ import analytics.{PeriodIndex, CompletePeriodIndex}
 import settings.FinanceSettings
 import cm.CMStatement
 
-case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
+case class DBClient[F[_]: Logger](logger: Logger[F])(implicit
+    connection: Connection,
+    F: Sync[F]
+) {
 
   private val LIMIT_STATEMENTS = 1000
 
@@ -29,27 +35,28 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
     dateTime.atZone(ZoneOffset.UTC)
   }
 
-  def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] =
-    F.blocking {
-      periodIndexes.collect {
-        case period @ CompletePeriodIndex(
-              yearMonth,
-              partitions,
-              startDate,
-              endDate,
-              wageStatements,
-              result,
-              balancesByAccount
-            ) =>
-          val encodedPartitions =
-            CompletePeriodIndex.encodePartitions(partitions)
-          val encodedWageStatements =
-            CompletePeriodIndex.encodeWageStatements(wageStatements)
-          val lastUpdate = java.time.LocalDateTime.now()
-          val encodedBalancesByAccount =
-            CompletePeriodIndex.encodeBalancesByAccount(balancesByAccount)
+  def upsertPeriodIndexes(periodIndexes: List[PeriodIndex]): F[Unit] = {
+    logger.info(s"Upsert ${periodIndexes.length} period indexes") *>
+      F.blocking {
+        periodIndexes.collect {
+          case period @ CompletePeriodIndex(
+                yearMonth,
+                partitions,
+                startDate,
+                endDate,
+                wageStatements,
+                result,
+                balancesByAccount
+              ) =>
+            val encodedPartitions =
+              CompletePeriodIndex.encodePartitions(partitions)
+            val encodedWageStatements =
+              CompletePeriodIndex.encodeWageStatements(wageStatements)
+            val lastUpdate = java.time.LocalDateTime.now()
+            val encodedBalancesByAccount =
+              CompletePeriodIndex.encodeBalancesByAccount(balancesByAccount)
 
-          SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, result, balancesByAccount, lastupdate)
+            SQL"""REPLACE INTO FINANCE_PERIODINDEX(yearmonth, startdate, enddate, partitions, wagestatements, result, balancesByAccount, lastupdate)
             values (
               ${utc(yearMonth)},
               ${utc(startDate)},
@@ -60,21 +67,27 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
               $encodedBalancesByAccount,
               ${utc(lastUpdate)}
             )""".executeUpdate()
+        }
       }
-    }
+  }
 
   def selectPeriodIndexes(
       maybeBeforePeriod: Option[YearMonth],
       maybeAfterPeriod: Option[YearMonth],
       limit: Int,
-      yearMonthOrdering: Ordering.Value = Ordering.DESC
-  ): F[List[CompletePeriodIndex]] =
-    F.blocking {
-      try {
+      ordering: Ordering.Value = Ordering.DESC
+  ): F[List[CompletePeriodIndex]] = {
+    val beforePeriod = maybeBeforePeriod.getOrElse("N/A")
+    val afterPeriod = maybeAfterPeriod.getOrElse("N/A")
+
+    logger.info(
+      s"Select period indexes with beforePeriod=$beforePeriod afterPeriod=$afterPeriod limit=$limit ordering=$ordering"
+    ) *>
+      F.blocking {
         (maybeBeforePeriod, maybeAfterPeriod) match {
           case (Some(beforePeriodDate), None) =>
             SQL(
-              s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth < {yearmonth} ORDER BY yearmonth ${yearMonthOrdering} LIMIT {limit}"
+              s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth < {yearmonth} ORDER BY yearmonth ${ordering} LIMIT {limit}"
             )
               .on("yearmonth" -> utc(beforePeriodDate))
               .on("limit" -> limit)
@@ -82,7 +95,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
 
           case (None, Some(afterPeriodDate)) =>
             SQL(
-              s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth > {yearmonth} ORDER BY yearmonth ${yearMonthOrdering} LIMIT {limit}"
+              s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth > {yearmonth} ORDER BY yearmonth ${ordering} LIMIT {limit}"
             )
               .on("yearmonth" -> utc(afterPeriodDate))
               .on("limit" -> limit)
@@ -90,7 +103,7 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
 
           case (Some(beforePeriodDate), Some(afterPeriodDate)) =>
             SQL(
-              s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth > {yearmonthAfter} AND yearMonth < {yearmonthBefore} ORDER BY yearmonth ${yearMonthOrdering} LIMIT {limit}"
+              s"SELECT * FROM FINANCE_PERIODINDEX WHERE yearMonth > {yearmonthAfter} AND yearMonth < {yearmonthBefore} ORDER BY yearmonth ${ordering} LIMIT {limit}"
             )
               .on("yearmonthBefore" -> utc(beforePeriodDate))
               .on("yearmonthAfter" -> utc(afterPeriodDate))
@@ -104,28 +117,29 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
               .on("limit" -> limit)
               .as(CompletePeriodIndex.parser.*)
         }
-      } catch {
-        case e: Exception =>
-          e.printStackTrace
-          throw e
       }
-    }
+  }
 
   def selectLastPeriod(): F[Option[CompletePeriodIndex]] = {
     selectPeriodIndexes(
       maybeBeforePeriod = None,
       maybeAfterPeriod = None,
       limit = 1,
-      yearMonthOrdering = Ordering.DESC
+      ordering = Ordering.DESC
     ).map(_.headOption)
   }
 
   def countPeriodIndexes(
       maybeBeforePeriod: Option[YearMonth] = None,
       maybeAfterPeriod: Option[YearMonth] = None
-  ): F[Long] =
-    F.blocking {
-      try {
+  ): F[Long] = {
+    val beforePeriod = maybeBeforePeriod.getOrElse("N/A")
+    val afterPeriod = maybeAfterPeriod.getOrElse("N/A")
+
+    logger.info(
+      s"Count period indexes with beforePeriod=$beforePeriod and afterPeriod=${afterPeriod}"
+    ) *>
+      F.blocking {
         (maybeBeforePeriod, maybeAfterPeriod) match {
           case (Some(beforePeriodDate), None) =>
             SQL(
@@ -153,31 +167,33 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
             SQL("SELECT COUNT(*) FROM FINANCE_PERIODINDEX")
               .as(SqlParser.scalar[Long].single)
         }
-      } catch {
-        case e: Exception =>
-          e.printStackTrace
-          throw e
       }
-    }
+  }
 
   def selectOnePeriodIndex(
       periodDate: YearMonth
   ): F[Option[CompletePeriodIndex]] =
-    F.blocking {
-      try {
+    logger.info(s"Select one period index with periodDate=${periodDate}") *>
+      F.blocking {
         SQL("SELECT * FROM FINANCE_PERIODINDEX WHERE yearmonth = {yearmonth}")
           .on("yearmonth" -> utc(periodDate.atDay(1)))
           .as(CompletePeriodIndex.parser.singleOpt)
-      } catch {
-        case e: Exception =>
-          e.printStackTrace
-          throw e
       }
-    }
 
-  def insertStatement(statement: CMStatement): F[Unit] =
-    F.blocking {
-      SQL"""INSERT INTO FINANCE_TRANSACTIONS(fitid, accountid, date, amount, label, balance, downloadedat, pos, accurateBalance)
+  def deleteStatements(beforePeriod: YearMonth): F[Unit] = {
+    logger.info(s"Delete all statements before $beforePeriod") *>
+      F.blocking {
+        SQL"""DELETE FROM FINANCE_TRANSACTIONS WHERE date > ${utc(
+            beforePeriod
+          )}""".executeUpdate
+      }
+  }
+
+  def insertStatement(statement: CMStatement): F[Boolean] = {
+    logger.info(s"Insert statement:\n${statement.asJson.spaces4}") *>
+      F.blocking {
+        try {
+          SQL"""INSERT INTO FINANCE_TRANSACTIONS(fitid, accountid, date, amount, label, balance, downloadedat, pos, accurateBalance)
             values (
               ${statement.fitid},
               ${statement.accountId},
@@ -189,45 +205,64 @@ case class DBClient[F[_]]()(implicit connection: Connection, F: Sync[F]) {
               ${statement.pos},
               ${statement.accurateBalance}
             )""".executeUpdate()
-    }
+          true
+        } catch {
+          case e: Exception =>
+            e.printStackTrace
+            throw e
+            false
+        }
+      }
+  }
 
   def selectStatements(
+      maybeAccountId: Option[String] = None,
       maybeAfterDate: Option[LocalDate] = None,
       limit: Int = LIMIT_STATEMENTS,
       ordering: Ordering.Value = Ordering.DESC
-  ): F[List[CMStatement]] =
-    F.blocking {
-      maybeAfterDate match {
-        case Some(afterPeriodDate) =>
-          SQL(
-            s"SELECT * FROM FINANCE_TRANSACTIONS WHERE date > {afterPeriodDate} ORDER BY date ${ordering} LIMIT {limit}"
-          )
-            .on("afterPeriodDate" -> utc(afterPeriodDate))
-            .on("limit" -> limit)
-            .as(CMStatement.sqlParser.*)
+  ): F[List[CMStatement]] = {
+    val accountId = maybeAccountId.getOrElse("N/A")
+    val afterDate = maybeAfterDate.getOrElse("N/A")
 
-        case None =>
-          SQL(
-            s"SELECT * FROM FINANCE_TRANSACTIONS ORDER BY date ${ordering} LIMIT {limit}"
-          )
-            .on("limit" -> limit)
-            .as(CMStatement.sqlParser.*)
+    logger.info(
+      s"Select statements with accountId=$accountId afterDate=$afterDate limit=$limit ordering=$ordering"
+    ) *>
+      F.blocking {
+        (maybeAccountId, maybeAfterDate) match {
+          case (Some(accountId), Some(afterPeriodDate)) =>
+            SQL(
+              s"SELECT * FROM FINANCE_TRANSACTIONS WHERE accountid = {accountId} and date > {afterPeriodDate} ORDER BY date ${ordering} LIMIT {limit}"
+            )
+              .on("accountid" -> accountId)
+              .on("afterPeriodDate" -> utc(afterPeriodDate))
+              .on("limit" -> limit)
+              .as(CMStatement.sqlParser.*)
+
+          case (None, Some(afterPeriodDate)) =>
+            SQL(
+              s"SELECT * FROM FINANCE_TRANSACTIONS WHERE date > {afterPeriodDate} ORDER BY date ${ordering} LIMIT {limit}"
+            )
+              .on("limit" -> limit)
+              .on("afterPeriodDate" -> utc(afterPeriodDate))
+              .as(CMStatement.sqlParser.*)
+
+          case (Some(accountId), None) =>
+            SQL(
+              s"SELECT * FROM FINANCE_TRANSACTIONS WHERE accountid > {accountId} ORDER BY date ${ordering} LIMIT {limit}"
+            )
+              .on("limit" -> limit)
+              .on("accountId" -> accountId)
+              .as(CMStatement.sqlParser.*)
+
+          case (None, None) =>
+            SQL(
+              s"SELECT * FROM FINANCE_TRANSACTIONS ORDER BY date ${ordering} LIMIT {limit}"
+            )
+              .on("limit" -> limit)
+              .as(CMStatement.sqlParser.*)
+        }
       }
-    }
-
-  def selectStatementsByAccountId(
-      accountId: String,
-      maybeAfterDate: Option[LocalDate] = None,
-      limit: Int = LIMIT_STATEMENTS,
-      ordering: Ordering.Value = Ordering.DESC
-  ): F[List[CMStatement]] =
-    F.blocking {
-      SQL(
-        s"SELECT * FROM FINANCE_TRANSACTIONS WHERE accountid = ${accountId} ORDER BY date ${ordering} LIMIT {limit}"
-      )
-        .on("accountId" -> accountId)
-        .as(CMStatement.sqlParser.*)
-    }
+  }
 }
 
 object DBClient {
@@ -236,12 +271,13 @@ object DBClient {
     val ASC, DESC = Value
   }
 
-  private def init[F[_]]()(implicit
+  private def init[F[_]: Logger]()(implicit
       connection: Connection,
       F: Sync[F]
-  ): F[Unit] =
-    F.blocking {
-      SQL"""CREATE TABLE IF NOT EXISTS FINANCE_PERIODINDEX (
+  ): F[Unit] = {
+    Logger[F].info(s"Initialize database ${connection.getMetaData().getURL}") *>
+      F.blocking {
+        SQL"""CREATE TABLE IF NOT EXISTS FINANCE_PERIODINDEX (
             yearmonth NUMERIC PRIMARY_KEY,
             startdate NUMERIC UNIQUE,
             enddate NUMERIC UNIQUE,
@@ -250,8 +286,9 @@ object DBClient {
             result NUMERIC,
             balancesByAccount TEXT,
             lastupdate NUMERIC);
+      """.execute()
 
-            CREATE TABLE IF NOT EXISTS FINANCE_TRANSACTIONS (
+        SQL"""CREATE TABLE IF NOT EXISTS FINANCE_TRANSACTIONS (
             fitid TEXT PRIMARY_KEY,
             accountid TEXT,
             date NUMERIC,
@@ -262,14 +299,16 @@ object DBClient {
             pos NUMERIC,
             accuratebalance BOOLEAN);
       """.execute()
-    }
+      }
+  }
 
-  def resource[F[_]: Sync](
+  def resource[F[_]: Sync: Logger](
       settings: FinanceSettings
   ): Resource[F, DBClient[F]] = {
     Class.forName("org.sqlite.JDBC")
     implicit val connection = DriverManager.getConnection(settings.db)
-    val dbClient = DBClient()
+    implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
+    val dbClient = DBClient(logger)
     Resource.eval(init().map(_ => dbClient))
   }
 }
