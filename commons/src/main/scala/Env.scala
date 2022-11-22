@@ -55,13 +55,7 @@ object Env {
       sys.error(s"Configuration error: Unable to get $key as Path, not found")
     }
 
-    val path = Paths.get(src)
-
-    if (!path.toFile.exists) {
-      sys.error(s"Configuration error: Unable to get $key as Path, $path not found")
-    } else {
-      path
-    }
+    Paths.get(src)
   }
 
   def getJsonAsOrFail[A : Decoder](key: String): A = {

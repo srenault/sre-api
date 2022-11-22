@@ -2,13 +2,15 @@ package sre.api
 package settings
 
 import org.http4s.Uri
+import cats.effect._
+import cats.implicits._
 import io.circe._
 import io.circe.generic.semiauto._
 import JsonImplicits._
 
 object HeatersSettings {
 
-  def fromEnv(): HeatersSettings = {
+  def fromEnv[F[_]]()(implicit F: Sync[F]): F[HeatersSettings] = F.pure {
     HeatersSettings(
       httpClient = HttpClientSettings(
         logRequest = Env.getBooleanOrFail("HTTPCLIENT_LOGREQUEST"),

@@ -5,6 +5,7 @@ import java.io.File
 import java.nio.file.Path
 import scala.concurrent.duration.FiniteDuration
 import cats.effect._
+import cats.implicits._
 import org.http4s.Uri
 import io.circe._
 import io.circe.generic.semiauto._
@@ -68,7 +69,7 @@ case class FinanceSettings(
 
 object FinanceSettings {
 
-  def fromEnv(): FinanceSettings = {
+  def fromEnv[F[_]]()(implicit F: Sync[F]): F[FinanceSettings] = F.pure {
     FinanceSettings(
       db = Env.getStringOrFail("DB_PATH"),
       httpClient = HttpClientSettings(

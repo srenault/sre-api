@@ -23,12 +23,12 @@ import sre.api.settings.FinanceSettings
 import models._
 
 object CheckOtp extends IOLambda[CheckOtpEvent, CheckOtpResult] {
-  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
   def handler: Resource[IO, LambdaEnv[IO, CheckOtpEvent] => IO[
     Option[CheckOtpResult]
   ]] = {
     for {
+      settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
       cmClient <- cm.CMClient.resource(httpClient, settings)
     } yield { implicit env =>

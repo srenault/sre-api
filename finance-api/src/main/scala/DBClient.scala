@@ -304,11 +304,13 @@ object DBClient {
 
   def resource[F[_]: Sync: Logger](
       settings: FinanceSettings
-  ): Resource[F, DBClient[F]] = {
-    Class.forName("org.sqlite.JDBC")
-    implicit val connection = DriverManager.getConnection(settings.db)
-    implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
-    val dbClient = DBClient(logger)
-    Resource.eval(init().map(_ => dbClient))
+  ): Resource[F, DBClient[F]] = Resource.eval {
+    Logger[F].info(s"Initialize DBClient with cn=${settings.db}") *> {
+      Class.forName("org.sqlite.JDBC")
+      implicit val connection = DriverManager.getConnection(settings.db)
+      implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
+      val dbClient = DBClient(logger)
+      init().map(_ => dbClient)
+    }
   }
 }

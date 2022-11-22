@@ -24,14 +24,13 @@ import sre.api.settings.FinanceSettings
 import models._
 
 object Snapshot extends IOLambda[SnapshotEvent, SnapshotResult] {
-  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
-
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
   def handler: Resource[IO, LambdaEnv[IO, SnapshotEvent] => IO[
     Option[SnapshotResult]
   ]] = {
     for {
+      settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
       cmClient <- cm.CMClient.resource(httpClient, settings)
       dbClient <- DBClient.resource[IO](settings)

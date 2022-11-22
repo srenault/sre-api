@@ -205,45 +205,48 @@ object CMClient {
   ): Resource[F, CMClient[F]] = {
     implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
-    val otpSessionFile = CMOtpSessionFile(settings.cm.otpSession)
+    Resource.eval {
+      logger.info(s"Initialize CMClient with otpSession=${settings.cm.otpSession}") *> {
+        val otpSessionFile = CMOtpSessionFile(settings.cm.otpSession)
 
-    val client = for {
-      basicAuthSessionRef <- Ref[F].of[Option[Deferred[F, CMBasicAuthSession]]](
-        None
-      )
-
-      maybeValidOptSession <- otpSessionFile.get
-        .map {
-          case Left(error) =>
-            logger.warn(
-              s"Unable to restore otp session from ${settings.cm.otpSession}:\n$error"
-            )
+        for {
+          basicAuthSessionRef <- Ref[F].of[Option[Deferred[F, CMBasicAuthSession]]](
             None
+          )
 
-          case Right(otpSession) =>
-            Some(otpSession)
+          maybeValidOptSession <- otpSessionFile.get
+          .map {
+            case Left(error) =>
+              logger.warn(
+                s"Unable to restore otp session from ${settings.cm.otpSession}:\n$error"
+              )
+              None
+
+            case Right(otpSession) =>
+              Some(otpSession)
+          }
+          .value
+          .map(_.flatten)
+
+          maybeDeferredOptSessionRef <- maybeValidOptSession.map { otpSession =>
+            logger.info(s"Restoring opt session with $otpSession")
+            Deferred[F, CMOtpSession].flatMap { d =>
+              d.complete(otpSession).map(_ => d)
+            }
+          }.sequence
+
+          otpSessionRef <- Ref.of(maybeDeferredOptSessionRef)
+        } yield {
+          CMClient[F](
+            logger,
+            httpClient,
+            settings.cm,
+            basicAuthSessionRef,
+            otpSessionRef,
+            otpSessionFile
+          )
         }
-        .value
-        .map(_.flatten)
-
-      maybeDeferredOptSessionRef <- maybeValidOptSession.map { otpSession =>
-        logger.info(s"Restoring opt session with $otpSession")
-        Deferred[F, CMOtpSession].flatMap { d =>
-          d.complete(otpSession).map(_ => d)
-        }
-      }.sequence
-
-      otpSessionRef <- Ref.of(maybeDeferredOptSessionRef)
-    } yield {
-      CMClient[F](
-        logger,
-        httpClient,
-        settings.cm,
-        basicAuthSessionRef,
-        otpSessionRef,
-        otpSessionFile
-      )
+      }
     }
-    Resource.eval(client)
   }
 }

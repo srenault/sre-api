@@ -23,7 +23,6 @@ import models._
 
 object ImportStatements
     extends IOLambda[ImportStatementsEvent, ImportStatementsResult] {
-  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
@@ -31,6 +30,7 @@ object ImportStatements
     Option[ImportStatementsResult]
   ]] = {
     for {
+      settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
       dbClient <- DBClient.resource[IO](settings)
       cmClient <- cm.CMClient.resource(httpClient, settings)

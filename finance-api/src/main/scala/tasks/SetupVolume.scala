@@ -26,16 +26,13 @@ import sre.api.settings.FinanceSettings
 import models._
 
 object SetupVolume extends IOLambda[SetupVolumeEvent, SetupVolumeResult] {
-  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
-
-  lazy val s3Client = S3Client[IO](settings.s3)
-
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
   def handler: Resource[IO, LambdaEnv[IO, SetupVolumeEvent] => IO[
     Option[SetupVolumeResult]
   ]] = {
     for {
+      settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
       dbClient <- DBClient.resource[IO](settings)
       cmClient <- cm.CMClient.resource(httpClient, settings)

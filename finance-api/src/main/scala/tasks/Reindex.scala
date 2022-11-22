@@ -23,7 +23,6 @@ import models._
 import analytics.AnalyticsClient
 
 object Reindex extends IOLambda[ReindexEvent, ReindexResult] {
-  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
@@ -31,6 +30,7 @@ object Reindex extends IOLambda[ReindexEvent, ReindexResult] {
     Option[ReindexResult]
   ]] = {
     for {
+      settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
       dbClient <- DBClient.resource[IO](settings)
       cmClient <- cm.CMClient.resource(httpClient, settings)

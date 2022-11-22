@@ -26,14 +26,13 @@ object Handler
       ApiGatewayProxyEventV2,
       ApiGatewayProxyStructuredResultV2
     ] {
-  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
-
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
   def handler: Resource[IO, LambdaEnv[IO, ApiGatewayProxyEventV2] => IO[
     Option[ApiGatewayProxyStructuredResultV2]
   ]] = {
     for {
+      settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
       entrypoint <- Resource
         .eval(Random.scalaUtilRandom[IO])
         .flatMap(implicit r => XRay.entryPoint[IO]())

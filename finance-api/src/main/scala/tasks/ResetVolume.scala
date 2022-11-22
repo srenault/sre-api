@@ -26,12 +26,11 @@ object ResetVolume extends IOLambda[ResetVolumeEvent, ResetVolumeResult] {
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
-  lazy val settings: FinanceSettings = FinanceSettings.fromEnv()
-
   def handler: Resource[IO, LambdaEnv[IO, ResetVolumeEvent] => IO[
     Option[ResetVolumeResult]
   ]] = {
     for {
+      settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
       httpClient <- BlazeClientBuilder[IO](global).resource
       cmClient <- cm.CMClient.resource(httpClient, settings)
       dbClient <- DBClient.resource[IO](settings)
