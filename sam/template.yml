@@ -171,6 +171,7 @@ Resources:
           OwnerGid: "1001"
           OwnerUid: "1001"
           Permissions: "755"
+        Path: "/mnt/efs"
 
   MountTarget1:
     Type: AWS::EFS::MountTarget
