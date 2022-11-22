@@ -182,8 +182,6 @@ Resources:
 
   ApiGatewayApi:
     Type: AWS::Serverless::HttpApi
-    Properties:
-      StageName: prod
 
   HeatersApi:
     Type: AWS::Serverless::Function
