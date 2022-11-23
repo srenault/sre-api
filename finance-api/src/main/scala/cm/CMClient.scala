@@ -206,27 +206,30 @@ object CMClient {
     implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
     Resource.eval {
-      logger.info(s"Initialize CMClient with otpSession=${settings.cm.otpSession}") *> {
+      logger.info(
+        s"Initialize CMClient with otpSession=${settings.cm.otpSession}"
+      ) *> {
         val otpSessionFile = CMOtpSessionFile(settings.cm.otpSession)
 
         for {
-          basicAuthSessionRef <- Ref[F].of[Option[Deferred[F, CMBasicAuthSession]]](
-            None
-          )
+          basicAuthSessionRef <- Ref[F]
+            .of[Option[Deferred[F, CMBasicAuthSession]]](
+              None
+            )
 
           maybeValidOptSession <- otpSessionFile.get
-          .map {
-            case Left(error) =>
-              logger.warn(
-                s"Unable to restore otp session from ${settings.cm.otpSession}:\n$error"
-              )
-              None
+            .map {
+              case Left(error) =>
+                logger.warn(
+                  s"Unable to restore otp session from ${settings.cm.otpSession}:\n$error"
+                )
+                None
 
-            case Right(otpSession) =>
-              Some(otpSession)
-          }
-          .value
-          .map(_.flatten)
+              case Right(otpSession) =>
+                Some(otpSession)
+            }
+            .value
+            .map(_.flatten)
 
           maybeDeferredOptSessionRef <- maybeValidOptSession.map { otpSession =>
             logger.info(s"Restoring opt session with $otpSession")

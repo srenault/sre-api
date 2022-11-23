@@ -1,11 +1,14 @@
 package sre.api
 
+import java.util.concurrent.CompletableFuture
 import java.nio.file.Path
 import java.io.{ InputStream, FileOutputStream }
+import scala.compat.java8.FutureConverters._
 import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.s3.{ S3Client => AwsS3Client }
+import software.amazon.awssdk.services.s3.{ S3Client => AwsS3Client, _ }
 import software.amazon.awssdk.services.s3.model._
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import scala.jdk.CollectionConverters._
 import cats.effect._
 import cats.implicits._
@@ -16,12 +19,15 @@ import settings.S3Settings
 
 case class S3ObjectListing(objects: List[S3Object], continuationToken: Option[String])
 
-case class S3Client[F[_] : Logger](bucket: String, s3Client: AwsS3Client)(implicit F: Async[F]) {
+case class S3Client[F[_] : Logger](bucket: String, s3Client: S3AsyncClient)(implicit F: Async[F]) {
+
+  def completableFutureToIO[T](cf: CompletableFuture[T]): F[T] =
+    F.fromFuture(F.delay(toScala(cf)))
 
   def ls(prefix: String, maxKeys: Int, continuationToken: Option[String]): F[S3ObjectListing] = {
     for {
       _ <- Logger[F].info(s"Listing $prefix...")
-      listing <- F.pure {
+      listing <- {
         val request = {
           val reqBuilder = ListObjectsV2Request.builder()
             .bucket(bucket)
@@ -30,30 +36,31 @@ case class S3Client[F[_] : Logger](bucket: String, s3Client: AwsS3Client)(implic
           continuationToken.fold(reqBuilder)(reqBuilder.continuationToken(_)).maxKeys(maxKeys).build()
         }
 
-        val response = s3Client.listObjectsV2(request)
-        val objects = response.contents().asScala.toList
-        val nextContinuationToken = Option(response.nextContinuationToken())
-        S3ObjectListing(objects, nextContinuationToken)
+        completableFutureToIO(s3Client.listObjectsV2(request)).map { response =>
+          val objects = response.contents().asScala.toList
+          val nextContinuationToken = Option(response.nextContinuationToken())
+          S3ObjectListing(objects, nextContinuationToken)
+        }
       }
       _ <- Logger[F].info(s"Found ${listing.objects.length} S3 objects")
     } yield listing
   }
 
   def downloadFileTo(key: String, destinationPath: Path): F[Unit] = {
-    val req = GetObjectRequest.builder()
+    val req: GetObjectRequest = GetObjectRequest.builder()
       .key(key)
       .bucket(bucket)
       .build()
 
-    val inputStream: InputStream = s3Client.getObjectAsBytes(req).asInputStream
+    val f = s3Client.getObject(req, destinationPath)
 
     for {
       _ <- Logger[F].info(s"Downloading $key to $destinationPath ...")
-      _ <- io.readInputStream(F.pure(inputStream), 4096)
-      .through(io.file.writeAll(destinationPath))
-      .compile
-      .drain
+
+      _ <- completableFutureToIO(f)
+
       _ <- Logger[F].info(s"$key successfuly downloaded to $destinationPath")
+
     } yield ()
   }
 }
@@ -68,8 +75,11 @@ object S3Client {
 
     val credentialsProvider = StaticCredentialsProvider.create(credentials)
 
-    val s3Client = AwsS3Client.builder()
+    val httpClientBuilder = NettyNioAsyncHttpClient.builder()
+
+    val s3Client = S3AsyncClient.builder()
       .region(Region.of(settings.region))
+      .httpClientBuilder(httpClientBuilder)
       .credentialsProvider(credentialsProvider)
       .build()
 
