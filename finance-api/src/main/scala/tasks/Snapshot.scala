@@ -15,9 +15,8 @@ import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
-import org.http4s.client.blaze._
 import org.http4s.client._
-import scala.concurrent.ExecutionContext.Implicits.global
+import org.http4s.ember.client._
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sre.api.settings.FinanceSettings
@@ -31,7 +30,7 @@ object Snapshot extends IOLambda[SnapshotEvent, SnapshotResult] {
   ]] = {
     for {
       settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
-      httpClient <- BlazeClientBuilder[IO](global).resource
+      httpClient <- EmberClientBuilder.default[IO].build
       cmClient <- cm.CMClient.resource(httpClient, settings)
       dbClient <- DBClient.resource[IO](settings)
     } yield { implicit env =>

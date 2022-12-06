@@ -6,7 +6,6 @@ import org.http4s._
 import org.http4s.dsl.io._
 import org.http4s.client._
 import org.http4s.client.dsl.Http4sClientDsl
-import sre.api.DomoticzSettings
 
 trait DomoticzClientDsl[F[_]] extends Http4sClientDsl[F] {
 
@@ -16,7 +15,7 @@ trait DomoticzClientDsl[F[_]] extends Http4sClientDsl[F] {
 
   val CONTENT_TYPE_HEADER = Header("Content-Type", "application/json")
 
-  def AuthenticatedGET(uri: Uri)(implicit F: Monad[F]): F[Request[F]] = {
+  def AuthenticatedGET(uri: Uri)(implicit F: Monad[F]): Request[F] = {
     val authHeader = {
       val value = s"${settings.username}:${settings.password}"
       val encodedValue = Base64.getEncoder().encodeToString(value.getBytes("UTF-8"))

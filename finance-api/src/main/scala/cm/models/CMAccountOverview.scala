@@ -20,9 +20,9 @@ object CMAccountOverview {
     deriveEncoder[CMAccountOverview]
 
   implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMAccountOverview] =
-    jsonEncoderOf[F, CMAccountOverview]
+    jsonEncoderOf[CMAccountOverview]
 
   implicit def entitiesEncoder[F[_]: Sync]
       : EntityEncoder[F, List[CMAccountOverview]] =
-    jsonEncoderOf[F, List[CMAccountOverview]]
+    jsonEncoderOf[List[CMAccountOverview]]
 }

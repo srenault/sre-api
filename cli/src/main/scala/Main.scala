@@ -2,7 +2,6 @@ package sre.cli
 
 import java.time.YearMonth
 import java.time.format.DateTimeFormatterBuilder
-import scala.concurrent.ExecutionContext.Implicits.global
 import io.circe._
 import io.circe.literal._
 import io.circe.syntax._
@@ -12,8 +11,8 @@ import cats.data.Validated
 import com.monovore.decline._
 import com.monovore.decline.effect._
 import java.nio.file.Path
-import org.http4s.client.blaze._
 import org.http4s.client._
+import org.http4s.ember.client._
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sre.api.settings._
@@ -34,7 +33,7 @@ object Cli
       action: HeatersCmd.Action,
       settings: Settings
   ): IO[ExitCode] = {
-    BlazeClientBuilder[IO](global).resource.use { httpClient =>
+    EmberClientBuilder.default[IO].build.use { httpClient =>
       val heatersClient = HeatersClient(httpClient, settings.heaters)
       val service = new HeatersService(heatersClient, settings.heaters)
 
@@ -63,7 +62,7 @@ object Cli
     import sre.api.finance.cm._
 
     (for {
-      httpClient <- BlazeClientBuilder[IO](global).resource
+      httpClient <- EmberClientBuilder.default[IO].build
       dbClient <- DBClient.resource[IO](settings.finance)
       cmClient <- CMClient.resource(httpClient, settings.finance)
     } yield (httpClient, dbClient, cmClient)).use {

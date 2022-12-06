@@ -11,8 +11,8 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import feral.lambda._
 import feral.lambda.events._
 import feral.lambda.http4s._
-import org.http4s.client.blaze._
 import org.http4s.client._
+import org.http4s.ember.client._
 import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
 import natchez.Trace
@@ -31,7 +31,7 @@ object ResetVolume extends IOLambda[ResetVolumeEvent, ResetVolumeResult] {
   ]] = {
     for {
       settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
-      httpClient <- BlazeClientBuilder[IO](global).resource
+      httpClient <- EmberClientBuilder.default[IO].build
       cmClient <- cm.CMClient.resource(httpClient, settings)
       dbClient <- DBClient.resource[IO](settings)
       financeTasks = new FinanceTasks(cmClient, dbClient, settings)

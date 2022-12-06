@@ -4,21 +4,22 @@ package domoticz
 import java.time.{LocalDate, Year, Month}
 import java.time.format.DateTimeFormatter
 import cats.effect._
+import cats.effect.std.Dispatcher
 import cats.implicits._
+import cats.effect.unsafe.implicits._
 import org.http4s.client._
 import org.http4s.circe._
 import io.circe._
 import fs2.concurrent.Topic
 import fs2.Stream
-import sre.api.DomoticzSettings
-import websocket.{WebSocketClient, WebSocketListener}
-import websocket.messages.WebSocketMessage
+import sre.api.domoticz.websocket.{WebSocketClient, WebSocketListener}
+import sre.api.domoticz.websocket.messages.WebSocketMessage
 
-case class DomoticzClient[F[_]](
+case class DomoticzClient[F[_]: Async](
   httpClient: Client[F],
   wsTopic: Topic[F, WebSocketMessage],
   settings: DomoticzSettings
-)(implicit F: ConcurrentEffect[F], T: Timer[F]) extends DomoticzClientDsl[F] {
+)(implicit F: Concurrent[F]) extends DomoticzClientDsl[F] {
 
   lazy val wsConnect: Stream[F, Unit] = {
     val wsClient = DomoticzClient.createWsClient(wsTopic, settings)
@@ -55,31 +56,71 @@ case class DomoticzClient[F[_]](
       }
     }
   }
+
+  def switchLightCmd[A : Decoder](
+    idx: Int,
+    switchCmd: SwitchCmd
+  ): F[A] = {
+    val uri = (settings.baseUri / "json.htm")
+      .withQueryParam("type", "command")
+      .withQueryParam("param", "switchlight")
+      .withQueryParam("idx", idx)
+      .withQueryParam("switchcmd", switchCmd.value)
+      .withQueryParam("level", "0")
+      .withQueryParam("passcode", "")
+
+    val request = AuthenticatedGET(uri)
+
+    httpClient.expect[Json](request).map { response =>
+      response.hcursor.downField("result").as[A] match {
+        case Left(e) => throw e
+        case Right(result) => result
+      }
+    }
+  }
 }
 
 object DomoticzClient {
 
-  private def createWsClient[F[_]](
+  private def createWsClient[F[_]: Concurrent](
     wsTopic: Topic[F, WebSocketMessage],
     settings: DomoticzSettings
-  )(implicit F: ConcurrentEffect[F], T: Timer[F]): WebSocketClient[F] = {
-    lazy val client = WebSocketClient(settings)(new WebSocketListener {
-      def onMessage(message: WebSocketMessage): Unit = {
-        F.runAsync(wsTopic.publish1(message))(_ => IO.unit).unsafeRunSync
+  )(implicit F: Async[F]): WebSocketClient[F] = {
+    val listener = {
+      new WebSocketListener[F] {
+        def onMessage(message: WebSocketMessage): F[Unit] = {
+          wsTopic.publish1(message).map(_ => ())
+        }
       }
-    })
-
-    client
-  }
-
-  def stream[F[_]: ConcurrentEffect : Timer](httpClient: Client[F], settings: DomoticzSettings): Stream[F, DomoticzClient[F]] = {
-    val client = for {
-      wsTopic <- Topic[F, WebSocketMessage](WebSocketMessage.Init)
-    } yield {
-      DomoticzClient(httpClient, wsTopic, settings)
     }
 
-    Stream.eval(client)
+    WebSocketClient(settings)(listener)
+  }
+
+  def stream[F[_]: Async](httpClient: Client[F], settings: DomoticzSettings)(implicit F: Concurrent[F]): Stream[F, DomoticzClient[F]] = {
+    Stream.eval {
+      Topic[F, WebSocketMessage].flatMap { wsTopic =>
+        F.pure(DomoticzClient(httpClient, wsTopic, settings))
+      }
+    }
+  }
+}
+
+sealed trait SwitchCmd {
+  def value: String
+}
+
+object SwitchCmd {
+  case object Stop extends SwitchCmd {
+    def value = "Stop"
+  }
+
+  case object Off extends Sensor {
+    def value = "Off"
+  }
+
+  case object On extends Sensor {
+    def value = "On"
   }
 }
 

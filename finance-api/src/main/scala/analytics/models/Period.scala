@@ -48,7 +48,7 @@ object Period {
 
   implicit val encoder: Encoder[Period] = deriveEncoder[Period]
   implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, Period] =
-    jsonEncoderOf[F, Period]
+    jsonEncoderOf[Period]
   implicit def entitiesEncoder[F[_]: Sync]: EntityEncoder[F, List[Period]] =
-    jsonEncoderOf[F, List[Period]]
+    jsonEncoderOf[List[Period]]
 }

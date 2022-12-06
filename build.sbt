@@ -1,7 +1,7 @@
 val projectName = "sre-api"
 
 val ScalaVersion = "2.13.8"
-val Fs2Version = "2.5.10"
+val Fs2Version = "3.4.0"
 val Http4sVersion = "0.21.31"
 val LogbackVersion = "1.2.10"
 val CirceVersion = "0.13.0"
@@ -75,9 +75,9 @@ lazy val server = (project in file("."))
 
 scalacOptions ++= Seq("-Xlint")
 
-val Http4sVersionNext = "0.23.12"
+val Http4sVersionNext = "1.0.0-M34"
 val CirceVersionNext = "0.14.3"
-val FeralVersion = "0.1.0-M13"
+val FeralVersion = "1.0.0-M4"
 val CatsEffectTestScalaTestVersionNext = "1.4.0"
 val NatchezVersion = "0.1.6"
 val NatchezHttp4s = "0.3.2"
@@ -92,14 +92,17 @@ lazy val commons = (project in file("commons"))
     scalaVersion := ScalaVersion,
     libraryDependencies ++= Seq(
       "org.scala-lang.modules"    %% "scala-java8-compat"            % "1.0.2",
-      "io.circe"                  %% "circe-parser"                  % CirceVersion,
-      "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
-      "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
-      "org.typelevel"             %% "cats-effect"                   % "3.3.5",
       "software.amazon.awssdk"    % "s3"                             % "2.18.23",
-      "org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
-      "org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion
-    )
+      "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
+      "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
+      //"org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
+      //"org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion,
+      "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
+      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
+      "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
+      "org.java-websocket"        % "Java-WebSocket"                 % JavaWebSocketVersion
+    ),
+    addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
   )
 
 lazy val heatersProject = (project in file("heaters-api"))
@@ -114,14 +117,15 @@ lazy val heatersProject = (project in file("heaters-api"))
       "org.http4s"                %% "http4s-scala-xml"              % Http4sVersionNext,
       "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
       "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
-      "org.http4s"                %% "http4s-blaze-client"           % Http4sVersionNext,
+      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
       "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
       "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
       "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
       "ch.qos.logback"            %  "logback-classic"               % LogbackVersion,
       "org.tpolecat"              %% "natchez-xray"                  % NatchezVersion,
       "org.tpolecat"              %% "natchez-http4s"                % NatchezHttp4s
-    )
+    ),
+    addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
   ).settings(
     assemblyJarName in assembly := s"heaters-api.jar",
     assemblyMergeStrategy in assembly := {
@@ -142,7 +146,7 @@ lazy val financeProject = (project in file("finance-api"))
       "org.http4s"                %% "http4s-scala-xml"              % Http4sVersionNext,
       "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
       "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
-      "org.http4s"                %% "http4s-blaze-client"           % Http4sVersionNext,
+      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
       "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
       "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
       "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
@@ -178,7 +182,7 @@ lazy val cliProject = (project in file("cli"))
       "com.monovore" %% "decline-effect"       % DeclineVersion,
       "io.circe"     %% "circe-parser"         % CirceVersion,
       "io.circe"     %% "circe-config"         % CirceConfigVersion,
-      "org.http4s"   %% "http4s-blaze-client"  % Http4sVersionNext,
+      "org.http4s"   %% "http4s-ember-client"  % Http4sVersionNext
     )
   ).settings(
     assemblyJarName in assembly := s"cli.jar"

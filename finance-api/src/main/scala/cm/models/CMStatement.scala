@@ -59,7 +59,7 @@ case class CMStatement(
 
 object CMStatement {
   implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, CMStatement] =
-    jsonEncoderOf[F, CMStatement]
+    jsonEncoderOf[CMStatement]
   implicit val encoder: Encoder[CMStatement] = new Encoder[CMStatement] {
     final def apply(statement: CMStatement): Json = {
       json"""
@@ -80,7 +80,7 @@ object CMStatement {
   }
   implicit def entitiesEncoder[F[_]: Sync]
       : EntityEncoder[F, List[CMStatement]] =
-    jsonEncoderOf[F, List[CMStatement]]
+    jsonEncoderOf[List[CMStatement]]
 
   lazy val ORDER_ASC: scala.math.Ordering[CMStatement] =
     scala.math

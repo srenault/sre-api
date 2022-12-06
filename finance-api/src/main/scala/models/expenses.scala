@@ -17,8 +17,8 @@ object ExpensesByCategory {
   implicit val encoder: Encoder[ExpensesByCategory] =
     deriveEncoder[ExpensesByCategory]
   implicit def entityEncoder[F[_]: Sync]: EntityEncoder[F, ExpensesByCategory] =
-    jsonEncoderOf[F, ExpensesByCategory]
+    jsonEncoderOf[ExpensesByCategory]
   implicit def entitiesEncoder[F[_]: Sync]
       : EntityEncoder[F, List[ExpensesByCategory]] =
-    jsonEncoderOf[F, List[ExpensesByCategory]]
+    jsonEncoderOf[List[ExpensesByCategory]]
 }

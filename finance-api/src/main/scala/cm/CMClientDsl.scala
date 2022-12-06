@@ -43,8 +43,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
       maybeAuthClientStateCookie = maybeValidOtpSession.map(otpSession =>
         headers.Cookie(otpSession.authClientStateCookie)
       )
-      _ = println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-      _ = println(maybeAuthClientStateCookie)
+
       basicAuthSession <- {
         val authenticationRequest = POST(
           body,

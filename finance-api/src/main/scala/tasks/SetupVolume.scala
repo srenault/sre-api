@@ -14,14 +14,13 @@ import cats.effect.std.Random
 import feral.lambda._
 import feral.lambda.events._
 import feral.lambda.http4s._
-import org.http4s.client.blaze._
 import org.http4s.client._
+import org.http4s.ember.client._
 import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
 import natchez.Trace
 import natchez.http4s.NatchezMiddleware
 import natchez.xray.XRay
-import scala.concurrent.ExecutionContext.Implicits.global
 import sre.api.settings.FinanceSettings
 import models._
 
@@ -33,7 +32,7 @@ object SetupVolume extends IOLambda[SetupVolumeEvent, SetupVolumeResult] {
   ]] = {
     for {
       settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
-      httpClient <- BlazeClientBuilder[IO](global).resource
+      httpClient <- EmberClientBuilder.default[IO].build
       dbClient <- DBClient.resource[IO](settings)
       cmClient <- cm.CMClient.resource(httpClient, settings)
     } yield { implicit env =>
