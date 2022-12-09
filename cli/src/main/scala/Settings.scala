@@ -9,10 +9,13 @@ import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.config.syntax._
 import sre.api.settings._
+import sre.api.domoticz.DomoticzSettings
 
 case class Settings(
-    finance: FinanceSettings,
-    heaters: HeatersSettings
+  finance: FinanceSettings,
+  heaters: HeatersSettings,
+  shutters: ShuttersSettings,
+  domoticz: DomoticzSettings
 )
 
 object Settings {
@@ -25,9 +28,13 @@ object Settings {
     for {
       financeSettings <- AppConfig.as[FinanceSettings]("finance")
       heatersSettings <- AppConfig.as[HeatersSettings]("heaters")
+      shuttersSettings <- AppConfig.as[ShuttersSettings]("shutters")
+      domoticzSettings <- AppConfig.as[DomoticzSettings]("domoticz")
     } yield Settings(
       financeSettings,
-      heatersSettings
+      heatersSettings,
+      shuttersSettings,
+      domoticzSettings
     )
   }
 }

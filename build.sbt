@@ -95,8 +95,6 @@ lazy val commons = (project in file("commons"))
       "software.amazon.awssdk"    % "s3"                             % "2.18.23",
       "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
       "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
-      //"org.typelevel"             %% "log4cats-core"                 % Log4catsVersion,
-      //"org.typelevel"             %% "log4cats-slf4j"                % Log4catsVersion,
       "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
       "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
       "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
@@ -128,6 +126,35 @@ lazy val heatersProject = (project in file("heaters-api"))
     addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
   ).settings(
     assemblyJarName in assembly := s"heaters-api.jar",
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    },
+  ).dependsOn(commons)
+
+lazy val shuttersProject = (project in file("shutters-api"))
+  .settings(
+    organization := "sre",
+    name := "shutters-api",
+    version := "0.0.1-SNAPSHOT",
+    scalaVersion := ScalaVersion,
+    libraryDependencies ++= Seq(
+      "org.typelevel"             %% "feral-lambda"                  % FeralVersion,
+      "org.typelevel"             %% "feral-lambda-http4s"           % FeralVersion,
+      "org.http4s"                %% "http4s-scala-xml"              % Http4sVersionNext,
+      "org.http4s"                %% "http4s-dsl"                    % Http4sVersionNext,
+      "org.http4s"                %% "http4s-circe"                  % Http4sVersionNext,
+      "org.http4s"                %% "http4s-ember-client"           % Http4sVersionNext,
+      "io.circe"                  %% "circe-parser"                  % CirceVersionNext,
+      "io.circe"                  %% "circe-generic"                 % CirceVersionNext,
+      "io.circe"                  %% "circe-literal"                 % CirceVersionNext,
+      "ch.qos.logback"            %  "logback-classic"               % LogbackVersion,
+      "org.tpolecat"              %% "natchez-xray"                  % NatchezVersion,
+      "org.tpolecat"              %% "natchez-http4s"                % NatchezHttp4s
+    ),
+    addCompilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.1")
+  ).settings(
+    assemblyJarName in assembly := s"shutters-api.jar",
     assemblyMergeStrategy in assembly := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x => MergeStrategy.first
@@ -186,4 +213,4 @@ lazy val cliProject = (project in file("cli"))
     )
   ).settings(
     assemblyJarName in assembly := s"cli.jar"
-  ).dependsOn(financeProject, heatersProject)
+  ).dependsOn(financeProject, heatersProject, shuttersProject)

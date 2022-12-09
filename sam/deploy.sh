@@ -26,4 +26,9 @@ sam deploy --profile sre --template-file template.yml --parameter-overrides\
     ParameterKey=HEATERSBASEURI,ParameterValue="$HEATERS_BASEURI"\
     ParameterKey=HEATERSUSERNAME,ParameterValue="$HEATERS_PASSWORD"\
     ParameterKey=HEATERSPASSWORD,ParameterValue="$HEATERS_USERNAME"\
+    ParameterKey=DOMOTICZBASEURI,ParameterValue="$DOMOTICZ_BASEURI"\
+    ParameterKey=DOMOTICZWSURI,ParameterValue="$DOMOTICZ_WSURI"\
+    ParameterKey=DOMOTICZUSERNAME,ParameterValue="$DOMOTICZ_USERNAME"\
+    ParameterKey=DOMOTICZPASSWORD,ParameterValue="$DOMOTICZ_PASSWORD"\
+    ParameterKey=SHUTTERSCONFIG,ParameterValue="$SHUTTERS_CONFIG"\
     --stack-name sreapi --s3-bucket sreapi --capabilities CAPABILITY_IAM

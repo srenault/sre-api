@@ -17,6 +17,9 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sre.api.settings._
 import sre.api.heaters._
+import sre.api.shutters._
+import sre.cli.HeatersCmd.StatusAction
+import sre.api.domoticz.DomoticzClient
 
 sealed trait SreCmd
 
@@ -28,6 +31,31 @@ object Cli
     ) {
 
   implicit def logger[F[_]: Sync]: Logger[F] = Slf4jLogger.getLogger[F]
+
+  def shuttersHandler(
+      action: ShuttersCmd.Action,
+      settings: Settings
+  ): IO[ExitCode] = {
+    (for {
+      httpClient <- EmberClientBuilder.default[IO].build
+      domoticzClient <- DomoticzClient.resource(httpClient, settings.domoticz)
+    } yield (httpClient, domoticzClient)).use {
+      case (httpClient, domoticzClient) =>
+        val service = new ShuttersService(domoticzClient, settings.shutters)
+
+        action match {
+          case ShuttersCmd.InfoAction =>
+            val json = ShuttersHttpService.infoEncoder.apply(settings.shutters.info)
+            println(json.spaces4)
+            IO.pure(ExitCode.Success)    
+
+          case ShuttersCmd.UpdateAction(id, state) =>
+            service.update(id, state) *> IO.pure {
+              ExitCode.Success
+            }
+        }
+    }
+  }
 
   def heatersHandler(
       action: HeatersCmd.Action,
@@ -152,22 +180,26 @@ object Cli
     val configOpt =
       Opts.option[Path]("config", help = "Local path to configuration file")
 
-    //    configOpt.orNone.map { maybeConfigPath =>
     Settings.load(maybeConfigPath = None) match {
       case Right(settings) =>
         val financeOpt: Opts[SreCmd] = Opts.subcommand(FinanceCmd.cmd)
-        val heaterOpt: Opts[SreCmd] = Opts.subcommand(HeatersCmd.cmd)
+        val heatersOpt: Opts[SreCmd] = Opts.subcommand(HeatersCmd.cmd)
+        val shuttersOpt: Opts[SreCmd] = Opts.subcommand(ShuttersCmd.cmd)
 
-        (financeOpt orElse heaterOpt).map {
+        (financeOpt orElse heatersOpt orElse shuttersOpt).map {
           case HeatersCmd(action) =>
             heatersHandler(action, settings)
 
           case FinanceCmd(action) =>
             financeHandler(action, settings)
+
+          case ShuttersCmd(action) => 
+            shuttersHandler(action, settings)
         }
 
       case Left(error) =>
-        ???
+        println(error)
+        Opts(IO.pure(ExitCode.Error))
     }
   }
 }
@@ -377,5 +409,58 @@ object HeatersCmd {
     val updateOpt: Opts[Action] = Opts.subcommand(updateCmd)
 
     statusOpt orElse updateOpt map (HeatersCmd(_))
+  }
+}
+
+case class ShuttersCmd(action: ShuttersCmd.Action) extends SreCmd
+
+object ShuttersCmd {
+
+  sealed trait Action
+  case object InfoAction extends Action
+  case class UpdateAction(id: Int, state: State) extends Action
+
+  val infoCmd = Command(
+    name = "info",
+    header = "Get shutters info"
+  ) {
+    Opts(InfoAction)
+  }
+
+  val updateCmd = Command(
+    name = "update",
+    header = "Set shutter state"
+  ) {
+    val idOpt =
+      Opts.option[Int]("id", help = "Shutter identifier").mapValidated { i =>
+//        if (i >= 0 && i <= 3) {
+          Validated.valid(i)
+//        } else {
+//          Validated.invalidNel(s"Invalid shutter value: $i")
+//        }
+      }
+
+    val stateOpt = Opts.option[String]("state", help = "State").mapValidated { i =>
+      State.get(i) match {
+        case Some(state) =>
+          Validated.valid(state)
+        case None =>
+          Validated.invalidNel(s"Invalid state value: $i")
+      }
+    }
+
+    (idOpt, stateOpt).mapN { case (id, state) =>
+      UpdateAction(id, state)
+    }
+  }
+
+  val cmd = Command(
+    name = "shutters",
+    header = "Shutters operations"
+  ) {
+    val infoOpt: Opts[Action] = Opts.subcommand(infoCmd)
+    val updateOpt: Opts[Action] = Opts.subcommand(updateCmd)
+
+    infoOpt orElse updateOpt map (ShuttersCmd(_))
   }
 }

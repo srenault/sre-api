@@ -4,7 +4,7 @@ import scala.collection.SortedSet
 import io.circe._
 import io.circe.literal._
 
-sealed trait Mode /*extends Ordered[ChannelStatus]*/ {
+sealed trait Mode {
   def id: Int
   def name: String
 }

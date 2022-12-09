@@ -57,10 +57,10 @@ case class DomoticzClient[F[_]: Async](
     }
   }
 
-  def switchLightCmd[A : Decoder](
+  def switchLightCmd(
     idx: Int,
     switchCmd: SwitchCmd
-  ): F[A] = {
+  ): F[Boolean] = {
     val uri = (settings.baseUri / "json.htm")
       .withQueryParam("type", "command")
       .withQueryParam("param", "switchlight")
@@ -72,9 +72,9 @@ case class DomoticzClient[F[_]: Async](
     val request = AuthenticatedGET(uri)
 
     httpClient.expect[Json](request).map { response =>
-      response.hcursor.downField("result").as[A] match {
-        case Left(e) => throw e
-        case Right(result) => result
+      response.hcursor.downField("status").as[String] match {
+        case Right(status) => status == "OK"
+        case _ => false
       }
     }
   }
@@ -97,11 +97,21 @@ object DomoticzClient {
     WebSocketClient(settings)(listener)
   }
 
-  def stream[F[_]: Async](httpClient: Client[F], settings: DomoticzSettings)(implicit F: Concurrent[F]): Stream[F, DomoticzClient[F]] = {
+  def create[F[_]: Async](httpClient: Client[F], settings: DomoticzSettings)(implicit F: Concurrent[F]): F[DomoticzClient[F]] = {
+    Topic[F, WebSocketMessage].flatMap { wsTopic =>
+      F.pure(DomoticzClient(httpClient, wsTopic, settings))
+    }
+  }
+
+  def resource[F[_]: Async: Concurrent](httpClient: Client[F], settings: DomoticzSettings): Resource[F, DomoticzClient[F]] = {
+    Resource.eval {
+      DomoticzClient.create(httpClient, settings)
+    }
+  }
+
+  def stream[F[_]: Async: Concurrent](httpClient: Client[F], settings: DomoticzSettings): Stream[F, DomoticzClient[F]] = {
     Stream.eval {
-      Topic[F, WebSocketMessage].flatMap { wsTopic =>
-        F.pure(DomoticzClient(httpClient, wsTopic, settings))
-      }
+      DomoticzClient.create(httpClient, settings)
     }
   }
 }
@@ -115,11 +125,11 @@ object SwitchCmd {
     def value = "Stop"
   }
 
-  case object Off extends Sensor {
+  case object Off extends SwitchCmd {
     def value = "Off"
   }
 
-  case object On extends Sensor {
+  case object On extends SwitchCmd {
     def value = "On"
   }
 }

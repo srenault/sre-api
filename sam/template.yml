@@ -102,6 +102,26 @@ Parameters:
     Description: 'Required. Heaters - Password'
     Type: 'String'
 
+  DOMOTICZBASEURI:
+    Description: 'Required. Domoticz - Base URI'
+    Type: 'String'
+
+  DOMOTICZWSURI:
+    Description: 'Required. Domoticz - WS URI'
+    Type: 'String'
+
+  DOMOTICZUSERNAME:
+    Description: 'Required. Domoticz - Username'
+    Type: 'String'
+
+  DOMOTICZPASSWORD:
+    Description: 'Required. Domoticz - Password'
+    Type: 'String'
+
+  SHUTTERSCONFIG:
+    Description: 'Required. Shutters configuration'
+    Type: 'String'
+
 Globals:
   Function:
     Timeout: 60
@@ -204,6 +224,27 @@ Resources:
           HEATERS_BASEURI: !Ref HEATERSBASEURI
           HEATERS_USERNAME: !Ref HEATERSUSERNAME
           HEATERS_PASSWORD: !Ref HEATERSPASSWORD
+
+  ShuttersApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../shutters-api/target/scala-2.13/shutters-api.jar
+      Handler: sre.api.heaters.Handler::handleRequest
+      Events:
+        heatersProxyEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApiGatewayApi
+            Path: /shutters/{proxy+}
+            PayloadFormatVersion: "2.0"
+            Method: ANY
+      Environment:
+        Variables:
+          DOMOTICZ_BASEURI: !Ref DOMOTICZBASEURI
+          DOMOTICZ_WSURI: !Ref DOMOTICZWSURI
+          DOMOTICZ_USERNAME: !Ref DOMOTICZUSERNAME
+          DOMOTICZ_PASSWORD: !Ref DOMOTICZPASSWORD
+          SHUTTERS_CONFIG: !Ref SHUTTERSCONFIG
 
   FinanceReindexStep:
     Type: AWS::Serverless::Function
