@@ -1,9 +1,8 @@
 package sre.api.transport.train
 
-import cats._
+import org.typelevel.ci._
 import cats.effect._
 import cats.implicits._
-import cats.effect.concurrent.{ Ref, Deferred }
 import io.circe._
 import io.circe.literal._
 import io.circe.syntax._
@@ -22,13 +21,13 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
 
   def authInfoRef: Ref[F, Option[Deferred[F, AuthResponse]]]
 
-  val USER_AGENT_HEADER = Header("User-Agent", "SncfFusion Android")
+  val USER_AGENT_HEADER = Header.Raw(ci"User-Agent", "SncfFusion Android")
 
-  val CONTENT_TYPE_HEADER = Header("Content-Type", "application/json")
+  val CONTENT_TYPE_HEADER = Header.Raw(ci"Content-Type", "application/json")
 
   val DEFAULT_HEADERS = USER_AGENT_HEADER :: CONTENT_TYPE_HEADER :: Nil
 
-  def authenticate()(implicit F: Effect[F]): F[AuthResponse] = {
+  def authenticate()(implicit F: Async[F]): F[AuthResponse] = {
     val body = json"""
       {
         "anonymousUser": true,
@@ -43,7 +42,7 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
     httpClient.expect[AuthResponse](request)
   }
 
-  def refreshAuthInfo()(implicit F: ConcurrentEffect[F]): F[AuthResponse] = {
+  def refreshAuthInfo()(implicit F: Async[F]): F[AuthResponse] = {
     for {
       d <- Deferred[F, AuthResponse]
       _ <- authInfoRef.set(Some(d))
@@ -52,7 +51,7 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
     } yield authInfo
   }
 
-  def withAuthInfo[A](f: AuthResponse => F[A])(implicit F: ConcurrentEffect[F]): F[A] = {
+  def withAuthInfo[A](f: AuthResponse => F[A])(implicit F: Async[F]): F[A] = {
     (for {
       maybeAuthInfo <- authInfoRef.get
       authInfo <- maybeAuthInfo match {
@@ -61,37 +60,58 @@ trait TrainClientDsl[F[_]] extends Http4sClientDsl[F] {
         case None => refreshAuthInfo()
       }
       res <- f(authInfo).recoverWith {
-        case UnexpectedStatus(Status.Unauthorized) =>
+        case UnexpectedStatus(Status.Unauthorized, _, _) =>
           refreshAuthInfo().flatMap(f)
       }
     } yield res)
   }
 
-  def AuthenticatedPOST[A](uri: Uri, body: A, authInfo: AuthResponse, headers: Header*)(implicit F: Monad[F], jsonEncoder: Encoder[A], w: EntityEncoder[F, A]): F[Request[F]] = {
+  def AuthenticatedPOST[A](
+      uri: Uri,
+      body: A,
+      authInfo: AuthResponse,
+      headers: Header.Raw*
+  )(implicit
+      jsonEncoder: Encoder[A],
+      jsonEntityEncoder: EntityEncoder[F, A]
+  ): Request[F] = {
     val bodyAsString = body.asJson.noSpaces
     val authHeader = buildAuthHeader(uri, POST, Some(bodyAsString), authInfo)
-    POST(body, uri, authHeader +: DEFAULT_HEADERS ++: headers:_*)
+    POST(body, uri, authHeader +: DEFAULT_HEADERS ++: headers)
   }
 
-  def AuthenticatedGET(uri: Uri, authInfo: AuthResponse, headers: Header*)(implicit F: Monad[F]): F[Request[F]] = {
+  def AuthenticatedGET(
+      uri: Uri,
+      authInfo: AuthResponse,
+      headers: Header.Raw*
+  ): Request[F] = {
     val authHeader = buildAuthHeader(uri, GET, body = None, authInfo)
-    GET(uri, authHeader +: headers:_*)
+    GET(uri, authHeader +: headers)
   }
 
-  private def buildAuthHeader[A](uri: Uri, method: Method, body: Option[String], authInfo: AuthResponse): Header = {
+  private def buildAuthHeader[A](
+      uri: Uri,
+      method: Method,
+      body: Option[String],
+      authInfo: AuthResponse
+  ): Header.Raw = {
     val token = authInfo.token
     val secret = authInfo.secret
     val data = body getOrElse ""
-    val signedRequest = Security.sha1(s"${uri.renderString}:${method.name}:$data")
+    val signedRequest =
+      Security.sha1(s"${uri.renderString}:${method.name}:$data")
     val timestamp = System.currentTimeMillis / 1000
     val nonce = java.util.UUID.randomUUID().toString()
-    val signature = Security.hmacSha256(s"appun:$token:$secret:$timestamp:$nonce:$signedRequest", secret)
+    val signature = Security.hmacSha256(
+      s"appun:$token:$secret:$timestamp:$nonce:$signedRequest",
+      secret
+    )
     val value = Map(
       "Mac id" -> token,
       "ts" -> timestamp,
       "nonce" -> nonce,
       "mac" -> signature
     ).map { case (name, value) => s"""$name="$value"""" }.mkString(", ")
-    Header("Authorization", value)
+    Header.Raw(ci"Authorization", value)
   }
 }

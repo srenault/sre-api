@@ -5,7 +5,10 @@ import cats.implicits._
 import org.http4s._
 import weather.WeatherClient
 
-class WeatherService[F[_]: Effect](weatherClient: WeatherClient[F], settings: Settings) extends WeatherServiceDsl[F] {
+class WeatherService[F[_]: Async](
+    weatherClient: WeatherClient[F],
+    settings: Settings
+) extends WeatherServiceDsl[F] {
 
   val service: HttpRoutes[F] = {
     HttpRoutes.of[F] {
@@ -19,7 +22,9 @@ class WeatherService[F[_]: Effect](weatherClient: WeatherClient[F], settings: Se
           Ok(result)
         }
 
-      case GET -> Root / "city" / "search" / term :? LatitudeQueryParamMatcher(latitude) +& LongitudeQueryParamMatcher(longitude) =>
+      case GET -> Root / "city" / "search" / term :? LatitudeQueryParamMatcher(
+            latitude
+          ) +& LongitudeQueryParamMatcher(longitude) =>
         weatherClient.searchCity(term, latitude, longitude).flatMap { result =>
           Ok(result)
         }

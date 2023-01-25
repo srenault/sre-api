@@ -47,7 +47,7 @@ object Cli
           case ShuttersCmd.InfoAction =>
             val json = ShuttersHttpService.infoEncoder.apply(settings.shutters.info)
             println(json.spaces4)
-            IO.pure(ExitCode.Success)    
+            IO.pure(ExitCode.Success)
 
           case ShuttersCmd.UpdateAction(id, state) =>
             service.update(id, state) *> IO.pure {

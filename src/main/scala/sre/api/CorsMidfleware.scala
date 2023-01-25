@@ -7,16 +7,15 @@ import scala.concurrent.duration._
 
 object CorsMiddleware {
 
-  def apply[F[_]: Effect](settings: Settings)(service: HttpRoutes[F]): HttpRoutes[F] = {
+  def apply[F[_]: Async](
+      settings: Settings
+  )(service: HttpRoutes[F]): HttpRoutes[F] = {
     if (settings.cors) {
-      val config = CORSConfig(
-        anyOrigin = true,
-        anyMethod = false,
-        allowedMethods = Some(Set("GET", "POST", "PUT")),
-        allowCredentials = true,
-        maxAge = 1.day.toSeconds
-      )
-     CORS(service, config)
+      CORS.policy.withAllowOriginAll
+        .withAllowMethodsIn(Set(Method.GET, Method.POST, Method.PUT))
+        .withAllowCredentials(true)
+        .withMaxAge(1.day)
+        .apply(service)
     } else {
       service
     }

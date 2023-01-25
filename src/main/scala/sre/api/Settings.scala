@@ -1,69 +1,66 @@
 package sre.api
 
 import java.io.File
-import scala.concurrent.duration.FiniteDuration
-import cats.effect._
 import org.http4s.Uri
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.config.syntax._
+import sre.api.domoticz.DomoticzSettings
 
 case class TrainSettings(endpoint: Uri)
 
 case class TransportSettings(train: TrainSettings)
 
-case class IComptaCategorySettings(label: String, rulePath: List[String], threshold: Int)
-
-case class DomoticzSettings(
-  baseUri: Uri,
-  wsUri: Uri,
-  username: String,
-  password: String
+case class IComptaCategorySettings(
+    label: String,
+    rulePath: List[String],
+    threshold: Int
 )
 
 case class ElectricityRatioSettings(
-  hp: Float,
-  hc: Float,
-  taxeCommunale: Float,
-  taxeDepartementale: Float,
-  cspe: Float,
-  tvaReduite: Float,
-  tva: Float,
-  cta: Float
+    hp: Float,
+    hc: Float,
+    taxeCommunale: Float,
+    taxeDepartementale: Float,
+    cspe: Float,
+    tvaReduite: Float,
+    tva: Float,
+    cta: Float
 )
 
-case class ElectricitySettings(ratio: ElectricityRatioSettings, yearlySubscription: Float, monthlyCta: Float)
+case class ElectricitySettings(
+    ratio: ElectricityRatioSettings,
+    yearlySubscription: Float,
+    monthlyCta: Float
+)
 
 case class EnergySettings(electricity: ElectricitySettings)
 
 case class WeatherSettings(endpoint: Uri)
 
 case class S3Settings(
-  region: String,
-  bucket: String,
-  publicKey: String,
-  secretKey: String,
-  prefix: Option[String]
+    region: String,
+    bucket: String,
+    publicKey: String,
+    secretKey: String,
+    prefix: Option[String]
 )
 
 case class HttpClientSettings(
-  logRequest: Boolean,
-  logResponse: Boolean
+    logRequest: Boolean,
+    logResponse: Boolean
 )
 
-case class ApkSettings(s3: S3Settings)
-
 case class Settings(
-  advertisedAddress: String,
-  httpPort: Int,
-  httpClient: HttpClientSettings,
-  db: String,
-  cors: Boolean,
-  transport: TransportSettings,
-  domoticz: DomoticzSettings,
-  energy: EnergySettings,
-  weather: WeatherSettings,
-  apk: ApkSettings
+    advertisedAddress: String,
+    httpPort: Int,
+    httpClient: HttpClientSettings,
+    db: String,
+    cors: Boolean,
+    transport: TransportSettings,
+    domoticz: DomoticzSettings,
+    energy: EnergySettings,
+    weather: WeatherSettings
 )
 
 object Settings {
@@ -83,7 +80,6 @@ object Settings {
       domoticzSettings <- AppConfig.as[DomoticzSettings]("domoticz")
       energySettings <- AppConfig.as[EnergySettings]("energy")
       weatherSettings <- AppConfig.as[WeatherSettings]("weather")
-      apkSettings <- AppConfig.as[ApkSettings]("apk")
     } yield Settings(
       advertisedAddress,
       httpPort,
@@ -93,8 +89,7 @@ object Settings {
       transportSettings,
       domoticzSettings,
       energySettings,
-      weatherSettings,
-      apkSettings
+      weatherSettings
     )
   }
 
@@ -111,9 +106,11 @@ object Settings {
     final def apply(c: HCursor): Decoder.Result[File] =
       c.as[String].flatMap { s =>
         val f = new File(s)
-        if (f.exists) Right(f) else Left {
-          DecodingFailure(s"$s file doesn't exists", c.history)
-        }
+        if (f.exists) Right(f)
+        else
+          Left {
+            DecodingFailure(s"$s file doesn't exists", c.history)
+          }
       }
   }
 }

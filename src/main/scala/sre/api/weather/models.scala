@@ -2,7 +2,6 @@ package sre.api.weather
 
 import io.circe._
 import io.circe.generic.semiauto._
-import cats.effect._
 import org.http4s.circe._
 import org.http4s.EntityEncoder
 import java.time._
@@ -10,55 +9,60 @@ import java.time._
 trait WeatherDateTimeDecoder {
   implicit val zonedDateTimeDecoder = new Decoder[ZonedDateTime] {
     final def apply(c: HCursor): Decoder.Result[ZonedDateTime] = {
-      val dateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-      c.as[String].map(LocalDateTime.parse(_, dateTimeFormatter).atZone(ZoneId.of("UTC")))
+      val dateTimeFormatter =
+        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+      c.as[String]
+        .map(LocalDateTime.parse(_, dateTimeFormatter).atZone(ZoneId.of("UTC")))
     }
   }
 
   implicit val localDateTimeDecoder = new Decoder[LocalDateTime] {
     final def apply(c: HCursor): Decoder.Result[LocalDateTime] = {
-      val dateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+      val dateTimeFormatter =
+        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
       c.as[String].map(LocalDateTime.parse(_, dateTimeFormatter))
     }
   }
 }
 
 case class MatchedStation(
-  id: String,
-  countrycode: String,
-  dept: String,
-  name: String,
-  latitude: Double,
-  longitude: Double
+    id: String,
+    countrycode: String,
+    dept: String,
+    name: String,
+    latitude: Double,
+    longitude: Double
 )
 
 object MatchedStation {
   implicit val decoder: Decoder[MatchedStation] = deriveDecoder[MatchedStation]
   implicit val encoder: Encoder[MatchedStation] = deriveEncoder[MatchedStation]
-  implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[MatchedStation]] = jsonEncoderOf[F, List[MatchedStation]]
+  implicit def entitiesEncoder[F[_]]: EntityEncoder[F, List[MatchedStation]] =
+    jsonEncoderOf[List[MatchedStation]]
 }
 
 case class Station(
-  metadata: Station.Metadata,
-  data: List[Station.Metrics]
+    metadata: Station.Metadata,
+    data: List[Station.Metrics]
 )
 
 object Station {
   implicit val decoder: Decoder[Station] = deriveDecoder[Station]
   implicit lazy val encoder: Encoder[Station] = deriveEncoder[Station]
-  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, Station] = jsonEncoderOf[F, Station]
+  implicit def entityEncoder[F[_]]: EntityEncoder[F, Station] =
+    jsonEncoderOf[Station]
 
   case class Metadata(
-    id: String,
-    libelle: String,
-    departement: String,
-    pays: String,
-    pays_nom: String,
-    latitude: Double,
-    longitude: Double,
-    altitude: Double,
-    timezone: String,
-    temps: String
+      id: String,
+      libelle: String,
+      departement: String,
+      pays: String,
+      pays_nom: String,
+      latitude: Double,
+      longitude: Double,
+      altitude: Double,
+      timezone: String,
+      temps: String
   )
 
   object Metadata {
@@ -67,17 +71,17 @@ object Station {
   }
 
   case class Metrics(
-    dh_utc: ZonedDateTime,
-    temperature: Option[Float],
-    ressenti: Option[Float],
-    humidite: Option[Int],
-    point_de_rosee: Option[Float],
-    pression: Option[Float],
-    pluie_1h: Float,
-    visibilite: Option[Float],
-    vent_moyen: Option[Float],
-    vent_direction: Option[Float],
-    vent_raphales: Option[Float]
+      dh_utc: ZonedDateTime,
+      temperature: Option[Float],
+      ressenti: Option[Float],
+      humidite: Option[Int],
+      point_de_rosee: Option[Float],
+      pression: Option[Float],
+      pluie_1h: Float,
+      visibilite: Option[Float],
+      vent_moyen: Option[Float],
+      vent_direction: Option[Float],
+      vent_raphales: Option[Float]
   )
 
   object Metrics extends WeatherDateTimeDecoder {
@@ -88,38 +92,40 @@ object Station {
 }
 
 case class City(
-  countrycode: String,
-  dept: String,
-  geoid: Long,
-  name: String,
-  latitude: Double,
-  longitude: Double,
-  altitude: Int,
-  distance: Long,
-  bearing: Int,
-  weight: String
+    countrycode: String,
+    dept: String,
+    geoid: Long,
+    name: String,
+    latitude: Double,
+    longitude: Double,
+    altitude: Int,
+    distance: Long,
+    bearing: Int,
+    weight: String
 )
 
 object City {
   implicit val decoder: Decoder[City] = deriveDecoder[City]
   implicit val encoder: Encoder[City] = deriveEncoder[City]
-  implicit def entitiesEncoder[F[_]: Effect]: EntityEncoder[F, List[City]] = jsonEncoderOf[F, List[City]]
+  implicit def entitiesEncoder[F[_]]: EntityEncoder[F, List[City]] =
+    jsonEncoderOf[List[City]]
 }
 
 case class Forecast(
-  region: Option[String],
-  mise_a_jour: LocalDateTime,
-  prevision: List[Forecast.Item]
+    region: Option[String],
+    mise_a_jour: LocalDateTime,
+    prevision: List[Forecast.Item]
 )
 
 object Forecast extends WeatherDateTimeDecoder {
   implicit val decoder: Decoder[Forecast] = deriveDecoder[Forecast]
   implicit val encoder: Encoder[Forecast] = deriveEncoder[Forecast]
-  implicit def entityEncoder[F[_]: Effect]: EntityEncoder[F, Forecast] = jsonEncoderOf[F, Forecast]
+  implicit def entityEncoder[F[_]]: EntityEncoder[F, Forecast] =
+    jsonEncoderOf[Forecast]
 
   case class Temperature(
-    mini: Double,
-    maxi: Double
+      mini: Double,
+      maxi: Double
   )
 
   object Temperature {
@@ -135,10 +141,10 @@ object Forecast extends WeatherDateTimeDecoder {
   }
 
   case class Nebulosite(
-    totale: Double,
-    basse: Double,
-    haute: Double,
-    moyenne: Double
+      totale: Double,
+      basse: Double,
+      haute: Double,
+      moyenne: Double
   )
 
   object Nebulosite {
@@ -147,19 +153,19 @@ object Forecast extends WeatherDateTimeDecoder {
   }
 
   case class HourlyDetails(
-    heure: Int,
-    temperature: Double,
-    humidite: Int,
-    pluie_3h: Double,
-    pluie_conv_3h: Double,
-    vent_moy: Int,
-    rafales: Int,
-    pression: Double,
-    neige: Boolean,
-    point_rosee: Int,
-    vent_dir: Option[Int],
-    stormmotion: Option[Int],
-    nebulosite: Option[Nebulosite]
+      heure: Int,
+      temperature: Double,
+      humidite: Int,
+      pluie_3h: Double,
+      pluie_conv_3h: Double,
+      vent_moy: Int,
+      rafales: Int,
+      pression: Double,
+      neige: Boolean,
+      point_rosee: Int,
+      vent_dir: Option[Int],
+      stormmotion: Option[Int],
+      nebulosite: Option[Nebulosite]
   )
 
   object HourlyDetails {
@@ -168,17 +174,17 @@ object Forecast extends WeatherDateTimeDecoder {
   }
 
   case class Item(
-    day: LocalDate,
-    saint: String,
-    lever_soleil: String,
-    coucher_soleil: String,
-    temperature: Temperature,
-    cumul_pluie: Double,
-    vent_max: Int,
-    matin: Summary,
-    apres_midi: Summary,
-    temps: String,
-    details: List[HourlyDetails]
+      day: LocalDate,
+      saint: String,
+      lever_soleil: String,
+      coucher_soleil: String,
+      temperature: Temperature,
+      cumul_pluie: Double,
+      vent_max: Int,
+      matin: Summary,
+      apres_midi: Summary,
+      temps: String,
+      details: List[HourlyDetails]
   )
 
   object Item {

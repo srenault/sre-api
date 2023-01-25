@@ -7,11 +7,14 @@ import org.http4s.dsl.Http4sDsl
 
 trait TrainServiceDsl[F[_]] extends Http4sDsl[F] {
 
-  object LatitudeQueryParamMatcher extends QueryParamDecoderMatcher[Double]("latitude")
+  object LatitudeQueryParamMatcher
+      extends QueryParamDecoderMatcher[Double]("latitude")
 
-  object LongitudeQueryParamMatcher extends QueryParamDecoderMatcher[Double]("longitude")
+  object LongitudeQueryParamMatcher
+      extends QueryParamDecoderMatcher[Double]("longitude")
 
-  object DistanceQueryParamMatcher extends QueryParamDecoderMatcher[Int]("distance")
+  object DistanceQueryParamMatcher
+      extends QueryParamDecoderMatcher[Int]("distance")
 
   implicit val dateQueryParamDecoder: QueryParamDecoder[Option[ZonedDateTime]] =
     QueryParamDecoder[String].map { dateStr =>
@@ -20,5 +23,6 @@ trait TrainServiceDsl[F[_]] extends Http4sDsl[F] {
       }.toOption
     }
 
-  object DateQueryParamMatcher extends QueryParamDecoderMatcher[Option[ZonedDateTime]]("date")
+  object DateQueryParamMatcher
+      extends QueryParamDecoderMatcher[Option[ZonedDateTime]]("date")
 }

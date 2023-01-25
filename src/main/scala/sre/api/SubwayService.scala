@@ -6,13 +6,15 @@ import org.http4s._
 
 import transport.subway._
 
-class SubwayService[F[_]: Effect](subwayClient: SubwayClient[F], settings: Settings) extends TrainServiceDsl[F] {
+class SubwayService[F[_]: Async](
+    subwayClient: SubwayClient[F],
+    settings: Settings
+) extends TrainServiceDsl[F] {
   val service: HttpRoutes[F] = {
-    HttpRoutes.of[F] {
-      case GET -> Root / "stops" / stopId / "departures" =>
-        subwayClient.nextDepartures(stopId).flatMap { nextDepartures =>
-          Ok(nextDepartures)
-        }
+    HttpRoutes.of[F] { case GET -> Root / "stops" / stopId / "departures" =>
+      subwayClient.nextDepartures(stopId).flatMap { nextDepartures =>
+        Ok(nextDepartures)
+      }
     }
   }
 }

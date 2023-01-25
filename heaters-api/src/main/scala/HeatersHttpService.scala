@@ -27,7 +27,7 @@ class HeatersHttpService[F[_]: Async](
   }
 
   val routes: HttpRoutes[F] = HttpRoutes.of[F] {
-    case GET -> Root / "heaters" / "status" =>
+    case GET -> Root / "heaters" =>
       heatersService.getStatus().flatMap { channels =>
         val json = HeatersHttpService.statusEncoder(channels)
         Ok(json, `Content-Type`(MediaType.application.json, Charset.`UTF-8`))

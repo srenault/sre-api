@@ -6,7 +6,8 @@ import org.http4s._
 import java.time.ZonedDateTime
 import transport.train._
 
-class TrainService[F[_]: Effect](trainClient: TrainClient[F], settings: Settings) extends TrainServiceDsl[F] {
+class TrainService[F[_]: Async](trainClient: TrainClient[F], settings: Settings)
+    extends TrainServiceDsl[F] {
   val service: HttpRoutes[F] = {
     HttpRoutes.of[F] {
       case GET -> Root / "authenticate" =>
@@ -24,21 +25,30 @@ class TrainService[F[_]: Effect](trainClient: TrainClient[F], settings: Settings
           Ok(nextDepartures)
         }
 
-      case GET -> Root / "itineraries" / "search" / departure / arrival :? DateQueryParamMatcher(maybeDate) =>
+      case GET -> Root / "itineraries" / "search" / departure / arrival :? DateQueryParamMatcher(
+            maybeDate
+          ) =>
         val searchStationA = trainClient.searchStation(departure)
         val searchStationB = trainClient.searchStation(arrival)
 
         (searchStationA, searchStationB).tupled.flatMap {
           case (Some(stationA), Some(stationB)) =>
             val date = maybeDate getOrElse ZonedDateTime.now()
-            trainClient.searchItineraries(stationA, stationB, date).flatMap(Ok(_))
+            trainClient
+              .searchItineraries(stationA, stationB, date)
+              .flatMap(Ok(_))
 
           case _ => BadRequest()
         }
 
-      case GET -> Root / "near" / "stops" :? LatitudeQueryParamMatcher(latitude) +& LongitudeQueryParamMatcher(longitude) +& DistanceQueryParamMatcher(distance) =>
-        trainClient.nearestStops(latitude, longitude, distance).flatMap { nearestStops =>
-          Ok(nearestStops)
+      case GET -> Root / "near" / "stops" :? LatitudeQueryParamMatcher(
+            latitude
+          ) +& LongitudeQueryParamMatcher(
+            longitude
+          ) +& DistanceQueryParamMatcher(distance) =>
+        trainClient.nearestStops(latitude, longitude, distance).flatMap {
+          nearestStops =>
+            Ok(nearestStops)
         }
     }
   }
