@@ -36,7 +36,7 @@ val gitVersion = {
 scalacOptions ++= Seq("-Xlint")
 logBuffered in Test := false
 
-lazy val server = (project in file("."))
+lazy val serverProject = (project in file("server"))
   .settings(
     organization := "sre",
     name := projectName,

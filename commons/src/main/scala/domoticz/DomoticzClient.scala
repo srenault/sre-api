@@ -21,9 +21,9 @@ case class DomoticzClient[F[_]: Async](
   settings: DomoticzSettings
 )(implicit F: Concurrent[F]) extends DomoticzClientDsl[F] {
 
-  lazy val wsConnect: Stream[F, Unit] = {
+  lazy val wsConnect: Resource[F, Unit] = {
     val wsClient = DomoticzClient.createWsClient(wsTopic, settings)
-    Stream.eval(wsClient.connect())
+    wsClient.connect().map(_ => ())
   }
 
   def graph[A : Decoder](
@@ -105,12 +105,6 @@ object DomoticzClient {
 
   def resource[F[_]: Async: Concurrent](httpClient: Client[F], settings: DomoticzSettings): Resource[F, DomoticzClient[F]] = {
     Resource.eval {
-      DomoticzClient.create(httpClient, settings)
-    }
-  }
-
-  def stream[F[_]: Async: Concurrent](httpClient: Client[F], settings: DomoticzSettings): Stream[F, DomoticzClient[F]] = {
-    Stream.eval {
       DomoticzClient.create(httpClient, settings)
     }
   }

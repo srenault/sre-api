@@ -4,6 +4,8 @@ import cats.effect._
 import cats.implicits._
 import cats.effect.testing.scalatest.AsyncIOSpec
 import org.scalatest.freespec.AsyncFreeSpec
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import sre.api._
 import sre.api.finance._
 import sre.api.finance.analytics._
@@ -12,7 +14,9 @@ class AnalyticsClientSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers {
 
   private def round(n: Double): Float = BigDecimal(n).setScale(0, BigDecimal.RoundingMode.HALF_UP).toFloat
 
-  lazy val settings: Settings = TestSettings.load()
+  lazy val settings = Settings.loadFinanceSettings()
+
+  implicit def logger[IO[_]: Sync]: Logger[IO] = Slf4jLogger.getLogger[IO]
 
   "AnalyticsClient" - {
     "should reindex all ofx files" in {

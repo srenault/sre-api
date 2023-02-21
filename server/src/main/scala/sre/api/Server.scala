@@ -69,7 +69,7 @@ object Server {
           domoticzClient <- DomoticzClient
             .resource[F](httpClient, settings.domoticz)
 
-          // _ <- domoticzClient.wsConnect
+          _ <- domoticzClient.wsConnect
 
           energyClient = EnergyClient[F](domoticzClient, settings)
 

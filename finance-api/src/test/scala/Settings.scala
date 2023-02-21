@@ -1,9 +1,9 @@
 import java.nio.file._
 import org.http4s.Uri
 import sre.api.finance._
-import sre.api.S3Settings
+import sre.api.settings._
 
-object TestSettings {
+object Settings {
 
   private def getPathFromResource(fileName: String): Path = {
     Option(getClass().getClassLoader()).map(_.getResource(fileName)) match {
@@ -24,14 +24,13 @@ object TestSettings {
     }
   }
 
-  def load(): Settings = {
-    Settings(
-      httpClient = HttpClientSettings(
+  def loadFinanceSettings(): FinanceSettings = {
+   FinanceSettings(
+      db = s"jdbc:sqlite:${getResourceAbsolutePath()}/sre.db",
+            httpClient = HttpClientSettings(
         logRequest = true,
         logResponse = true
       ),
-      db = s"jdbc:sqlite:${getResourceAbsolutePath()}/sre.db",
-      finance = FinanceSettings(
         cm = CMSettings(
           baseUri = uri("https://www.bank.com"),
           authenticationPath = "/authentification",
@@ -42,7 +41,7 @@ object TestSettings {
           username = "johndoe",
           password = "password",
           accounts = Nil,
-          otpSession = "/Users/test/.sre-api-otp_session",
+          otpSession = Paths.get("/Users/test/.sre-api-otp_session"),
           apkId = "com.cm_prod.bad"
         ),
         transactionsDir = getPathFromResource("transactions"),
@@ -55,10 +54,10 @@ object TestSettings {
           bucket = "test",
           publicKey = "xxxxx",
           secretKey = "xxxxx",
-          prefix = None
+          prefix = "xxx"
         ),
         setupVolume = SetupVolumeSettings(maxKeys = 20)
       )
-    )
+    
   }
 }
