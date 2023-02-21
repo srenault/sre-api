@@ -111,7 +111,7 @@ case class CMPendingOtpSession(
 }
 
 object CMPendingOtpSession {
-  val OTPAUTH_COOKIE = "%5Fwirt%5Fsosddmzsiwfcmcicfr%5FSOSD%5FOTPAUTH%5Fsaguid"
+  val OTPAUTH_COOKIE = "%5Fwirt%5Fsosd%5FSOSD%5FOTPAUTH%5Fsaguid"
   val OTP_HIDDEN_FIELD_ID = "otp_hidden"
   val GLOBAL_BACKUP_FIELD_ID = "global_backup_hidden_key"
   val FID_DO_VALIDATE_X_FIELD = "_FID_DoValidate.x" -> "0"
