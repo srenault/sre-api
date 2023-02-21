@@ -10,3 +10,14 @@ src/test/resources/*
 .idea/
 .bsp/sbt.json
 resources.tar
+node_modules
+.bloop
+sam-local.yml
+.metals/metals.mv.db
+.vscode/settings.json
+scripts/finance-event.json
+scripts/finance.sh
+package.yml
+finance-api/src/test/resources/transactions
+project/metals.sbt
+sam/env.json
