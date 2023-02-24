@@ -45,7 +45,8 @@ object Cli
 
         action match {
           case ShuttersCmd.InfoAction =>
-            val json = ShuttersHttpService.infoEncoder.apply(settings.shutters.info)
+            val json =
+              ShuttersHttpService.infoEncoder.apply(settings.shutters.info)
             println(json.spaces4)
             IO.pure(ExitCode.Success)
 
@@ -193,7 +194,7 @@ object Cli
           case FinanceCmd(action) =>
             financeHandler(action, settings)
 
-          case ShuttersCmd(action) => 
+          case ShuttersCmd(action) =>
             shuttersHandler(action, settings)
         }
 
@@ -434,20 +435,21 @@ object ShuttersCmd {
     val idOpt =
       Opts.option[Int]("id", help = "Shutter identifier").mapValidated { i =>
 //        if (i >= 0 && i <= 3) {
-          Validated.valid(i)
+        Validated.valid(i)
 //        } else {
 //          Validated.invalidNel(s"Invalid shutter value: $i")
 //        }
       }
 
-    val stateOpt = Opts.option[String]("state", help = "State").mapValidated { i =>
-      State.get(i) match {
-        case Some(state) =>
-          Validated.valid(state)
-        case None =>
-          Validated.invalidNel(s"Invalid state value: $i")
+    val stateOpt =
+      Opts.option[String]("state", help = "State").mapValidated { i =>
+        State.get(i) match {
+          case Some(state) =>
+            Validated.valid(state)
+          case None =>
+            Validated.invalidNel(s"Invalid state value: $i")
+        }
       }
-    }
 
     (idOpt, stateOpt).mapN { case (id, state) =>
       UpdateAction(id, state)
