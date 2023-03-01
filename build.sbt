@@ -208,5 +208,9 @@ lazy val cliProject = (project in file("cli"))
       "org.http4s"   %% "http4s-ember-client"  % Http4sVersion
     )
   ).settings(
-    assemblyJarName in assembly := s"cli.jar"
+    assemblyJarName in assembly := s"cli.jar",
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    }
   ).dependsOn(financeProject, heatersProject, shuttersProject)
