@@ -2,7 +2,7 @@ package sre.api
 
 import org.http4s.Uri
 import java.io.File
-import java.nio.file.{ Path, Paths }
+import java.nio.file.{Path, Paths}
 import io.circe._
 import io.circe.parser._
 import io.circe.generic.auto._
@@ -15,7 +15,9 @@ object Env {
     Option(env.get(key))
 
   def getStringOrFail(key: String): String =
-    getString(key) getOrElse sys.error(s"Configuration error: Unable to get $key")
+    getString(key) getOrElse sys.error(
+      s"Configuration error: Unable to get $key"
+    )
 
   def getIntOrFail(key: String): Int =
     scala.util.Try(getStringOrFail(key).toInt) getOrElse {
@@ -44,7 +46,9 @@ object Env {
     val file = new File(path)
 
     if (!file.exists) {
-      sys.error(s"Configuration error: Unable to get $key as file, $path not found")
+      sys.error(
+        s"Configuration error: Unable to get $key as file, $path not found"
+      )
     } else {
       file
     }
@@ -58,7 +62,7 @@ object Env {
     Paths.get(src)
   }
 
-  def getJsonAsOrFail[A : Decoder](key: String): A = {
+  def getJsonAsOrFail[A: Decoder](key: String): A = {
     val s = getString(key) getOrElse {
       sys.error(s"Configuration error: Unable to get $key as Json, not found")
     }
@@ -88,9 +92,19 @@ object Env {
     update(_.remove(name))
   }
 
-  lazy val AWS_LAMBDA_FUNCTION_NAME = getStringOrFail("AWS_LAMBDA_FUNCTION_NAME")
-  lazy val AWS_LAMBDA_FUNCTION_VERSION = getStringOrFail("AWS_LAMBDA_FUNCTION_VERSION")
-  lazy val AWS_LAMBDA_FUNCTION_MEMORY_SIZE = getIntOrFail("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
-  lazy val AWS_LAMBDA_LOG_GROUP_NAME = getStringOrFail("AWS_LAMBDA_LOG_GROUP_NAME")
-  lazy val AWS_LAMBDA_LOG_STREAM_NAME = getStringOrFail("AWS_LAMBDA_LOG_STREAM_NAME")
+  lazy val AWS_LAMBDA_FUNCTION_NAME = getStringOrFail(
+    "AWS_LAMBDA_FUNCTION_NAME"
+  )
+  lazy val AWS_LAMBDA_FUNCTION_VERSION = getStringOrFail(
+    "AWS_LAMBDA_FUNCTION_VERSION"
+  )
+  lazy val AWS_LAMBDA_FUNCTION_MEMORY_SIZE = getIntOrFail(
+    "AWS_LAMBDA_FUNCTION_MEMORY_SIZE"
+  )
+  lazy val AWS_LAMBDA_LOG_GROUP_NAME = getStringOrFail(
+    "AWS_LAMBDA_LOG_GROUP_NAME"
+  )
+  lazy val AWS_LAMBDA_LOG_STREAM_NAME = getStringOrFail(
+    "AWS_LAMBDA_LOG_STREAM_NAME"
+  )
 }

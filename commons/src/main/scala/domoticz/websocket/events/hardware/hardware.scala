@@ -10,16 +10,17 @@ trait HardwareEvent
 object HardwareEvent {
 
   case class Data(
-    name: String,
-    value: String,
-    lastUpdate: LocalDateTime
+      name: String,
+      value: String,
+      lastUpdate: LocalDateTime
   ) extends HardwareEvent
 
   object Data {
 
     val localDateTimeDecoder = new Decoder[LocalDateTime] {
       final def apply(c: HCursor): Decoder.Result[LocalDateTime] = {
-        val dateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        val dateTimeFormatter =
+          java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
         c.as[String].map(LocalDateTime.parse(_, dateTimeFormatter))
       }
     }
@@ -29,7 +30,9 @@ object HardwareEvent {
         for {
           value <- c.downField("Data").as[String]
           name <- c.downField("Name").as[String]
-          lastUpdate <- c.downField("LastUpdate").as[LocalDateTime](localDateTimeDecoder)
+          lastUpdate <- c
+            .downField("LastUpdate")
+            .as[LocalDateTime](localDateTimeDecoder)
         } yield Data(name, value, lastUpdate)
     }
   }
@@ -48,7 +51,6 @@ object HardwareEvent {
       }
     }
   }
-
 
   implicit val decoder: Decoder[HardwareEvent] = new Decoder[HardwareEvent] {
 
