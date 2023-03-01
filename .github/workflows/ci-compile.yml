@@ -1,15 +1,13 @@
 name: ci-compile
 on:
   push:
-    tags-ignore:
-     - "v.**"
   pull_request:
 jobs:
-  test:
-    runs-on: ubuntu-18.04
+  compile:
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v3
 
     - name: Setup Scala
       uses: olafurpg/setup-scala@v10
@@ -17,5 +15,4 @@ jobs:
         java-version: "adopt@1.8"
 
     - name: Compile
-      run: |
-        sbt -Dfile.encoding=UTF-8 -v compile
+      run: sbt -Dfile.encoding=UTF-8 -v compile
