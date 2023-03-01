@@ -26,7 +26,7 @@ object State {
   def validate(id: String): Either[String, State] = {
     get(id) match {
       case Some(state) => Right(state)
-      case None        => Left(s"Unknown state $id")
+      case None       => Left(s"Unknown state $id")
     }
   }
 

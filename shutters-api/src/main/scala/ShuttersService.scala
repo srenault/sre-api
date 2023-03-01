@@ -5,7 +5,7 @@ import cats.effect._
 import cats.implicits._
 import io.circe._
 import io.circe.literal._
-import sre.api.domoticz.{DomoticzClient, SwitchCmd}
+import sre.api.domoticz.{ DomoticzClient, SwitchCmd }
 import sre.api.shutters.State
 import sre.api.settings.ShuttersSettings
 

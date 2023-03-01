@@ -9,16 +9,15 @@ import io.circe.generic.semiauto._
 import JsonImplicits._
 
 case class HeatersSettings(
-    httpClient: HttpClientSettings,
-    baseUri: Uri,
-    username: String,
-    password: String
+  httpClient: HttpClientSettings,
+  baseUri: Uri,
+  username: String,
+  password: String
 )
 
 object HeatersSettings {
 
-  implicit val decoder: Decoder[HeatersSettings] =
-    deriveDecoder[HeatersSettings]
+  implicit val decoder: Decoder[HeatersSettings] = deriveDecoder[HeatersSettings]
 
   def fromEnv[F[_]]()(implicit F: Sync[F]): F[HeatersSettings] = F.pure {
     HeatersSettings(
