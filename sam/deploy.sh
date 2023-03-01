@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sam deploy --profile sre --template-file template.yml --parameter-overrides\
+sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --template-file template.yml --parameter-overrides\
     ParameterKey=HTTPCLIENTLOGREQUEST,ParameterValue="$HTTPCLIENT_LOGREQUEST"\
     ParameterKey=HTTPCLIENTLOGRESPONSE,ParameterValue="$HTTPCLIENT_LOGRESPONSE"\
     ParameterKey=DBPATH,ParameterValue="$DB_PATH"\
