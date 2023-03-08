@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --template-file template.yml --parameter-overrides\
+sam deploy --region=$AWS_REGION --no-confirm-changeset --no-fail-on-empty-changeset --template-file template.yml --parameter-overrides\
     ParameterKey=HTTPCLIENTLOGREQUEST,ParameterValue="$HTTPCLIENT_LOGREQUEST"\
     ParameterKey=HTTPCLIENTLOGRESPONSE,ParameterValue="$HTTPCLIENT_LOGRESPONSE"\
     ParameterKey=DBPATH,ParameterValue="$DB_PATH"\
@@ -19,13 +19,13 @@ sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --template-file t
     ParameterKey=FINANCES3TRANSACTIONSREGION,ParameterValue="$FINANCE_S3_TRANSACTIONS_REGION"\
     ParameterKey=FINANCES3TRANSACTIONSBUCKET,ParameterValue="$FINANCE_S3_TRANSACTIONS_BUCKET"\
     ParameterKey=FINANCES3TRANSACTIONSPUBLICKEY,ParameterValue="$FINANCE_S3_TRANSACTIONS_PUBLICKEY"\
-    ParameterKey=FINANCES3TRANSACTIONSSECRETKEY,ParameterValue="FINANCE_S3_TRANSACTIONS_SECRETKEY"\
+    ParameterKey=FINANCES3TRANSACTIONSSECRETKEY,ParameterValue="$FINANCE_S3_TRANSACTIONS_SECRETKEY"\
     ParameterKey=FINANCES3TRANSACTIONSPREFIX,ParameterValue="$FINANCE_S3_TRANSACTIONS_PREFIX"\
     ParameterKey=FINANCESETUPVOLUMEMAXKEYS,ParameterValue=$FINANCE_SETUP_VOLUME_MAXKEYS\
     ParameterKey=FINANCEWAGESTATEMENTS,ParameterValue="$FINANCE_WAGE_STATEMENTS"\
     ParameterKey=HEATERSBASEURI,ParameterValue="$HEATERS_BASEURI"\
-    ParameterKey=HEATERSUSERNAME,ParameterValue="$HEATERS_PASSWORD"\
-    ParameterKey=HEATERSPASSWORD,ParameterValue="$HEATERS_USERNAME"\
+    ParameterKey=HEATERSUSERNAME,ParameterValue="$HEATERS_USERNAME"\
+    ParameterKey=HEATERSPASSWORD,ParameterValue="$HEATERS_PASSWORD"\
     ParameterKey=DOMOTICZBASEURI,ParameterValue="$DOMOTICZ_BASEURI"\
     ParameterKey=DOMOTICZWSURI,ParameterValue="$DOMOTICZ_WSURI"\
     ParameterKey=DOMOTICZUSERNAME,ParameterValue="$DOMOTICZ_USERNAME"\
