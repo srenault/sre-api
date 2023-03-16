@@ -25,39 +25,39 @@ object Settings {
   }
 
   def loadFinanceSettings(): FinanceSettings = {
-   FinanceSettings(
+    FinanceSettings(
       db = s"jdbc:sqlite:${getResourceAbsolutePath()}/sre.db",
-            httpClient = HttpClientSettings(
+      httpClient = HttpClientSettings(
         logRequest = true,
         logResponse = true
       ),
-        cm = CMSettings(
-          baseUri = uri("https://www.bank.com"),
-          authenticationPath = "/authentification",
-          validationPath = "/validation",
-          homePath = "/home",
-          downloadPath = "/downloads",
-          transactionPath = "/transaction",
-          username = "johndoe",
-          password = "password",
-          accounts = Nil,
-          otpSession = Paths.get("/Users/test/.sre-api-otp_session"),
-          apkId = "com.cm_prod.bad"
-        ),
-        transactionsDir = getPathFromResource("transactions"),
-        wageStatements = List(
-          "VIR NEW PRISMIC",
-          "VIR DDFIP D INDRE ET LOIRE"
-        ),
-        s3 = S3Settings(
-          region = "us-east-1",
-          bucket = "test",
-          publicKey = "xxxxx",
-          secretKey = "xxxxx",
-          prefix = "xxx"
-        ),
-        setupVolume = SetupVolumeSettings(maxKeys = 20)
-      )
-    
+      cm = CMSettings(
+        baseUri = uri("https://www.bank.com"),
+        authenticationPath = "/authentification",
+        validationPath = "/validation",
+        homePath = "/home",
+        downloadPath = "/downloads",
+        transactionPath = "/transaction",
+        username = "johndoe",
+        password = "password",
+        accounts = Nil,
+        otpSession = Paths.get("/Users/test/.sre-api-otp_session"),
+        apkId = "com.cm_prod.bad"
+      ),
+      transactionsDir = getPathFromResource("transactions"),
+      wageStatements = List(
+        "VIR NEW PRISMIC",
+        "VIR DDFIP D INDRE ET LOIRE"
+      ),
+      s3 = S3Settings(
+        region = "us-east-1",
+        bucket = "test",
+        publicKey = "xxxxx",
+        secretKey = "xxxxx",
+        prefix = "xxx"
+      ),
+      setupVolume = SetupVolumeSettings(maxKeys = 20)
+    )
+
   }
 }

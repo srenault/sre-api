@@ -18,7 +18,8 @@ trait DomoticzClientDsl[F[_]] extends Http4sClientDsl[F] {
   def AuthenticatedGET(uri: Uri)(implicit F: Monad[F]): Request[F] = {
     val authHeader = {
       val value = s"${settings.username}:${settings.password}"
-      val encodedValue = Base64.getEncoder().encodeToString(value.getBytes("UTF-8"))
+      val encodedValue =
+        Base64.getEncoder().encodeToString(value.getBytes("UTF-8"))
       Header("Authorization", s"Basic $encodedValue")
     }
     GET(uri, authHeader, CONTENT_TYPE_HEADER)

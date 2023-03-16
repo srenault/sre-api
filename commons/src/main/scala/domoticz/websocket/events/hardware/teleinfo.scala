@@ -15,8 +15,8 @@ sealed trait Teleinfo extends HardwareEvent {
 
   def isUnknown: Boolean =
     this match {
-      case _:Teleinfo.Unknown => true
-      case _ => false
+      case _: Teleinfo.Unknown => true
+      case _                   => false
     }
 }
 
@@ -39,10 +39,10 @@ object Teleinfo {
   }
 
   case class Current(
-    `type`: String,
-    name: String,
-    value: Float,
-    lastUpdate: LocalDateTime
+      `type`: String,
+      name: String,
+      value: Float,
+      lastUpdate: LocalDateTime
   ) extends Teleinfo
 
   object Current {
@@ -75,10 +75,10 @@ object Teleinfo {
   }
 
   case class Power(
-    `type`: String,
-    name: String,
-    value: Float,
-    lastUpdate: LocalDateTime
+      `type`: String,
+      name: String,
+      value: Float,
+      lastUpdate: LocalDateTime
   ) extends Teleinfo
 
   object Power {
@@ -114,10 +114,10 @@ object Teleinfo {
   }
 
   case class Load(
-    `type`: String,
-    name: String,
-    value: Float,
-    lastUpdate: LocalDateTime
+      `type`: String,
+      name: String,
+      value: Float,
+      lastUpdate: LocalDateTime
   ) extends Teleinfo
 
   object Load {
@@ -151,9 +151,9 @@ object Teleinfo {
   implicit val encoder: Encoder[Teleinfo] = new Encoder[Teleinfo] {
     final def apply(teleinfo: Teleinfo): Json = {
       teleinfo match {
-        case l: Load => l.asJson
+        case l: Load    => l.asJson
         case c: Current => c.asJson
-        case p: Power => p.asJson
+        case p: Power   => p.asJson
         case u: Unknown => u.asJson
       }
     }

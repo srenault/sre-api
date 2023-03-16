@@ -45,12 +45,13 @@ object Cli
 
         action match {
           case ShuttersCmd.InfoAction =>
-            val json = ShuttersHttpService.infoEncoder.apply(settings.shutters.info)
+            val json =
+              ShuttersHttpService.infoEncoder.apply(settings.shutters.info)
             println(json.spaces4)
             IO.pure(ExitCode.Success)
 
-          case ShuttersCmd.UpdateAction(id, state) =>
-            service.update(id, state) *> IO.pure {
+          case ShuttersCmd.UpdateAction(id, action) =>
+            service.update(id, action) *> IO.pure {
               ExitCode.Success
             }
         }
@@ -193,7 +194,7 @@ object Cli
           case FinanceCmd(action) =>
             financeHandler(action, settings)
 
-          case ShuttersCmd(action) => 
+          case ShuttersCmd(action) =>
             shuttersHandler(action, settings)
         }
 
@@ -418,7 +419,8 @@ object ShuttersCmd {
 
   sealed trait Action
   case object InfoAction extends Action
-  case class UpdateAction(id: Int, state: State) extends Action
+  case class UpdateAction(id: Int, state: sre.api.shutters.Action)
+      extends Action
 
   val infoCmd = Command(
     name = "info",
@@ -434,23 +436,24 @@ object ShuttersCmd {
     val idOpt =
       Opts.option[Int]("id", help = "Shutter identifier").mapValidated { i =>
 //        if (i >= 0 && i <= 3) {
-          Validated.valid(i)
+        Validated.valid(i)
 //        } else {
 //          Validated.invalidNel(s"Invalid shutter value: $i")
 //        }
       }
 
-    val stateOpt = Opts.option[String]("state", help = "State").mapValidated { i =>
-      State.get(i) match {
-        case Some(state) =>
-          Validated.valid(state)
-        case None =>
-          Validated.invalidNel(s"Invalid state value: $i")
+    val stateOpt =
+      Opts.option[String]("action", help = "Action").mapValidated { i =>
+        sre.api.shutters.Action.get(i) match {
+          case Some(action) =>
+            Validated.valid(action)
+          case None =>
+            Validated.invalidNel(s"Invalid action value: $i")
+        }
       }
-    }
 
-    (idOpt, stateOpt).mapN { case (id, state) =>
-      UpdateAction(id, state)
+    (idOpt, stateOpt).mapN { case (id, action) =>
+      UpdateAction(id, action)
     }
   }
 
