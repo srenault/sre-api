@@ -124,8 +124,8 @@ Parameters:
 
 Globals:
   Function:
-    Timeout: 10
-    MemorySize: 1024
+    Timeout: 30
+    MemorySize: 3008
     Runtime: java11
     Environment:
       Variables:
