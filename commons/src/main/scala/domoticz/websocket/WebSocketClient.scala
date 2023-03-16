@@ -23,21 +23,17 @@ trait WebSocketListener[F[_]] {
   def onMessage(message: WebSocketMessage): F[Unit]
 }
 
-case class WebSocketClient[F[_]: Concurrent](settings: DomoticzSettings)(
-    listener: WebSocketListener[F]
-)(implicit F: Async[F]) {
+case class WebSocketClient[F[_]: Concurrent](settings: DomoticzSettings)(listener: WebSocketListener[F])(implicit F: Async[F]) {
 
   self =>
 
-  val logger =
-    LoggerFactory.getLogger("sre.api.domoticz.websocket.WebSocketClient")
+  val logger = LoggerFactory.getLogger("sre.api.domoticz.websocket.WebSocketClient")
 
   private val uri = new URI(settings.wsUri.renderString)
 
   private val authorizationHeader = {
     val value = s"${settings.username}:${settings.password}"
-    val encodedValue =
-      Base64.getEncoder().encodeToString(value.getBytes("UTF-8"))
+    val encodedValue = Base64.getEncoder().encodeToString(value.getBytes("UTF-8"))
     "Authorization" -> s"Basic $encodedValue"
   }
 
@@ -59,22 +55,14 @@ case class WebSocketClient[F[_]: Concurrent](settings: DomoticzSettings)(
 
   private def createInnerClient(): Resource[F, JavaWebSocketClient] = {
     Dispatcher[F].map { dispatcher =>
-      new JavaWebSocketClient(uri, draft, headers.asJava) {
+      new JavaWebSocketClient(uri, draft,  headers.asJava) {
         override def onOpen(handshakedata: ServerHandshake): Unit = {
           logger.info("Domoticz websocket connection is opened")
         }
 
-        override def onClose(
-            code: Int,
-            reason: String,
-            remote: Boolean
-        ): Unit = {
-          logger.info(
-            s"Domoticz websocket connection has been closed:\n${reason}\n Trying to reopen it..."
-          )
-          val retryStream = Stream
-            .awakeDelay[F](5.seconds)
-            .zipRight(Stream.resource(self.connect()))
+        override def onClose(code: Int, reason: String, remote: Boolean): Unit = {
+          logger.info(s"Domoticz websocket connection has been closed:\n${reason}\n Trying to reopen it...")
+          val retryStream = Stream.awakeDelay[F](5.seconds).zipRight(Stream.resource(self.connect()))
           dispatcher.unsafeRunSync(retryStream.compile.drain)
         }
 
@@ -84,9 +72,7 @@ case class WebSocketClient[F[_]: Concurrent](settings: DomoticzSettings)(
               dispatcher.unsafeRunSync(listener.onMessage(message))
 
             case Left(error) =>
-              logger.warn(
-                s"Unable to parse domoticz event from:\n${message}\n${error}"
-              )
+              logger.warn(s"Unable to parse domoticz event from:\n${message}\n${error}")
           }
         }
 
@@ -95,12 +81,12 @@ case class WebSocketClient[F[_]: Concurrent](settings: DomoticzSettings)(
           ex.printStackTrace
         }
       }
-    }
+    } 
   }
 
   def connect(): Resource[F, Unit] = {
     createInnerClient().flatMap { client =>
-      Dispatcher[F].map { dispatcher =>
+      Dispatcher[F].map { dispatcher => 
         dispatcher.unsafeRunSync(F.pure(client.connect()))
       }
     }

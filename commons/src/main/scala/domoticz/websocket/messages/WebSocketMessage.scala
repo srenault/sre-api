@@ -21,16 +21,15 @@ object WebSocketMessage {
     }
   }
 
-  implicit val decoder: Decoder[WebSocketMessage] =
-    new Decoder[WebSocketMessage] {
-      final def apply(c: HCursor): Decoder.Result[WebSocketMessage] = {
-        c.downField("event").as[String].flatMap {
-          case eventType if eventType == Response.MESSAGE_TYPE =>
-            c.as[Response]
+  implicit val decoder: Decoder[WebSocketMessage] = new Decoder[WebSocketMessage] {
+    final def apply(c: HCursor): Decoder.Result[WebSocketMessage] = {
+      c.downField("event").as[String].flatMap {
+        case eventType if eventType == Response.MESSAGE_TYPE =>
+          c.as[Response]
 
-          case _ =>
-            c.as[Unknown]
-        }
+        case _ =>
+          c.as[Unknown]
       }
     }
+  }
 }

@@ -4,11 +4,11 @@ import io.circe._
 import io.circe.generic.semiauto._
 
 case class S3Settings(
-    region: String,
-    bucket: String,
-    publicKey: String,
-    secretKey: String,
-    prefix: String
+  region: String,
+  bucket: String,
+  publicKey: String,
+  secretKey: String,
+  prefix: String
 )
 
 object S3Settings {

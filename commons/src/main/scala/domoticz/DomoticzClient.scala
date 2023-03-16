@@ -16,23 +16,22 @@ import sre.api.domoticz.websocket.{WebSocketClient, WebSocketListener}
 import sre.api.domoticz.websocket.messages.WebSocketMessage
 
 case class DomoticzClient[F[_]: Async](
-    httpClient: Client[F],
-    wsTopic: Topic[F, WebSocketMessage],
-    settings: DomoticzSettings
-)(implicit F: Concurrent[F])
-    extends DomoticzClientDsl[F] {
+  httpClient: Client[F],
+  wsTopic: Topic[F, WebSocketMessage],
+  settings: DomoticzSettings
+)(implicit F: Concurrent[F]) extends DomoticzClientDsl[F] {
 
   lazy val wsConnect: Resource[F, Unit] = {
     val wsClient = DomoticzClient.createWsClient(wsTopic, settings)
     wsClient.connect().map(_ => ())
   }
 
-  def graph[A: Decoder](
-      sensor: Sensor,
-      idx: Int,
-      range: Range,
-      maybeActYear: Option[Year] = None,
-      maybeActMonth: Option[Month] = None
+  def graph[A : Decoder](
+    sensor: Sensor,
+    idx: Int,
+    range: Range,
+    maybeActYear: Option[Year] = None,
+    maybeActMonth: Option[Month] = None
   ): F[List[A]] = {
     val uri = (settings.baseUri / "json.htm")
       .withQueryParam("type", "graph")
@@ -52,15 +51,15 @@ case class DomoticzClient[F[_]: Async](
 
     httpClient.expect[Json](request).map { response =>
       response.hcursor.downField("result").as[List[A]] match {
-        case Left(e)       => throw e
+        case Left(e) => throw e
         case Right(result) => result
       }
     }
   }
 
   def switchLightCmd(
-      idx: Int,
-      switchCmd: SwitchCmd
+    idx: Int,
+    switchCmd: SwitchCmd
   ): F[Boolean] = {
     val uri = (settings.baseUri / "json.htm")
       .withQueryParam("type", "command")
@@ -75,7 +74,7 @@ case class DomoticzClient[F[_]: Async](
     httpClient.expect[Json](request).map { response =>
       response.hcursor.downField("status").as[String] match {
         case Right(status) => status == "OK"
-        case _             => false
+        case _ => false
       }
     }
   }
@@ -84,8 +83,8 @@ case class DomoticzClient[F[_]: Async](
 object DomoticzClient {
 
   private def createWsClient[F[_]: Concurrent](
-      wsTopic: Topic[F, WebSocketMessage],
-      settings: DomoticzSettings
+    wsTopic: Topic[F, WebSocketMessage],
+    settings: DomoticzSettings
   )(implicit F: Async[F]): WebSocketClient[F] = {
     val listener = {
       new WebSocketListener[F] {
@@ -98,18 +97,13 @@ object DomoticzClient {
     WebSocketClient(settings)(listener)
   }
 
-  def create[F[_]: Async](httpClient: Client[F], settings: DomoticzSettings)(
-      implicit F: Concurrent[F]
-  ): F[DomoticzClient[F]] = {
+  def create[F[_]: Async](httpClient: Client[F], settings: DomoticzSettings)(implicit F: Concurrent[F]): F[DomoticzClient[F]] = {
     Topic[F, WebSocketMessage].flatMap { wsTopic =>
       F.pure(DomoticzClient(httpClient, wsTopic, settings))
     }
   }
 
-  def resource[F[_]: Async: Concurrent](
-      httpClient: Client[F],
-      settings: DomoticzSettings
-  ): Resource[F, DomoticzClient[F]] = {
+  def resource[F[_]: Async: Concurrent](httpClient: Client[F], settings: DomoticzSettings): Resource[F, DomoticzClient[F]] = {
     Resource.eval {
       DomoticzClient.create(httpClient, settings)
     }

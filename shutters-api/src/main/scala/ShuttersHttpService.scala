@@ -11,9 +11,10 @@ import cats.implicits._
 import org.http4s.headers.`Content-Type`
 import org.http4s.syntax.header._
 import java.nio.charset.StandardCharsets.UTF_8
-import sre.api.settings.{ShuttersSettings, ShutterSettings}
+import sre.api.settings.{ ShuttersSettings, ShutterSettings }
 import sre.api.domoticz.DomoticzClient
 import sre.api.shutters.State
+
 
 class ShuttersHttpService[F[_]: Async](
     domoticzClient: DomoticzClient[F],
@@ -36,10 +37,7 @@ class ShuttersHttpService[F[_]: Async](
 
     case req @ PUT -> Root / "shutters" / IdVar(id) =>
       req.as[Json].flatMap { json =>
-        json.hcursor
-          .downField("state")
-          .as[String]
-          .flatMap(State.validate) match {
+        json.hcursor.downField("state").as[String].flatMap(State.validate) match {
           case Right(state) =>
             shuttersService.update(id, state) *> Ok()
 

@@ -21,9 +21,7 @@ object Response {
       final def apply(c: HCursor): Decoder.Result[Device] = {
         for {
           data <- c.downField("data").as[String]
-          dataJson <- parse(data).left.map(error =>
-            DecodingFailure(error.message, c.history)
-          )
+          dataJson <- parse(data).left.map(error => DecodingFailure(error.message, c.history))
           events <- dataJson.hcursor.downField("result").as[List[HardwareEvent]]
         } yield Device(events)
       }

@@ -21,6 +21,7 @@ object PowerMeter1 {
   }
 }
 
+
 case class PowerMeter2(date: LocalDate, hp: Float, hc: Float)
 
 object PowerMeter2 {
@@ -39,11 +40,11 @@ object PowerMeter2 {
 }
 
 case class PowerMeter3(
-    date: LocalDate,
-    hpCounter: Float,
-    hpUsage: Float,
-    hcCounter: Float,
-    hcUsage: Float
+  date: LocalDate,
+  hpCounter: Float,
+  hpUsage: Float,
+  hcCounter: Float,
+  hcUsage: Float
 )
 
 object PowerMeter3 {
