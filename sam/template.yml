@@ -1,156 +1,136 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
   HTTPCLIENTLOGREQUEST:
-    Description: 'Required. Http client log request'
-    Type: 'String'
+    Description: "Required. Http client log request"
+    Type: "String"
 
   HTTPCLIENTLOGRESPONSE:
-    Description: 'Required. Http client log response'
-    Type: 'String'
+    Description: "Required. Http client log response"
+    Type: "String"
 
   DBPATH:
-    Description: 'Required. Path to sqlite database'
-    Type: 'String'
+    Description: "Required. Path to sqlite database"
+    Type: "String"
 
   FINANCECMBASEURI:
-    Description: 'Required. Finance - CM URI base'
-    Type: 'String'
+    Description: "Required. Finance - CM URI base"
+    Type: "String"
 
   FINANCECMAUTHENTICATIONPATH:
-    Description: 'Required. Finance - CM authentication path'
-    Type: 'String'
+    Description: "Required. Finance - CM authentication path"
+    Type: "String"
 
   FINANCECMVALIDATIONPATH:
-    Description: 'Required. Finance - CM validation path'
-    Type: 'String'
+    Description: "Required. Finance - CM validation path"
+    Type: "String"
 
   FINANCECMHOMEPATH:
-    Description: 'Required. Finance - CM home path'
-    Type: 'String'
+    Description: "Required. Finance - CM home path"
+    Type: "String"
 
   FINANCECMDOWNLOADPATH:
-    Description: 'Required. Finance - CM download path'
-    Type: 'String'
+    Description: "Required. Finance - CM download path"
+    Type: "String"
 
   FINANCECMTRANSACTIONPATH:
-    Description: 'Required. Finance - CM transaction path'
-    Type: 'String'
+    Description: "Required. Finance - CM transaction path"
+    Type: "String"
 
   FINANCECMUSERNAME:
-    Description: 'Required. Finance - CM username'
-    Type: 'String'
+    Description: "Required. Finance - CM username"
+    Type: "String"
 
   FINANCECMPASSWORD:
-    Description: 'Required. Finance - CM password'
-    Type: 'String'
+    Description: "Required. Finance - CM password"
+    Type: "String"
 
   FINANCECMOTPSESSION:
-    Description: 'Required. Finance - Path to CM otp session'
-    Type: 'String'
+    Description: "Required. Finance - Path to CM otp session"
+    Type: "String"
 
   FINANCECMAPKID:
-    Description: 'Required. Finance - APK id'
-    Type: 'String'
+    Description: "Required. Finance - APK id"
+    Type: "String"
 
   FINANCETRANSACTIONSDIR:
-    Description: 'Required. Finance - Path to transactions directory'
-    Type: 'String'
+    Description: "Required. Finance - Path to transactions directory"
+    Type: "String"
 
   FINANCECMACCOUNTS:
-    Description: 'Required. Finance - CM accounts configuration'
-    Type: 'String'
+    Description: "Required. Finance - CM accounts configuration"
+    Type: "String"
 
   FINANCES3TRANSACTIONSREGION:
-    Description: 'Required. Finance - AWS S3 bucket region'
-    Type: 'String'
+    Description: "Required. Finance - AWS S3 bucket region"
+    Type: "String"
 
   FINANCES3TRANSACTIONSBUCKET:
-    Description: 'Required. Finance - AWS S3 bucket name'
-    Type: 'String'
+    Description: "Required. Finance - AWS S3 bucket name"
+    Type: "String"
 
   FINANCES3TRANSACTIONSPUBLICKEY:
-    Description: 'Required. Finance - AWS S3 client id'
-    Type: 'String'
+    Description: "Required. Finance - AWS S3 client id"
+    Type: "String"
 
   FINANCES3TRANSACTIONSSECRETKEY:
-    Description: 'Required. Finance - AWS S3 client secret'
-    Type: 'String'
+    Description: "Required. Finance - AWS S3 client secret"
+    Type: "String"
 
   FINANCES3TRANSACTIONSPREFIX:
-    Description: 'Required. Finance - AWS S3 bucket prefix'
-    Type: 'String'
+    Description: "Required. Finance - AWS S3 bucket prefix"
+    Type: "String"
 
   FINANCESETUPVOLUMEMAXKEYS:
-    Description: 'Required. Finance - Max number of downloads per page when setting up volume'
-    Type: 'Number'
+    Description: "Required. Finance - Max number of downloads per page when setting up volume"
+    Type: "Number"
 
   FINANCEWAGESTATEMENTS:
-    Description: 'Required. Finance - Wage statements configuration'
-    Type: 'String'
+    Description: "Required. Finance - Wage statements configuration"
+    Type: "String"
 
   HEATERSBASEURI:
-    Description: 'Required. Heaters - Base URI'
-    Type: 'String'
+    Description: "Required. Heaters - Base URI"
+    Type: "String"
 
   HEATERSUSERNAME:
-    Description: 'Required. Heaters - Username'
-    Type: 'String'
+    Description: "Required. Heaters - Username"
+    Type: "String"
 
   HEATERSPASSWORD:
-    Description: 'Required. Heaters - Password'
-    Type: 'String'
+    Description: "Required. Heaters - Password"
+    Type: "String"
 
   DOMOTICZBASEURI:
-    Description: 'Required. Domoticz - Base URI'
-    Type: 'String'
+    Description: "Required. Domoticz - Base URI"
+    Type: "String"
 
   DOMOTICZWSURI:
-    Description: 'Required. Domoticz - WS URI'
-    Type: 'String'
+    Description: "Required. Domoticz - WS URI"
+    Type: "String"
 
   DOMOTICZUSERNAME:
-    Description: 'Required. Domoticz - Username'
-    Type: 'String'
+    Description: "Required. Domoticz - Username"
+    Type: "String"
 
   DOMOTICZPASSWORD:
-    Description: 'Required. Domoticz - Password'
-    Type: 'String'
+    Description: "Required. Domoticz - Password"
+    Type: "String"
 
   SHUTTERSCONFIG:
-    Description: 'Required. Shutters configuration'
-    Type: 'String'
+    Description: "Required. Shutters configuration"
+    Type: "String"
 
 Globals:
   Function:
-    Timeout: 60
+    Timeout: 10
     MemorySize: 1024
     Runtime: java11
     Environment:
       Variables:
         HTTPCLIENT_LOGREQUEST: !Ref HTTPCLIENTLOGREQUEST
         HTTPCLIENT_LOGRESPONSE: !Ref HTTPCLIENTLOGRESPONSE
-        DB_PATH: !Ref DBPATH
-        FINANCE_CM_BASE_URI: !Ref FINANCECMBASEURI
-        FINANCE_CM_AUTHENTICATION_PATH: !Ref FINANCECMAUTHENTICATIONPATH
-        FINANCE_CM_VALIDATION_PATH: !Ref FINANCECMVALIDATIONPATH
-        FINANCE_CM_HOME_PATH: !Ref FINANCECMHOMEPATH
-        FINANCE_CM_DOWNLOAD_PATH: !Ref FINANCECMDOWNLOADPATH
-        FINANCE_CM_TRANSACTION_PATH: !Ref FINANCECMTRANSACTIONPATH
-        FINANCE_CM_USERNAME: !Ref FINANCECMUSERNAME
-        FINANCE_CM_PASSWORD: !Ref FINANCECMPASSWORD
-        FINANCE_CM_OTPSESSION: !Ref FINANCECMOTPSESSION
-        FINANCE_CM_APKID: !Ref FINANCECMAPKID
-        FINANCE_TRANSACTIONS_DIR: !Ref FINANCETRANSACTIONSDIR
-        FINANCE_CM_ACCOUNTS: !Ref FINANCECMACCOUNTS
-        FINANCE_S3_TRANSACTIONS_REGION: !Ref FINANCES3TRANSACTIONSREGION
-        FINANCE_S3_TRANSACTIONS_BUCKET: !Ref FINANCES3TRANSACTIONSBUCKET
-        FINANCE_S3_TRANSACTIONS_PUBLICKEY: !Ref FINANCES3TRANSACTIONSPUBLICKEY
-        FINANCE_S3_TRANSACTIONS_SECRETKEY: !Ref FINANCES3TRANSACTIONSSECRETKEY
-        FINANCE_S3_TRANSACTIONS_PREFIX: !Ref FINANCES3TRANSACTIONSPREFIX
-        FINANCE_SETUP_VOLUME_MAXKEYS: !Ref FINANCESETUPVOLUMEMAXKEYS
-        FINANCE_WAGE_STATEMENTS: !Ref FINANCEWAGESTATEMENTS
 
 Resources:
   VPC:
@@ -163,7 +143,6 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: "eu-west-3a"
 
   EfsSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -171,8 +150,8 @@ Resources:
       VpcId: !Ref VPC
       GroupDescription: "mnt target sg"
       SecurityGroupIngress:
-      - IpProtocol: -1
-        CidrIp: "0.0.0.0/0"
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
 
   FileSystem:
     Type: AWS::EFS::FileSystem
@@ -209,6 +188,8 @@ Resources:
     Properties:
       CodeUri: ../heaters-api/target/scala-2.13/heaters-api.jar
       Handler: sre.api.heaters.Handler::handleRequest
+      SnapStart:
+        ApplyOn: PublishedVersions
       Events:
         heatersProxyEvent:
           Type: HttpApi
@@ -229,9 +210,18 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../shutters-api/target/scala-2.13/shutters-api.jar
-      Handler: sre.api.heaters.Handler::handleRequest
+      Handler: sre.api.shutters.Handler::handleRequest
+      SnapStart:
+        ApplyOn: PublishedVersions
       Events:
-        heatersProxyEvent:
+        shuttersEntryEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApiGatewayApi
+            Path: /shutters
+            PayloadFormatVersion: "2.0"
+            Method: GET
+        shuttersProxyEvent:
           Type: HttpApi
           Properties:
             ApiId: !Ref ApiGatewayApi
@@ -249,11 +239,33 @@ Resources:
   FinanceReindexStep:
     Type: AWS::Serverless::Function
     Properties:
+      Environment:
+        Variables:
+          DB_PATH: !Ref DBPATH
+          FINANCE_CM_BASE_URI: !Ref FINANCECMBASEURI
+          FINANCE_CM_AUTHENTICATION_PATH: !Ref FINANCECMAUTHENTICATIONPATH
+          FINANCE_CM_VALIDATION_PATH: !Ref FINANCECMVALIDATIONPATH
+          FINANCE_CM_HOME_PATH: !Ref FINANCECMHOMEPATH
+          FINANCE_CM_DOWNLOAD_PATH: !Ref FINANCECMDOWNLOADPATH
+          FINANCE_CM_TRANSACTION_PATH: !Ref FINANCECMTRANSACTIONPATH
+          FINANCE_CM_USERNAME: !Ref FINANCECMUSERNAME
+          FINANCE_CM_PASSWORD: !Ref FINANCECMPASSWORD
+          FINANCE_CM_OTPSESSION: !Ref FINANCECMOTPSESSION
+          FINANCE_CM_APKID: !Ref FINANCECMAPKID
+          FINANCE_TRANSACTIONS_DIR: !Ref FINANCETRANSACTIONSDIR
+          FINANCE_CM_ACCOUNTS: !Ref FINANCECMACCOUNTS
+          FINANCE_S3_TRANSACTIONS_REGION: !Ref FINANCES3TRANSACTIONSREGION
+          FINANCE_S3_TRANSACTIONS_BUCKET: !Ref FINANCES3TRANSACTIONSBUCKET
+          FINANCE_S3_TRANSACTIONS_PUBLICKEY: !Ref FINANCES3TRANSACTIONSPUBLICKEY
+          FINANCE_S3_TRANSACTIONS_SECRETKEY: !Ref FINANCES3TRANSACTIONSSECRETKEY
+          FINANCE_S3_TRANSACTIONS_PREFIX: !Ref FINANCES3TRANSACTIONSPREFIX
+          FINANCE_SETUP_VOLUME_MAXKEYS: !Ref FINANCESETUPVOLUMEMAXKEYS
+          FINANCE_WAGE_STATEMENTS: !Ref FINANCEWAGESTATEMENTS
       CodeUri: ../finance-api/target/scala-2.13/finance-api.jar
       Handler: sre.api.finance.tasks.Reindex::handleRequest
       FileSystemConfigs:
-      - Arn: !GetAtt AccessPoint.Arn
-        LocalMountPath: "/mnt/efs"
+        - Arn: !GetAtt AccessPoint.Arn
+          LocalMountPath: "/mnt/efs"
       VpcConfig:
         SecurityGroupIds:
           - !Ref EfsSecurityGroup
@@ -285,8 +297,8 @@ Resources:
       CodeUri: ../finance-api/target/scala-2.13/finance-api.jar
       Handler: sre.api.finance.tasks.SetupVolume::handleRequest
       FileSystemConfigs:
-      - Arn: !GetAtt AccessPoint.Arn
-        LocalMountPath: "/mnt/efs"
+        - Arn: !GetAtt AccessPoint.Arn
+          LocalMountPath: "/mnt/efs"
       VpcConfig:
         SecurityGroupIds:
           - !Ref EfsSecurityGroup
@@ -300,8 +312,8 @@ Resources:
       CodeUri: ../finance-api/target/scala-2.13/finance-api.jar
       Handler: sre.api.finance.tasks.ResetVolume::handleRequest
       FileSystemConfigs:
-      - Arn: !GetAtt AccessPoint.Arn
-        LocalMountPath: "/mnt/efs"
+        - Arn: !GetAtt AccessPoint.Arn
+          LocalMountPath: "/mnt/efs"
       VpcConfig:
         SecurityGroupIds:
           - !Ref EfsSecurityGroup
