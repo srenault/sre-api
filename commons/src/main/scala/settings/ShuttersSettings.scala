@@ -11,20 +11,21 @@ import JsonImplicits._
 case class ShutterSettings(id: Int, label: String)
 
 object ShutterSettings {
-  implicit val decoder: Decoder[ShutterSettings] = deriveDecoder[ShutterSettings]
-  implicit val encoder: Encoder[ShutterSettings] = deriveEncoder[ShutterSettings]
+  implicit val decoder: Decoder[ShutterSettings] =
+    deriveDecoder[ShutterSettings]
+  implicit val encoder: Encoder[ShutterSettings] =
+    deriveEncoder[ShutterSettings]
 }
 
 object ShuttersSettings {
-  implicit val decoder: Decoder[ShuttersSettings] = deriveDecoder[ShuttersSettings]
+  implicit val decoder: Decoder[ShuttersSettings] =
+    deriveDecoder[ShuttersSettings]
 
   def fromEnv[F[_]]()(implicit F: Sync[F]): F[ShuttersSettings] = F.pure {
     ShuttersSettings(
-      info = Env.getJsonAsOrFail[Set[ShutterSettings]]("SHUTTERS_CONFIG"),
+      info = Env.getJsonAsOrFail[Set[ShutterSettings]]("SHUTTERS_CONFIG")
     )
   }
 }
 
-case class ShuttersSettings(
-  info: Set[ShutterSettings]
-)
+case class ShuttersSettings(info: Set[ShutterSettings])
