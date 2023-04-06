@@ -21,7 +21,7 @@ val JavaWebSocketVersion = "1.5.1"
 val FeralVersion = "1.0.0-M4"
 val NatchezVersion = "0.3.1"
 val NatchezHttp4s = "0.3.2"
-val Log4catsVersion = "2.4.0"
+val Log4catsVersion = "2.5.0"
 val DeclineVersion = "2.3.1"
 
 val gitVersion = {
