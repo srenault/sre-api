@@ -11,10 +11,9 @@ import cats.implicits._
 import org.http4s.headers.`Content-Type`
 import org.http4s.syntax.header._
 import java.nio.charset.StandardCharsets.UTF_8
-import sre.api.settings.{ ShuttersSettings, ShutterSettings }
+import sre.api.settings.{ShuttersSettings, ShutterSettings}
 import sre.api.domoticz.DomoticzClient
-import sre.api.shutters.State
-
+import sre.api.shutters.Action
 
 class ShuttersHttpService[F[_]: Async](
     domoticzClient: DomoticzClient[F],
@@ -37,9 +36,12 @@ class ShuttersHttpService[F[_]: Async](
 
     case req @ PUT -> Root / "shutters" / IdVar(id) =>
       req.as[Json].flatMap { json =>
-        json.hcursor.downField("state").as[String].flatMap(State.validate) match {
-          case Right(state) =>
-            shuttersService.update(id, state) *> Ok()
+        json.hcursor
+          .downField("action")
+          .as[String]
+          .flatMap(Action.validate) match {
+          case Right(action) =>
+            shuttersService.update(id, action) *> Ok()
 
           case Left(_) =>
             BadRequest()
@@ -56,7 +58,7 @@ object ShuttersHttpService {
   val infoEncoder: Encoder[Set[ShutterSettings]] =
     new Encoder[Set[ShutterSettings]] {
       final def apply(shuttersSettings: Set[ShutterSettings]): Json = {
-        json"""{ "shutters": $shuttersSettings, "state": ${State.all} }"""
+        json"""{ "shutters": $shuttersSettings, "action": ${Action.all} }"""
       }
     }
 }
