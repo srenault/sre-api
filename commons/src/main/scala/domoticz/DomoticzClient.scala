@@ -125,12 +125,12 @@ object SwitchCmd {
     def value = "Stop"
   }
 
-  case object Off extends SwitchCmd {
-    def value = "Off"
+  case object Close extends SwitchCmd {
+    def value = "Close"
   }
 
-  case object On extends SwitchCmd {
-    def value = "On"
+  case object Open extends SwitchCmd {
+    def value = "Open"
   }
 }
 

@@ -17,10 +17,10 @@ class ShuttersService[F[_]: Async](
   def update(id: Int, action: Action): F[Boolean] = {
     action match {
       case Action.Open =>
-        domoticzClient.switchLightCmd(id, SwitchCmd.Off)
+        domoticzClient.switchLightCmd(id, SwitchCmd.Open)
 
       case Action.Close =>
-        domoticzClient.switchLightCmd(id, SwitchCmd.On)
+        domoticzClient.switchLightCmd(id, SwitchCmd.Close)
 
       case Action.Stop =>
         domoticzClient.switchLightCmd(id, SwitchCmd.Stop)
