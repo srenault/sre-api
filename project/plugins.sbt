@@ -1,4 +1,4 @@
 addSbtPlugin("org.lyranthe.sbt" % "partial-unification" % "1.1.2")
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 addSbtPlugin("org.typelevel" %% "sbt-feral-lambda" % "0.1.0-M13")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.6")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")

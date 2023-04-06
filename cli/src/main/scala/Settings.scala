@@ -12,10 +12,10 @@ import sre.api.settings._
 import sre.api.domoticz.DomoticzSettings
 
 case class Settings(
-  finance: FinanceSettings,
-  heaters: HeatersSettings,
-  shutters: ShuttersSettings,
-  domoticz: DomoticzSettings
+    finance: FinanceSettings,
+    heaters: HeatersSettings,
+    shutters: ShuttersSettings,
+    domoticz: DomoticzSettings
 )
 
 object Settings {
