@@ -27,13 +27,13 @@ class HeatersHttpService[F[_]: Async](
   }
 
   val routes: HttpRoutes[F] = HttpRoutes.of[F] {
-    case GET -> Root / "heaters" =>
+    case GET -> Root / "heaters" / "channels" =>
       heatersService.getStatus().flatMap { channels =>
         val json = HeatersHttpService.statusEncoder(channels)
         Ok(json, `Content-Type`(MediaType.application.json, Charset.`UTF-8`))
       }
 
-    case req @ PUT -> Root / "heaters" / "channel" / ChannelVar(channel) =>
+    case req @ PUT -> Root / "heaters" / "channels" / ChannelVar(channel) =>
       req.as[Json].flatMap { json =>
         json.hcursor.downField("mode").as[Int].flatMap(Mode.validate) match {
           case Right(mode) =>
