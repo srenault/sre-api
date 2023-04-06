@@ -21,9 +21,11 @@ object JsonImplicits {
     final def apply(c: HCursor): Decoder.Result[File] =
       c.as[String].flatMap { s =>
         val f = new File(s)
-        if (f.exists) Right(f) else Left {
-          DecodingFailure(s"$s file doesn't exists", c.history)
-        }
+        if (f.exists) Right(f)
+        else
+          Left {
+            DecodingFailure(s"$s file doesn't exists", c.history)
+          }
       }
   }
 
