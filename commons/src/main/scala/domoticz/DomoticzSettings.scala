@@ -9,15 +9,16 @@ import io.circe.generic.semiauto._
 import JsonImplicits._
 
 case class DomoticzSettings(
-  baseUri: Uri,
-  wsUri: Uri,
-  username: String,
-  password: String
+    baseUri: Uri,
+    wsUri: Uri,
+    username: String,
+    password: String
 )
 
 object DomoticzSettings {
 
-  implicit val decoder: Decoder[DomoticzSettings] = deriveDecoder[DomoticzSettings]
+  implicit val decoder: Decoder[DomoticzSettings] =
+    deriveDecoder[DomoticzSettings]
 
   def fromEnv[F[_]]()(implicit F: Sync[F]): F[DomoticzSettings] = F.pure {
     DomoticzSettings(
