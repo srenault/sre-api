@@ -8,7 +8,7 @@ val LogbackVersion = "1.2.12"
 val CirceConfigVersion = "0.8.0"
 val AnormVersion = "2.6.8"
 val SqliteJdbcVersion = "3.41.2.1"
-val Ofx4jVersion = "1.28"
+val Ofx4jVersion = "1.35"
 val JsoupVersion = "1.12.2"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
@@ -93,7 +93,7 @@ lazy val commons = (project in file("commons"))
     scalaVersion := ScalaVersion,
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-      "software.amazon.awssdk" % "s3" % "2.18.41",
+      "software.amazon.awssdk" % "s3" % "2.20.43",
       "io.circe" %% "circe-parser" % CirceVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
