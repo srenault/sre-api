@@ -1,28 +1,28 @@
 val projectName = "sre-api"
 
 val ScalaVersion = "2.13.8"
-val Fs2Version = "3.6.1"
+val Fs2Version = "3.7.0"
 val Http4sVersion = "1.0.0-M34"
 val CirceVersion = "0.14.5"
-val LogbackVersion = "1.2.12"
+val LogbackVersion = "1.4.7"
 val CirceConfigVersion = "0.8.0"
 val AnormVersion = "2.6.8"
-val SqliteJdbcVersion = "3.41.2.1"
-val Ofx4jVersion = "1.28"
-val JsoupVersion = "1.12.2"
+val SqliteJdbcVersion = "3.41.2.2"
+val Ofx4jVersion = "1.35"
+val JsoupVersion = "1.16.1"
 val ScalaCacheVersion = "0.28.0"
 val ScalaCacheCatsVersion = "0.28.0"
 val AwsSdkVersion = "1.11.615"
-val ScalaTestVersion = "3.2.11"
+val ScalaTestVersion = "3.2.16"
 val ScalaMockVersion = "4.4.0"
 val CatsEffectTestScalaTestVersion = "1.5.0"
 val EasyMockVersion = "4.2"
 val JavaWebSocketVersion = "1.5.1"
 val FeralVersion = "1.0.0-M4"
-val NatchezVersion = "0.3.1"
+val NatchezVersion = "0.3.2"
 val NatchezHttp4s = "0.5.0"
-val Log4catsVersion = "2.5.0"
-val DeclineVersion = "2.3.1"
+val Log4catsVersion = "2.6.0"
+val DeclineVersion = "2.4.1"
 
 val gitVersion = {
   import scala.sys.process._
@@ -93,7 +93,7 @@ lazy val commons = (project in file("commons"))
     scalaVersion := ScalaVersion,
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-      "software.amazon.awssdk" % "s3" % "2.18.41",
+      "software.amazon.awssdk" % "s3" % "2.20.78",
       "io.circe" %% "circe-parser" % CirceVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
