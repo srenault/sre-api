@@ -93,7 +93,7 @@ lazy val commons = (project in file("commons"))
     scalaVersion := ScalaVersion,
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-      "software.amazon.awssdk" % "s3" % "2.20.92",
+      "software.amazon.awssdk" % "s3" % "2.20.116",
       "io.circe" %% "circe-parser" % CirceVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
