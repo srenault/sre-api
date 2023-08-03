@@ -3,16 +3,35 @@ on:
   push:
   pull_request:
 jobs:
-  compile:
+  compileApi:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Setup Scala
-      uses: olafurpg/setup-scala@v10
-      with:
-        java-version: "adopt@1.8"
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: "adopt@1.8"
 
-    - name: Compile
-      run: sbt -Dfile.encoding=UTF-8 -v compile
+      - name: Compile
+        run: sbt -Dfile.encoding=UTF-8 -v compile
+
+  compileAuthorizer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./authorizer
+
+      - name: Compile
+        run: npm run build
+        working-directory: ./authorizer

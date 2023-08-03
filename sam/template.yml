@@ -122,6 +122,14 @@ Parameters:
     Description: "Required. Shutters configuration"
     Type: "String"
 
+  BASICAUTHUSERNAME:
+    Description: "Required. Basic auth username"
+    Type: "String"
+
+  BASICAUTHPASSWORD:
+    Description: "Required. Basic auth password"
+    Type: "String"
+
 Globals:
   Function:
     Timeout: 30
@@ -182,6 +190,18 @@ Resources:
 
   ApiGatewayApi:
     Type: AWS::Serverless::HttpApi
+    Properties:
+      Auth:
+        DefaultAuthorizer: BasicAuth
+        Authorizers:
+          BasicAuth:
+            FunctionArn: !GetAtt Authorizer.Arn
+            Identity:
+              Headers:
+                - Authorization
+            AuthorizerPayloadFormatVersion: 2.0
+            EnableFunctionDefaultPermissions: true
+            EnableSimpleResponses: true
 
   HeatersApi:
     Type: AWS::Serverless::Function
@@ -205,6 +225,17 @@ Resources:
           HEATERS_BASEURI: !Ref HEATERSBASEURI
           HEATERS_USERNAME: !Ref HEATERSUSERNAME
           HEATERS_PASSWORD: !Ref HEATERSPASSWORD
+
+  Authorizer:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../authorizer/dist/
+      Handler: index.handler
+      Runtime: nodejs16.x
+      Environment:
+        Variables:
+          BASIC_AUTH_USERNAME: !Ref BASICAUTHUSERNAME
+          BASIC_AUTH_PASSWORD: !Ref BASICAUTHPASSWORD
 
   ShuttersApi:
     Type: AWS::Serverless::Function

@@ -36,4 +36,6 @@ sam deploy --region=$AWS_REGION --no-confirm-changeset --no-fail-on-empty-change
     ParameterKey=DOMOTICZUSERNAME,ParameterValue="$DOMOTICZ_USERNAME"\
     ParameterKey=DOMOTICZPASSWORD,ParameterValue="$DOMOTICZ_PASSWORD"\
     ParameterKey=SHUTTERSCONFIG,ParameterValue="$(json_escape "$SHUTTERS_CONFIG")"\
+    ParameterKey=BASICAUTHUSERNAME,ParameterValue="$BASIC_AUTH_USERNAME"\
+    ParameterKey=BASICAUTHPASSWORD,ParameterValue="$BASIC_AUTH_PASSWORD"\
     --stack-name sreapi --s3-bucket sreapi-package --capabilities CAPABILITY_IAM
