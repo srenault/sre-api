@@ -30,4 +30,6 @@ sam local start-api --template-file template.yml --parameter-overrides\
     ParameterKey=DOMOTICZWSURI,ParameterValue="$DOMOTICZ_WSURI"\
     ParameterKey=DOMOTICZUSERNAME,ParameterValue="$DOMOTICZ_USERNAME"\
     ParameterKey=DOMOTICZPASSWORD,ParameterValue="$DOMOTICZ_PASSWORD"\
-    ParameterKey=SHUTTERSCONFIG,ParameterValue="$SHUTTERS_CONFIG"
+    ParameterKey=SHUTTERSCONFIG,ParameterValue="$SHUTTERS_CONFIG"\
+    ParameterKey=BASICAUTHUSERNAME,ParameterValue="$BASIC_AUTH_USERNAME"\
+    ParameterKey=BASICAUTHPASSWORD,ParameterValue="$BASIC_AUTH_PASSWORD"\

@@ -12,9 +12,6 @@ import feral.lambda.events._
 import feral.lambda.http4s._
 import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
-import natchez.Trace
-import natchez.http4s.NatchezMiddleware
-import natchez.xray.XRay
 import org.http4s.client._
 import org.http4s.ember.client._
 import org.typelevel.log4cats.Logger

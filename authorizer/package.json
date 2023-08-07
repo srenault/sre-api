@@ -1,0 +1,17 @@
+{
+  "name": "authorizer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.114",
+    "@types/node": "^20.4.6",
+    "tslib": "^2.5.0",
+    "typescript": "^5.0.4"
+  }
+}
