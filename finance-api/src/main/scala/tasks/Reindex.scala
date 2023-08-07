@@ -14,9 +14,6 @@ import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.client._
 import org.http4s.ember.client._
-import natchez.Trace
-import natchez.http4s.NatchezMiddleware
-import natchez.xray.XRay
 import sre.api.settings.FinanceSettings
 import models._
 import analytics.AnalyticsClient
