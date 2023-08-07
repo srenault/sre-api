@@ -7,51 +7,66 @@ jobs:
     environment: prod
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - uses: actions/setup-python@v4
-      with:
-        python-version: "3.8"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
 
-    - uses: aws-actions/setup-sam@v2
+      - uses: aws-actions/setup-sam@v2
 
-    - uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Setup Scala
-      uses: olafurpg/setup-scala@v10
-      with:
-        java-version: "adopt@1.8"
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: "adopt@1.8"
 
-    - name: Package
-      run: |
-        sbt -Dfile.encoding=UTF-8 -v "serverProject / assembly"
-        sbt -Dfile.encoding=UTF-8 -v "heatersProject / assembly"
-        sbt -Dfile.encoding=UTF-8 -v "financeProject / assembly"
-        sbt -Dfile.encoding=UTF-8 -v "cliProject / assembly"
-        sbt -Dfile.encoding=UTF-8 -v "shuttersProject / assembly"
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
 
-    - name: Deploy
-      working-directory: ./sam
-      env:
-        FINANCE_CM_ACCOUNTS: ${{ secrets.FINANCE_CM_ACCOUNTS }}
-        FINANCE_CM_PASSWORD: ${{ secrets.FINANCE_CM_PASSWORD }}
-        FINANCE_CM_USERNAME: ${{ secrets.FINANCE_CM_USERNAME }}
-        FINANCE_S3_TRANSACTIONS_BUCKET: ${{ secrets.FINANCE_S3_TRANSACTIONS_BUCKET }}
-        FINANCE_S3_TRANSACTIONS_PREFIX: ${{ secrets.FINANCE_S3_TRANSACTIONS_PREFIX }}
-        FINANCE_S3_TRANSACTIONS_PUBLICKEY: ${{ secrets.FINANCE_S3_TRANSACTIONS_PUBLICKEY }}
-        FINANCE_S3_TRANSACTIONS_REGION: ${{ secrets.FINANCE_S3_TRANSACTIONS_REGION }}
-        FINANCE_S3_TRANSACTIONS_SECRETKEY: ${{ secrets.FINANCE_S3_TRANSACTIONS_SECRETKEY }}
-        FINANCE_WAGE_STATEMENTS: ${{ secrets.FINANCE_WAGE_STATEMENTS }}
-        SHUTTERS_CONFIG: ${{ secrets.SHUTTERS_CONFIG }}
-        DOMOTICZ_BASEURI: ${{ secrets.DOMOTICZ_BASEURI }}
-        DOMOTICZ_PASSWORD: ${{ secrets.DOMOTICZ_PASSWORD }}
-        DOMOTICZ_USERNAME: ${{ secrets.DOMOTICZ_USERNAME }}
-        DOMOTICZ_WSURI: ${{ secrets.DOMOTICZ_WSURI }}
-      run: |
-        ./package.sh
-        ./deploy.sh
+      - name: Package API
+        run: |
+          sbt -Dfile.encoding=UTF-8 -v "serverProject / assembly"
+          sbt -Dfile.encoding=UTF-8 -v "heatersProject / assembly"
+          sbt -Dfile.encoding=UTF-8 -v "financeProject / assembly"
+          sbt -Dfile.encoding=UTF-8 -v "cliProject / assembly"
+          sbt -Dfile.encoding=UTF-8 -v "shuttersProject / assembly"
+
+      - name: Authorizer - Install dependencies
+        run: npm ci
+        working-directory: ./authorizer
+
+      - name: Authorizer - Package
+        run: npm run build
+        working-directory: ./authorizer
+
+      - name: Deploy
+        working-directory: ./sam
+        env:
+          FINANCE_CM_ACCOUNTS: ${{ secrets.FINANCE_CM_ACCOUNTS }}
+          FINANCE_CM_PASSWORD: ${{ secrets.FINANCE_CM_PASSWORD }}
+          FINANCE_CM_USERNAME: ${{ secrets.FINANCE_CM_USERNAME }}
+          FINANCE_S3_TRANSACTIONS_BUCKET: ${{ secrets.FINANCE_S3_TRANSACTIONS_BUCKET }}
+          FINANCE_S3_TRANSACTIONS_PREFIX: ${{ secrets.FINANCE_S3_TRANSACTIONS_PREFIX }}
+          FINANCE_S3_TRANSACTIONS_PUBLICKEY: ${{ secrets.FINANCE_S3_TRANSACTIONS_PUBLICKEY }}
+          FINANCE_S3_TRANSACTIONS_REGION: ${{ secrets.FINANCE_S3_TRANSACTIONS_REGION }}
+          FINANCE_S3_TRANSACTIONS_SECRETKEY: ${{ secrets.FINANCE_S3_TRANSACTIONS_SECRETKEY }}
+          FINANCE_WAGE_STATEMENTS: ${{ secrets.FINANCE_WAGE_STATEMENTS }}
+          SHUTTERS_CONFIG: ${{ secrets.SHUTTERS_CONFIG }}
+          DOMOTICZ_BASEURI: ${{ secrets.DOMOTICZ_BASEURI }}
+          DOMOTICZ_PASSWORD: ${{ secrets.DOMOTICZ_PASSWORD }}
+          DOMOTICZ_USERNAME: ${{ secrets.DOMOTICZ_USERNAME }}
+          DOMOTICZ_WSURI: ${{ secrets.DOMOTICZ_WSURI }}
+          BASIC_AUTH_USERNAME: ${{ secrets.BASIC_AUTH_USERNAME }}
+          BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD }}
+        run: |
+          ./package.sh
+          ./deploy.sh

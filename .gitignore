@@ -13,7 +13,7 @@ resources.tar
 node_modules
 .bloop
 sam-local.yml
-.metals/metals.mv.db
+.metals/*
 .vscode/settings.json
 scripts/finance-event.json
 scripts/finance.sh
@@ -21,3 +21,4 @@ package.yml
 finance-api/src/test/resources/transactions
 project/metals.sbt
 sam/env.json
+authorizer/dist/index.js

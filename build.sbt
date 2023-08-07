@@ -1,17 +1,15 @@
 val projectName = "sre-api"
 
 val ScalaVersion = "2.13.8"
-val Fs2Version = "3.7.0"
+val Fs2Version = "3.8.0"
 val Http4sVersion = "1.0.0-M34"
 val CirceVersion = "0.14.5"
-val LogbackVersion = "1.4.7"
-val CirceConfigVersion = "0.8.0"
+val LogbackVersion = "1.4.8"
+val CirceConfigVersion = "0.10.0"
 val AnormVersion = "2.6.8"
-val SqliteJdbcVersion = "3.41.2.2"
+val SqliteJdbcVersion = "3.42.0.0"
 val Ofx4jVersion = "1.35"
 val JsoupVersion = "1.16.1"
-val ScalaCacheVersion = "0.28.0"
-val ScalaCacheCatsVersion = "0.28.0"
 val AwsSdkVersion = "1.11.615"
 val ScalaTestVersion = "3.2.16"
 val ScalaMockVersion = "4.4.0"
@@ -19,8 +17,6 @@ val CatsEffectTestScalaTestVersion = "1.5.0"
 val EasyMockVersion = "4.2"
 val JavaWebSocketVersion = "1.5.1"
 val FeralVersion = "1.0.0-M4"
-val NatchezVersion = "0.3.2"
-val NatchezHttp4s = "0.5.0"
 val Log4catsVersion = "2.6.0"
 val DeclineVersion = "2.4.1"
 
@@ -38,7 +34,7 @@ val gitVersion = {
 }
 
 scalacOptions ++= Seq("-Xlint")
-logBuffered in Test := false
+Test / logBuffered := false
 
 lazy val serverProject = (project in file("server"))
   .settings(
@@ -62,8 +58,6 @@ lazy val serverProject = (project in file("server"))
       "org.xerial" % "sqlite-jdbc" % SqliteJdbcVersion,
       "org.playframework.anorm" %% "anorm" % AnormVersion,
       "com.webcohesion.ofx4j" % "ofx4j" % Ofx4jVersion,
-      "com.github.cb372" %% "scalacache-guava" % ScalaCacheVersion,
-      "com.github.cb372" %% "scalacache-cats-effect" % ScalaCacheCatsVersion,
       "com.amazonaws" % "aws-java-sdk" % AwsSdkVersion,
       "org.java-websocket" % "Java-WebSocket" % JavaWebSocketVersion,
       "org.scalatest" %% "scalatest" % ScalaTestVersion % "test",
@@ -74,12 +68,12 @@ lazy val serverProject = (project in file("server"))
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
   .settings(
-    mainClass in assembly := Some("sre.api.Server"),
-    assemblyMergeStrategy in assembly := {
+    assembly / mainClass := Some("sre.api.Server"),
+    assembly / assemblyMergeStrategy := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x                             => MergeStrategy.first
     },
-    assemblyJarName in assembly := s"$projectName.jar"
+    assembly / assemblyJarName := s"$projectName.jar"
   )
   .dependsOn(commons)
 
@@ -93,7 +87,7 @@ lazy val commons = (project in file("commons"))
     scalaVersion := ScalaVersion,
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-      "software.amazon.awssdk" % "s3" % "2.20.78",
+      "software.amazon.awssdk" % "s3" % "2.20.92",
       "io.circe" %% "circe-parser" % CirceVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
@@ -120,15 +114,13 @@ lazy val heatersProject = (project in file("heaters-api"))
       "io.circe" %% "circe-parser" % CirceVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "io.circe" %% "circe-literal" % CirceVersion,
-      "ch.qos.logback" % "logback-classic" % LogbackVersion,
-      "org.tpolecat" %% "natchez-xray" % NatchezVersion,
-      "org.tpolecat" %% "natchez-http4s" % NatchezHttp4s
+      "ch.qos.logback" % "logback-classic" % LogbackVersion
     ),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
   .settings(
-    assemblyJarName in assembly := s"heaters-api.jar",
-    assemblyMergeStrategy in assembly := {
+    assembly / assemblyJarName := s"heaters-api.jar",
+    assembly / assemblyMergeStrategy := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x                             => MergeStrategy.first
     }
@@ -151,15 +143,13 @@ lazy val shuttersProject = (project in file("shutters-api"))
       "io.circe" %% "circe-parser" % CirceVersion,
       "io.circe" %% "circe-generic" % CirceVersion,
       "io.circe" %% "circe-literal" % CirceVersion,
-      "ch.qos.logback" % "logback-classic" % LogbackVersion,
-      "org.tpolecat" %% "natchez-xray" % NatchezVersion,
-      "org.tpolecat" %% "natchez-http4s" % NatchezHttp4s
+      "ch.qos.logback" % "logback-classic" % LogbackVersion
     ),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
   .settings(
-    assemblyJarName in assembly := s"shutters-api.jar",
-    assemblyMergeStrategy in assembly := {
+    assembly / assemblyJarName := s"shutters-api.jar",
+    assembly / assemblyMergeStrategy := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x                             => MergeStrategy.first
     }
@@ -186,8 +176,6 @@ lazy val financeProject = (project in file("finance-api"))
       "org.playframework.anorm" %% "anorm" % AnormVersion,
       "org.jsoup" % "jsoup" % JsoupVersion,
       "com.webcohesion.ofx4j" % "ofx4j" % Ofx4jVersion,
-      "org.tpolecat" %% "natchez-xray" % NatchezVersion,
-      "org.tpolecat" %% "natchez-http4s" % NatchezHttp4s,
       "org.xerial" % "sqlite-jdbc" % SqliteJdbcVersion,
       "org.typelevel" %% "log4cats-core" % Log4catsVersion,
       "org.typelevel" %% "log4cats-slf4j" % Log4catsVersion,
@@ -197,8 +185,8 @@ lazy val financeProject = (project in file("finance-api"))
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
   )
   .settings(
-    assemblyJarName in assembly := s"finance-api.jar",
-    assemblyMergeStrategy in assembly := {
+    assembly / assemblyJarName := s"finance-api.jar",
+    assembly / assemblyMergeStrategy := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x                             => MergeStrategy.first
     }
@@ -220,8 +208,8 @@ lazy val cliProject = (project in file("cli"))
     )
   )
   .settings(
-    assemblyJarName in assembly := s"cli.jar",
-    assemblyMergeStrategy in assembly := {
+    assembly / assemblyJarName := s"cli.jar",
+    assembly / assemblyMergeStrategy := {
       case PathList("META-INF", xs @ _*) => MergeStrategy.discard
       case x                             => MergeStrategy.first
     }
