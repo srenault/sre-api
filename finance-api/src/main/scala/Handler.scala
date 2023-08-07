@@ -15,9 +15,6 @@ import org.http4s.client._
 import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.ember.client._
 import org.http4s.dsl.Http4sDsl
-import natchez.Trace
-import natchez.http4s.NatchezMiddleware
-import natchez.xray.XRay
 import sre.api.settings.FinanceSettings
 
 object Handler
@@ -32,19 +29,12 @@ object Handler
   ]] = {
     for {
       settings <- Resource.eval(FinanceSettings.fromEnv[IO]())
-      entrypoint <- Resource
-        .eval(Random.scalaUtilRandom[IO])
-        .flatMap(implicit r => XRay.entryPoint[IO]())
       httpClient <- EmberClientBuilder.default[IO].build
       dbClient <- DBClient.resource[IO](settings)
     } yield { implicit env =>
-      TracedHandler(entrypoint) { implicit trace =>
-        val tracedHttpClient = NatchezMiddleware.client(httpClient)
-        cm.CMClient.resource(tracedHttpClient, settings).use { cmClient =>
-          val service = new FinanceHttpService(cmClient, dbClient, settings)
-          ApiGatewayProxyHandler(service.routes)
-        }
-
+      cm.CMClient.resource(httpClient, settings).use { cmClient =>
+        val service = new FinanceHttpService(cmClient, dbClient, settings)
+        ApiGatewayProxyHandler(service.routes)
       }
     }
   }
