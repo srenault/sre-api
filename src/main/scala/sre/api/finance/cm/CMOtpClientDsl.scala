@@ -55,7 +55,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
             sys.error("Unable to get in app send new 1")
           }
 
-          val inAppSendNew2 = doc.select(s"""[name="${CMPendingOtpSession.IN_APP_SEND_NEW2_FIELD_ID}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
+          val inAppSendNew2 = doc.select(s"""[name="${CMPendingOtpSession.$CPT}"]""").asScala.headOption.flatMap(d => Option(d.attributes.get("value"))) getOrElse {
             sys.error("Unable to get in app send new 2")
           }
 
@@ -101,7 +101,7 @@ trait CMOtpClientDsl[F[_]] extends Http4sClientDsl[F] {
           CMPendingOtpSession.OTP_HIDDEN_FIELD_ID -> pendingOtpSession.otpHidden,
           CMPendingOtpSession.GLOBAL_BACKUP_FIELD_ID -> pendingOtpSession.globalBackup,
           CMPendingOtpSession.IN_APP_SEND_NEW1_FIELD_ID -> pendingOtpSession.inAppSendNew1,
-          CMPendingOtpSession.IN_APP_SEND_NEW2_FIELD_ID -> pendingOtpSession.inAppSendNew2,
+          CMPendingOtpSession.$CPT -> pendingOtpSession.$CPT,
           CMPendingOtpSession.FID_DO_VALIDATE_X_FIELD,
           CMPendingOtpSession.FID_DO_VALIDATE_Y_FIELD,
           CMPendingOtpSession.WXF2_CC_FIELD

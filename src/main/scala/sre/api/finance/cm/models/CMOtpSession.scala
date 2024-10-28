@@ -71,7 +71,7 @@ case class CMPendingOtpSession(
   otpHidden: String,
   globalBackup: String,
   inAppSendNew1: String,
-  inAppSendNew2: String,
+  $CPT: String,
   transactionId: String,
   otpAuthCookie: RequestCookie,
   otherCookies: List[RequestCookie],
@@ -97,7 +97,7 @@ object CMPendingOtpSession {
   val OTPAUTH_COOKIE = "%5Fwirt%5Fsosd%5FSOSD%5FOTPAUTH%5Fsaguid"
   val OTP_HIDDEN_FIELD_ID = "otp_hidden"
   val IN_APP_SEND_NEW1_FIELD_ID = "InputHiddenKeyInAppSendNew1"
-  val IN_APP_SEND_NEW2_FIELD_ID = "InputHiddenKeyInAppSendNew2"
+  val $CPT = "$CPT"
   val GLOBAL_BACKUP_FIELD_ID = "global_backup_hidden_key"
   val FID_DO_VALIDATE_X_FIELD = "_FID_DoValidate.x" -> "0"
   val FID_DO_VALIDATE_Y_FIELD = "_FID_DoValidate.y" -> "0"
@@ -108,7 +108,7 @@ object CMPendingOtpSession {
     otpHidden: String,
     globalBackup: String,
     inAppSendNew1: String,
-    inAppSendNew2: String,
+    $CPT: String,
     transactionId: String,
     otpAuthCookie: ResponseCookie,
     otherCookies: List[ResponseCookie]
@@ -118,7 +118,7 @@ object CMPendingOtpSession {
       otpHidden,
       globalBackup,
       inAppSendNew1,
-      inAppSendNew2,
+      $CPT,
       transactionId,
       otpAuthCookie = RequestCookie(otpAuthCookie.name, otpAuthCookie.content),
       otherCookies = otherCookies.map( c => RequestCookie(c.name, c.content)),
