@@ -3,7 +3,7 @@ package sre.api.finance.cm
 import scala.jdk.CollectionConverters._
 import cats.implicits._
 
-case class CMDownloadForm(action: String, inputs: List[CMAccountInput])
+case class CMDownloadForm(action: String, inputs: List[CMAccountInput], cpt: String, wxf2cc: String)
 
 object CMDownloadForm {
 
@@ -17,7 +17,7 @@ object CMDownloadForm {
   def parse(doc: org.jsoup.nodes.Document): Either[String, CMDownloadForm] = {
 
     val formOrError: Either[String, org.jsoup.nodes.Element] =
-      doc.select("""[id="P:F"]""").asScala.headOption match {
+      doc.select("""[id="C:P:F"]""").asScala.headOption match {
         case Some(el) => Right(el)
         case None => Left("Unable to get download form")
       }
@@ -30,11 +30,25 @@ object CMDownloadForm {
         }
       }
 
+    val cptOrError: Either[String, String] =
+      Option(doc.select("""input[name="$CPT"]""").attr("value")).filter(_.nonEmpty) match {
+        case Some(cpt) => Right(cpt)
+        case None => Left("Unable to get $CPT")
+      }
+
+    val wxf2ccOrError: Either[String, String] =
+      Option(doc.select("""input[name="_wxf2_cc"]""").attr("value")).filter(_.nonEmpty) match {
+        case Some(wxf2cc) => Right(wxf2cc)
+        case None => Left("Unable to get _wxf2_cc")
+      }
+
     for {
       form <- formOrError
       action <- actionOrError(form)
       inputs <- CMAccountInput.parse(doc)
-    } yield CMDownloadForm(action, inputs)
+      cpt <- cptOrError
+      wxf2cc <- wxf2ccOrError
+    } yield CMDownloadForm(action, inputs, cpt, wxf2cc)
   }
 
   def parseOrFail(html: String): CMDownloadForm = {

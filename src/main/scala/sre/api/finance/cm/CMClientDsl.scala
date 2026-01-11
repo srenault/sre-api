@@ -112,7 +112,7 @@ trait CMClientDsl[F[_]] extends Http4sClientDsl[F] with CMOtpClientDsl[F] {
 
       case CMSession(session, otpSession: CMValidOtpSession) =>
         val authenticatedRequest = {
-          val cookieHeader = headers.Cookie(session.idSesCookie)
+          val cookieHeader = headers.Cookie(session.cookies)
           request.putHeaders(cookieHeader)
         }
 

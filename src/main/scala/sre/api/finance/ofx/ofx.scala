@@ -103,6 +103,8 @@ object OfxDir {
 
 object OfxStmTrn {
 
+  private val logger = org.slf4j.LoggerFactory.getLogger("sre.api.finance.ofx.OfxStmTrn")
+
   def load[F[_]](ofxFile: OfxFile)(implicit F: Effect[F]): F[List[OfxStmTrn]] = {
     val is = new FileInputStream(ofxFile.file)
 
@@ -180,9 +182,11 @@ object OfxStmTrn {
       val filename = OfxFile.filename(LocalDate.now)
       val path = accountPath.resolve(filename)
 
-      java.nio.file.Files.deleteIfExists(path)
-
-      is.through(fs2.io.file.writeAll(path, blocker, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil))
+      fs2.Stream.eval(Sync[F].delay {
+        logger.info(s"Persisting OFX file to $path (accountPath: $accountPath, filename: $filename)")
+        java.nio.file.Files.deleteIfExists(path)
+      }) >> is.through(fs2.io.file.writeAll(path, blocker, java.nio.file.StandardOpenOption.CREATE_NEW :: Nil))
+        .onFinalize(cats.effect.Sync[F].delay(logger.info(s"OFX file persisted to $path")))
 
     }.compile.drain
   }

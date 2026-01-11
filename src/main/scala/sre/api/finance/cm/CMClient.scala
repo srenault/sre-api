@@ -89,18 +89,33 @@ case class CMClient[F[_]](
       val startDate = maybeStartDate.map(_.format(FORMATTER)) getOrElse ""
       val endDate = maybeEndDate.map(_.format(FORMATTER)) getOrElse ""
 
+      val webIdFieldName = if (input.index == 0) {
+        "[t:xsd%3astring;]data_accounts_account_webid"
+      } else {
+        s"[t:xsd%3astring;]data_accounts_account_${input.index + 1}__webid"
+      }
+
+      val checkBaseName = input.checkName.stripPrefix("CB:")
+
       val data = UrlForm(
         "data_formats_selected" -> "ofx",
-        "data_formats_options_ofx_fileformat" -> "ofx-format-m2003",
-        "data_daterange_value" -> "1",
+        "data_formats_options_cmi_download" -> "0",
+        "data_formats_options_ofx_format" -> "7",
+        "Bool:data_formats_options_ofx_zonetiers" -> "true",
+        "CB:data_formats_options_ofx_zonetiers" -> "on",
+        "data_daterange_value" -> "range",
         "[t:dbt%3adate;]data_daterange_startdate_value" -> startDate,
-        "[t:dbt%3adate;]data_daterange_enddate_value"-> endDate,
-        input.checkName -> "on",
-        "_FID_DoDownload.x" -> "0",
-        "_FID_DoDownload.y" -> "0"
+        "[t:dbt%3adate;]data_daterange_enddate_value" -> endDate,
+        s"Bool:$checkBaseName" -> "true",
+        s"CB:$checkBaseName" -> "on",
+        webIdFieldName -> input.webId,
+        "$CPT" -> downloadForm.cpt,
+        "_wxf2_cc" -> downloadForm.wxf2cc,
+        "_FID_DoDownload" -> ""
       )
 
-      authenticatedPost(uri, data)(f)
+      EitherT.liftF[F, CMOtpRequest, Unit](F.delay(logger.info(s"input.checkName: ${input.checkName}"))) *>
+        authenticatedPost(uri, data)(f)
     }
 
   def fetchAccountsOfxStmTrn[A](maybeStartDate: Option[LocalDate] = None, maybeEndDate: Option[LocalDate] = None)(f: (String, Response[F]) => F[A]): EitherT[F, CMOtpRequest, List[A]] =

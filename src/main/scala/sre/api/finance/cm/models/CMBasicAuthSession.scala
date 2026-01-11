@@ -4,7 +4,8 @@ import cats.data.NonEmptyList
 import org.http4s.{ RequestCookie, ResponseCookie }
 
 case class CMBasicAuthSession(idSesCookie: RequestCookie, otherCookies: List[RequestCookie]) {
-  def cookies: NonEmptyList[RequestCookie] = NonEmptyList(idSesCookie, otherCookies)
+  private val refonteSdsfCookie = RequestCookie("refonte_sdsf", "1")
+  def cookies: NonEmptyList[RequestCookie] = NonEmptyList(idSesCookie, refonteSdsfCookie :: otherCookies)
 }
 
 object CMBasicAuthSession {

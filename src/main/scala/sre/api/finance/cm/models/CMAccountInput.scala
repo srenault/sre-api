@@ -3,12 +3,12 @@ package sre.api.finance.cm
 import scala.jdk.CollectionConverters._
 import cats.implicits._
 
-case class CMAccountInput(index: Int, id: String, label: String, checkId: String, checkName: String)
+case class CMAccountInput(index: Int, id: String, label: String, checkId: String, checkName: String, webId: String)
 
 object CMAccountInput {
 
   def parse(doc: org.jsoup.nodes.Document): Either[String, List[CMAccountInput]] = {
-    doc.select("#account-table label").asScala.zipWithIndex.map {
+    doc.getElementById("C:account-table").select("label").asScala.zipWithIndex.map {
       case (domLabel, index) =>
         val label = domLabel.text
         val id = label.split(" ").take(3).mkString("")
@@ -32,11 +32,24 @@ object CMAccountInput {
           }
         }
 
+        val webIdFieldName = if (index == 0) {
+          "[t:xsd%3astring;]data_accounts_account_webid"
+        } else {
+          s"[t:xsd%3astring;]data_accounts_account_${index + 1}__webid"
+        }
+
+        val webIdOrError: Either[String, String] =
+          Option(doc.select(s"""input[name="$webIdFieldName"]""").attr("value")).filter(_.nonEmpty) match {
+            case Some(webId) => Right(webId)
+            case None => Left(s"Unable to get webId for index $index")
+          }
+
         for {
           checkId <- checkIdOrError
           check <- checkOrError(checkId)
           checkName <- checkNameOrError(check)
-        } yield CMAccountInput(index, id, label, checkId, checkName)
+          webId <- webIdOrError
+        } yield CMAccountInput(index, id, label, checkId, checkName, webId)
 
     }.toList.sequence
   }

@@ -191,13 +191,17 @@ object CompletePeriodIndex {
     new String(Base64.getDecoder().decode(s), ENCODING)
 
   def encodePartitions(partitions: List[OfxFile]): String =
-    partitions.map(p => encodeBase64(p.file.getPath)).mkString(SEP.toString)
+    partitions.map(p => encodeBase64(s"${p.accountId}/${p.name}")).mkString(SEP.toString)
 
-  def decodePartitions(partitionsStr: String): List[OfxFile] = {
+  def decodePartitions(partitionsStr: String, transactionsDir: java.io.File): List[OfxFile] = {
     partitionsStr.split(SEP).toList.map { p =>
-      OfxFile.open(decodeBase64(p)) match {
+      val decodedPath = decodeBase64(p)
+      val parts = decodedPath.split("/")
+      val relativePath = s"${parts(parts.length - 2)}/${parts.last}"
+      val absolutePath = new java.io.File(transactionsDir, relativePath).getPath
+      OfxFile.open(absolutePath) match {
         case Some(file) => file
-        case None => sys.error(s"Unable to find partition file $p")
+        case None => sys.error(s"Unable to find partition file $absolutePath")
       }
     }
   }
@@ -234,7 +238,7 @@ object CompletePeriodIndex {
     }.mkString(SEP.toString)
   }
 
-  implicit lazy val parser: RowParser[CompletePeriodIndex] = (
+  def parser(transactionsDir: java.io.File): RowParser[CompletePeriodIndex] = (
     get[LocalDate]("yearMonth") ~
     get[LocalDate]("startdate") ~
     get[LocalDate]("enddate") ~
@@ -245,7 +249,7 @@ object CompletePeriodIndex {
   ) map {
     case yearMonthDate ~ startDate ~ endDate ~ partitionsStr ~ wageStatementsStr ~ result ~ balancesByAccountStr =>
       val balancesByAccount = decodeBalancesByAccount(balancesByAccountStr)
-      val partitions = decodePartitions(partitionsStr)
+      val partitions = decodePartitions(partitionsStr, transactionsDir)
       val wageStatements = decodeWageStatements(wageStatementsStr)
       NonEmptyList.fromList(wageStatements) match {
         case Some(nonEmptyWageStatements) =>
