@@ -18,7 +18,7 @@ val EasyMockVersion = "4.2"
 val JavaWebSocketVersion = "1.5.1"
 val FeralVersion = "1.0.0-M4"
 val Log4catsVersion = "2.6.0"
-val DeclineVersion = "2.4.1"
+val DeclineVersion = "2.6.0"
 
 val gitVersion = {
   import scala.sys.process._
